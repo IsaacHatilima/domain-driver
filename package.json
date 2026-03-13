@@ -6,6 +6,10 @@
   "bin": {
     "domain-driver": "./dist/index.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/IsaacHatilima/domain-driver"
+  },
   "scripts": {
     "build": "npx tsc",
     "dev": "ts-node src/index.ts",
