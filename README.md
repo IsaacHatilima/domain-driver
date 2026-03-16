@@ -13,46 +13,181 @@ npm install -g domain-driver
 Or use without installing:
 
 ```bash
-npx domain-driver make:feature <name>
+npx domain-driver make:feature <n>
 ```
 
 ---
 
-## Usage
+## Commands
+
+### `make:feature`
+
+Scaffold a full feature folder structure.
 
 ```bash
-domain-driver make:feature <feature-name>
+domain-driver make:feature <n>
+domain-driver make:feature <n> -a
 ```
 
-### Examples
+The `-a` flag scaffolds all files inside each folder automatically.
 
 ```bash
-domain-driver make:feature api-key
-domain-driver make:feature user-profile
-domain-driver make:feature payment
+domain-driver make:feature coffee-type        # folders + .gitkeep only
+domain-driver make:feature coffee-type  -a    # folders + all files
 ```
 
 ---
 
-## What it generates
+### `make:component`
 
-Running `domain-driver make:feature api-key` creates the following structure inside your Next.js `app/` directory:
+Scaffold a component inside an existing feature. Defaults to `client` if no type is specified.
+
+```bash
+domain-driver make:component <feature> <n>
+domain-driver make:component <feature> <n> client
+domain-driver make:component <feature> <n> server
+```
+
+```bash
+domain-driver make:component coffee-type CoffeeTypeList
+domain-driver make:component coffee-type CoffeeTypeForm client
+domain-driver make:component coffee-type CoffeeTypeCard server
+```
+
+---
+
+### `make:container`
+
+Scaffold a smart container component inside an existing feature.
+
+```bash
+domain-driver make:container <feature> <n>
+```
+
+```bash
+domain-driver make:container coffee-type CoffeeTypeContainer
+```
+
+---
+
+### `make:hook`
+
+Scaffold a custom hook inside an existing feature.
+
+```bash
+domain-driver make:hook <feature> <n>
+```
+
+```bash
+domain-driver make:hook coffee-type useCoffeeType
+```
+
+---
+
+### `make:service`
+
+Scaffold a set of single-responsibility service files inside an existing feature.
+
+```bash
+domain-driver make:service <feature> <n>
+```
+
+```bash
+domain-driver make:service coffee-type CoffeeType
+```
+
+Generates:
+
+```
+app/coffee-type/services/
+├── ListCoffeeType.service.ts
+├── ShowCoffeeType.service.ts
+├── CreateCoffeeType.service.ts
+├── UpdateCoffeeType.service.ts
+└── DeleteCoffeeType.service.ts
+```
+
+---
+
+### `make:repository`
+
+Scaffold a set of single-responsibility repository files inside an existing feature.
+
+```bash
+domain-driver make:repository <feature> <n>
+```
+
+```bash
+domain-driver make:repository coffee-type CoffeeType
+```
+
+Generates:
+
+```
+app/coffee-type/repositories/
+├── ListCoffeeType.repository.ts
+├── ShowCoffeeType.repository.ts
+├── CreateCoffeeType.repository.ts
+├── UpdateCoffeeType.repository.ts
+└── DeleteCoffeeType.repository.ts
+```
+
+---
+
+### `make:schema`
+
+Scaffold Zod schemas for create and update operations inside an existing feature.
+
+```bash
+domain-driver make:schema <feature> <n>
+```
+
+```bash
+domain-driver make:schema coffee-type CoffeeType
+```
+
+Generates:
+
+```
+app/coffee-type/schemas/
+├── CreateCoffeeType.schema.ts
+└── UpdateCoffeeType.schema.ts
+```
+
+---
+
+## What `make:feature -a` generates
+
+Running `domain-driver make:feature coffee-type -a` creates the full structure:
 
 ```
 app/
-└── api-key/
+└── coffee-type/
     ├── components/
-    │   ├── server/        # React Server Components
-    │   └── client/        # Client components ('use client')
-    ├── containers/        # Smart components — wire hooks → UI
-    ├── hooks/             # Feature-specific hooks (useApiKey, etc.)
-    ├── services/          # Business logic and transformations
-    ├── repositories/      # Data access layer (fetch/axios calls)
-    ├── schemas/           # Zod schemas for forms and API validation
-    └── page.tsx           # Next.js page entry point
+    │   ├── server/
+    │   └── client/
+    │       └── CoffeeType.tsx
+    ├── containers/
+    │   └── CoffeeTypeContainer.tsx
+    ├── hooks/
+    │   └── useCoffeeType.ts
+    ├── services/
+    │   ├── ListCoffeeType.service.ts
+    │   ├── ShowCoffeeType.service.ts
+    │   ├── CreateCoffeeType.service.ts
+    │   ├── UpdateCoffeeType.service.ts
+    │   └── DeleteCoffeeType.service.ts
+    ├── repositories/
+    │   ├── ListCoffeeType.repository.ts
+    │   ├── ShowCoffeeType.repository.ts
+    │   ├── CreateCoffeeType.repository.ts
+    │   ├── UpdateCoffeeType.repository.ts
+    │   └── DeleteCoffeeType.repository.ts
+    ├── schemas/
+    │   ├── CreateCoffeeType.schema.ts
+    │   └── UpdateCoffeeType.schema.ts
+    └── page.tsx
 ```
-
-Each folder includes a `.gitkeep` file so empty directories are tracked in Git.
 
 ---
 
@@ -67,22 +202,27 @@ The layer responsibilities are:
 - **hooks** — React state and side effects, calls services
 - **containers** — wire hooks into UI, no direct data fetching
 - **components** — pure presentational UI, no data dependencies
-- **schemas** — Zod validation for both forms and API responses
+- **schemas** — Zod validation for create and update operations
 
 ---
 
 ## Requirements
 
 - Node.js 18+
-- A Next.js project with an `app/` directory (App Router)
 
 ---
+
+## Framework Support
+
+This tool is optimised for **Next.js App Router** projects. All files are scaffolded into the `app/` directory following Next.js conventions (`page.tsx`, server/client component separation, etc.).
+
+If no `app/` directory exists, it will be created automatically. This means the tool can also be used in any project where an `app/<feature>` folder structure makes sense.
 
 ## Local Development
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourname/domain-driver
+git clone https://github.com/IsaacHatilima/domain-driver
 cd domain-driver
 
 # Install dependencies
@@ -96,17 +236,22 @@ npm link
 
 # Test it
 domain-driver make:feature test-feature
+domain-driver make:feature test-feature -a
 ```
 
 ---
 
 ## Roadmap
 
-- [ ] `make:component` — scaffold a single component
-- [ ] `make:hook` — scaffold a custom hook
-- [ ] `make:service` — scaffold a service
-- [ ] Framework detection — auto-adapt structure for Laravel, Go, etc.
-- [ ] Interactive mode — prompt for feature name if not provided
+- [x] `make:feature` — scaffold feature folder structure
+- [x] `make:feature -a` — scaffold feature with all files
+- [x] `make:component` — scaffold a component
+- [x] `make:container` — scaffold a container
+- [x] `make:hook` — scaffold a custom hook
+- [x] `make:service` — scaffold single-responsibility services
+- [x] `make:repository` — scaffold single-responsibility repositories
+- [x] `make:schema` — scaffold Zod schemas
+- [ ] Interactive mode — prompt for name if not provided
 - [ ] Config file — customize folder structure per project
 
 ---

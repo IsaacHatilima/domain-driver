@@ -1,1 +1,4 @@
 .idea
+app
+dist
+node_modules
