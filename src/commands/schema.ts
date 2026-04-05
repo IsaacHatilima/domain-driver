@@ -1,5 +1,5 @@
-import * as fs from 'fs';
 import * as path from 'path';
+import { ensureFeatureExists, writeFileSafe, fileExists } from '../utils';
 
 type SchemaAction = 'Create' | 'Update';
 
@@ -29,23 +29,18 @@ export type Update${name} = z.infer<typeof Update${name}Schema>;
     }
 }
 
-export function makeSchema(feature: string, name: string) {
-    const base = path.join(process.cwd(), 'app', feature, 'schemas');
-
-    if (!fs.existsSync(base)) {
-        console.error(`❌ Feature "${feature}" does not exist. Run make:feature ${feature} first.`);
-        process.exit(1);
-    }
+export function makeSchema(feature: string, name: string): void {
+    const base = ensureFeatureExists(feature, 'schemas');
 
     for (const action of SCHEMA_ACTIONS) {
         const filePath = path.join(base, `${action}${name}.schema.ts`);
 
-        if (fs.existsSync(filePath)) {
+        if (fileExists(filePath)) {
             console.warn(`⚠️  Skipping "${action}${name}.schema.ts" — already exists`);
             continue;
         }
 
-        fs.writeFileSync(filePath, renderSchema(action, name));
+        writeFileSafe(filePath, renderSchema(action, name));
     }
 
     console.log(`✅ Schemas for "${name}" created at ${base}`);

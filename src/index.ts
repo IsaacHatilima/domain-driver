@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { Command } from 'commander';
 import { makeFeature } from './commands/feature';
 import { makeComponent } from './commands/component';
 import { makeHook } from './commands/hook';
@@ -6,70 +7,120 @@ import { makeService } from './commands/service';
 import { makeSchema } from './commands/schema';
 import { makeRepository } from './commands/repository';
 import { makeContainer } from './commands/container';
+import { makeTypes } from './commands/types';
 
-const [,, command, feature, name] = process.argv;
+const program = new Command();
 
-if (!command || !feature) {
-    console.error('Usage: domain-driver <command> [options]');
-    process.exit(1);
-}
+program
+    .name('domain-driver')
+    .description('CLI scaffolding tool for domain-driven development in Next.js')
+    .version('0.1.0');
 
-switch (command) {
-    case 'make:feature':
-        const all = process.argv.includes('-a') || process.argv.includes('-A');
-        makeFeature(feature, all).then(() => {});
-        break;
-
-    case 'make:component':
-        if (!name) {
-            console.error('Usage: domain-driver make:component <feature> <name> [client|server]');
+program
+    .command('make:feature <name>')
+    .description('Scaffold a full feature folder structure')
+    .option('-a, --all', 'Scaffold all files inside each folder')
+    .action(async (name: string, options: { all?: boolean }) => {
+        try {
+            await makeFeature(name, options.all ?? false);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error(`❌ ${message}`);
             process.exit(1);
         }
-        const type = (process.argv[5] as 'client' | 'server') || 'client';
-        makeComponent(feature, name, type);
-        break;
+    });
 
-    case 'make:hook':
-        if (!name) {
-            console.error('Usage: domain-driver make:hook <feature> <name>');
+program
+    .command('make:component <feature> <name>')
+    .description('Scaffold a component inside an existing feature')
+    .argument('[type]', 'Component type: client or server', 'client')
+    .action((feature: string, name: string, type: string) => {
+        try {
+            const componentType = type === 'server' ? 'server' : 'client';
+            makeComponent(feature, name, componentType);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error(`❌ ${message}`);
             process.exit(1);
         }
-        makeHook(feature, name);
-        break;
+    });
 
-    case 'make:service':
-        if (!name) {
-            console.error('Usage: domain-driver make:service <feature> <name>');
+program
+    .command('make:container <feature> <name>')
+    .description('Scaffold a smart container component inside an existing feature')
+    .action((feature: string, name: string) => {
+        try {
+            makeContainer(feature, name);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error(`❌ ${message}`);
             process.exit(1);
         }
-        makeService(feature, name);
-        break;
+    });
 
-    case 'make:schema':
-        if (!name) {
-            console.error('Usage: domain-driver make:schema <feature> <name>');
+program
+    .command('make:hook <feature> <name>')
+    .description('Scaffold a custom hook inside an existing feature')
+    .action((feature: string, name: string) => {
+        try {
+            makeHook(feature, name);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error(`❌ ${message}`);
             process.exit(1);
         }
-        makeSchema(feature, name);
-        break;
+    });
 
-    case 'make:repository':
-        if (!name) {
-            console.error('Usage: domain-driver make:repository <feature> <name>');
+program
+    .command('make:service <feature> <name>')
+    .description('Scaffold single-responsibility service files inside an existing feature')
+    .action((feature: string, name: string) => {
+        try {
+            makeService(feature, name);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error(`❌ ${message}`);
             process.exit(1);
         }
-        makeRepository(feature, name);
-        break;
+    });
 
-    case 'make:container':
-        if (!name) {
-            console.error('Usage: domain-driver make:container <feature> <name>');
+program
+    .command('make:repository <feature> <name>')
+    .description('Scaffold single-responsibility repository files inside an existing feature')
+    .action((feature: string, name: string) => {
+        try {
+            makeRepository(feature, name);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error(`❌ ${message}`);
             process.exit(1);
         }
-        makeContainer(feature, name);
-        break;
+    });
 
-    default:
-        console.error(`Unknown command: ${command}`);
-        process.exit(1);
-}
+program
+    .command('make:schema <feature> <name>')
+    .description('Scaffold Zod schemas for create and update operations')
+    .action((feature: string, name: string) => {
+        try {
+            makeSchema(feature, name);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error(`❌ ${message}`);
+            process.exit(1);
+        }
+    });
+
+program
+    .command('make:types <feature> <name>')
+    .description('Scaffold a types file inside an existing feature')
+    .action((feature: string, name: string) => {
+        try {
+            makeTypes(feature, name);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error(`❌ ${message}`);
+            process.exit(1);
+        }
+    });
+
+program.parse();

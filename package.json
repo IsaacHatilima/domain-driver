@@ -1,7 +1,7 @@
 {
   "name": "domain-driver",
-  "version": "0.0.5",
-  "description": "",
+  "version": "0.1.0",
+  "description": "CLI scaffolding tool for domain-driven development in Next.js",
   "main": "index.js",
   "bin": {
     "domain-driver": "./dist/index.js"
@@ -11,17 +11,18 @@
     "url": "https://github.com/IsaacHatilima/domain-driver"
   },
   "scripts": {
-    "build": "npx tsc",
-    "dev": "ts-node src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "test": "vitest run"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Isaac Hatilima",
+  "license": "MIT",
   "devDependencies": {
-    "@types/node": "^25.4.0"
+    "@types/node": "^25.4.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.2"
   },
   "dependencies": {
-    "typescript": "^5.9.3"
+    "commander": "^14.0.3"
   }
 }

@@ -1,11 +1,12 @@
-import * as fs from 'fs';
 import * as path from 'path';
+import { toPascalCase, featureBasePath, writeFileSafe, mkdirSafe, fileExists, resolveImport } from '../utils';
 import { makeComponent } from './component';
 import { makeHook } from './hook';
 import { makeService } from './service';
 import { makeRepository } from './repository';
 import { makeSchema } from './schema';
 import { makeContainer } from './container';
+import { makeTypes } from './types';
 
 const FEATURE_DIRS = [
     'components/server',
@@ -15,53 +16,58 @@ const FEATURE_DIRS = [
     'services',
     'repositories',
     'schemas',
+    'types',
 ];
 
-function toPascalCase(name: string): string {
-    return name
-        .split('-')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join('');
-}
+function renderPage(name: string, pascalName: string): string {
+    const containerPath = resolveImport(name, `containers/${pascalName}Container`, true);
 
-function renderPage(name: string): string {
-    const componentName = toPascalCase(name);
-    return `export default function ${componentName}Page() {
+    return `import ${pascalName}Container from '${containerPath}';
+
+export default function ${pascalName}Page() {
   return (
     <div>
-      <h1>${componentName}</h1>
+      <${pascalName}Container />
     </div>
   );
 }
 `;
 }
 
-export async function makeFeature(name: string, all: boolean = false) {
-    const base = path.join(process.cwd(), 'app', name);
+export async function makeFeature(name: string, all: boolean = false): Promise<void> {
+    const base = featureBasePath(name);
     const pascalName = toPascalCase(name);
 
-    if (fs.existsSync(base)) {
-        console.error(`❌ Feature "${name}" already exists at ${base}`);
-        process.exit(1);
+    if (fileExists(base)) {
+        throw new Error(`Feature "${name}" already exists at ${base}`);
     }
 
     for (const dir of FEATURE_DIRS) {
-        fs.mkdirSync(path.join(base, dir), { recursive: true });
+        mkdirSafe(path.join(base, dir));
         if (!all) {
-            fs.writeFileSync(path.join(base, dir, '.gitkeep'), '');
+            writeFileSafe(path.join(base, dir, '.gitkeep'), '');
         }
     }
 
-    fs.writeFileSync(path.join(base, 'page.tsx'), renderPage(name));
+    if (all) {
+        writeFileSafe(path.join(base, 'page.tsx'), renderPage(name, pascalName));
+    } else {
+        writeFileSafe(
+            path.join(base, 'page.tsx'),
+            `export default function ${pascalName}Page() {\n  return (\n    <div>\n      <h1>${pascalName}</h1>\n    </div>\n  );\n}\n`
+        );
+    }
+
     console.log(`✅ Feature "${name}" scaffolded at ${base}`);
 
     if (all) {
-        makeComponent(name, pascalName, 'client');
-        makeContainer(name, `${pascalName}Container`);
-        makeHook(name, `use${pascalName}`);
+        makeTypes(name, pascalName);
+        makeSchema(name, pascalName);
+        makeRepository(name, pascalName);
         makeService(name, pascalName);
-        makeRepository(name, `${pascalName}Repository`);
-        makeSchema(name, `${pascalName}Schema`);
+        makeHook(name, `use${pascalName}`, pascalName);
+        makeComponent(name, pascalName, 'client');
+        makeContainer(name, `${pascalName}Container`, pascalName);
 
         console.log(`✅ All files scaffolded for "${name}"`);
     }
