@@ -115,6 +115,14 @@ describe('assertLayer', () => {
         );
     });
 
+    it('appends an escape hatch when make:controller is missing on next-frontend', () => {
+        expect(() => assertLayer(getProfile('next-frontend'), 'controller', 'make:controller')).toThrow(
+            'make:controller is not available for the next-frontend stack. Available: make:component, make:container, ' +
+                'make:hook, make:service, make:repository, make:schema, make:types. Create an app/api directory or ' +
+                'pass --stack next-fullstack to enable route handlers.'
+        );
+    });
+
     it('availableCommands de-duplicates service and repository sides', () => {
         expect(availableCommands(getProfile('next-fullstack'))).toEqual([
             'make:component',

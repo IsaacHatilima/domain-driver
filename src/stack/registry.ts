@@ -56,7 +56,11 @@ export function availableCommands(profile: StackProfile): readonly string[] {
 
 export function assertLayer(profile: StackProfile, layer: Layer, command: string): void {
     if (hasLayer(profile, layer)) return;
+    const escapeHatch =
+        profile.name === 'next-frontend' && layer === 'controller'
+            ? ' Create an app/api directory or pass --stack next-fullstack to enable route handlers.'
+            : '';
     throw new Error(
-        `${command} is not available for the ${profile.name} stack. Available: ${availableCommands(profile).join(', ')}.`
+        `${command} is not available for the ${profile.name} stack. Available: ${availableCommands(profile).join(', ')}.${escapeHatch}`
     );
 }
