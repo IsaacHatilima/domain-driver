@@ -16,3 +16,14 @@ export function validateFeatureName(name: string): void {
         throw new Error(`Feature name "${name}" must be kebab-case, for example coffee-type.`);
     }
 }
+
+export function upperFirst(name: string): string {
+    return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+export function toKebabCase(name: string): string {
+    return name
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+        .toLowerCase();
+}

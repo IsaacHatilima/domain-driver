@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toPascalCase, lowerFirst, validateFeatureName } from '../naming';
+import { toPascalCase, lowerFirst, validateFeatureName, upperFirst, toKebabCase } from '../naming';
 
 describe('toPascalCase', () => {
     it('converts kebab-case to PascalCase', () => {
@@ -38,4 +38,24 @@ describe('validateFeatureName', () => {
             );
         }
     );
+});
+
+describe('upperFirst', () => {
+    it('uppercases the first character only', () => {
+        expect(upperFirst('findActiveUsers')).toBe('FindActiveUsers');
+        expect(upperFirst('')).toBe('');
+    });
+});
+
+describe('toKebabCase', () => {
+    it.each([
+        ['FindActiveUsers', 'find-active-users'],
+        ['findActiveUsers', 'find-active-users'],
+        ['archiveUser', 'archive-user'],
+        ['ExportCSV', 'export-csv'],
+        ['ParseHTMLDoc', 'parse-html-doc'],
+        ['List', 'list'],
+    ])('converts %s to %s', (input, expected) => {
+        expect(toKebabCase(input)).toBe(expected);
+    });
 });
