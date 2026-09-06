@@ -1,74 +1,66 @@
 import * as path from 'path';
-import { toPascalCase, featureBasePath, writeFileSafe, mkdirSafe, fileExists, resolveImport } from '../utils';
+import { hasLayer } from '../stack/registry';
+import { RenderContext } from '../templates/context';
+import { renderPage } from '../templates/frontend/page';
+import { renderModule } from '../templates/nest/module';
+import { fileExists, mkdirSafe, writeFileSafe } from '../utils/fs';
+import { toPascalCase } from '../utils/naming';
 import { makeComponent } from './component';
-import { makeHook } from './hook';
-import { makeService } from './service';
-import { makeRepository } from './repository';
-import { makeSchema } from './schema';
 import { makeContainer } from './container';
+import { makeController } from './controller';
+import { makeHook } from './hook';
+import { makeRepository } from './repository';
+import { resolveFeature } from './resolve';
+import { makeSchema } from './schema';
+import { makeService } from './service';
 import { makeTypes } from './types';
 
-const FEATURE_DIRS = [
-    'components/server',
-    'components/client',
-    'containers',
-    'hooks',
-    'services',
-    'repositories',
-    'schemas',
-    'types',
-];
-
-function renderPage(name: string, pascalName: string): string {
-    const containerPath = resolveImport(name, `containers/${pascalName}Container`, true);
-
-    return `import ${pascalName}Container from '${containerPath}';
-
-export default function ${pascalName}Page() {
-  return (
-    <div>
-      <${pascalName}Container />
-    </div>
-  );
-}
-`;
-}
-
 export async function makeFeature(name: string, all: boolean = false): Promise<void> {
-    const base = featureBasePath(name);
-    const pascalName = toPascalCase(name);
+    const ctx = resolveFeature(name);
 
-    if (fileExists(base)) {
-        throw new Error(`Feature "${name}" already exists at ${base}`);
+    if (fileExists(ctx.featureDir)) {
+        throw new Error(`Feature "${name}" already exists at ${ctx.featureDir}`);
     }
 
-    for (const dir of FEATURE_DIRS) {
-        mkdirSafe(path.join(base, dir));
-        if (!all) {
-            writeFileSafe(path.join(base, dir, '.gitkeep'), '');
-        }
+    const entity = toPascalCase(name);
+    createFolders(ctx, all);
+    console.log(`✅ Feature "${name}" scaffolded at ${ctx.featureDir}`);
+
+    if (all) scaffoldLayers(ctx, entity);
+    writeEntryFile(ctx, entity, all);
+
+    if (all) console.log(`✅ All files scaffolded for "${name}"`);
+}
+
+function createFolders(ctx: RenderContext, all: boolean): void {
+    for (const folder of ctx.profile.folders) {
+        const dir = path.join(ctx.featureDir, folder);
+        mkdirSafe(dir);
+        if (!all) writeFileSafe(path.join(dir, '.gitkeep'), '');
     }
+}
 
-    if (all) {
-        writeFileSafe(path.join(base, 'page.tsx'), renderPage(name, pascalName));
-    } else {
-        writeFileSafe(
-            path.join(base, 'page.tsx'),
-            `export default function ${pascalName}Page() {\n  return (\n    <div>\n      <h1>${pascalName}</h1>\n    </div>\n  );\n}\n`
-        );
+function scaffoldLayers(ctx: RenderContext, entity: string): void {
+    const { feature, profile } = ctx;
+    if (hasLayer(profile, 'types')) makeTypes(feature, entity);
+    if (hasLayer(profile, 'schema')) makeSchema(feature, entity);
+    if (hasLayer(profile, 'serverRepository')) makeRepository(feature, entity, 'server');
+    if (hasLayer(profile, 'serverService')) makeService(feature, entity, 'server');
+    if (hasLayer(profile, 'controller')) makeController(feature, entity);
+    if (hasLayer(profile, 'clientRepository')) makeRepository(feature, entity, 'client');
+    if (hasLayer(profile, 'clientService')) makeService(feature, entity, 'client');
+    if (hasLayer(profile, 'hook')) makeHook(feature, `use${entity}`, entity);
+    if (hasLayer(profile, 'component')) makeComponent(feature, entity, 'client');
+    if (hasLayer(profile, 'container')) makeContainer(feature, `${entity}Container`, entity);
+}
+
+function writeEntryFile(ctx: RenderContext, entity: string, all: boolean): void {
+    if (hasLayer(ctx.profile, 'page')) {
+        const filePath = path.join(ctx.featureDir, 'page.tsx');
+        writeFileSafe(filePath, renderPage(ctx, entity, filePath, all));
     }
-
-    console.log(`✅ Feature "${name}" scaffolded at ${base}`);
-
-    if (all) {
-        makeTypes(name, pascalName);
-        makeSchema(name, pascalName);
-        makeRepository(name, pascalName);
-        makeService(name, pascalName);
-        makeHook(name, `use${pascalName}`, pascalName);
-        makeComponent(name, pascalName, 'client');
-        makeContainer(name, `${pascalName}Container`, pascalName);
-
-        console.log(`✅ All files scaffolded for "${name}"`);
+    if (hasLayer(ctx.profile, 'module')) {
+        const filePath = path.join(ctx.featureDir, `${ctx.feature}.module.ts`);
+        writeFileSafe(filePath, renderModule(ctx, entity, filePath, all));
     }
 }
