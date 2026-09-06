@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { resetStackCache } from '../../stack/detect';
 import { resetAliasCache } from '../../utils/alias';
+import { resetHints } from '../../commands/hints';
 
 export interface TempProject {
     readonly dir: string;
@@ -12,6 +13,7 @@ export interface TempProject {
 export function resetCaches(): void {
     resetStackCache();
     resetAliasCache();
+    resetHints();
 }
 
 export function createTempProject(prefix: string): TempProject {

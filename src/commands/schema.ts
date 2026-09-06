@@ -1,47 +1,28 @@
-import * as path from 'path';
-import { ensureFeatureExists, writeFileSafe, fileExists } from '../utils';
-
-type SchemaAction = 'Create' | 'Update';
-
-const SCHEMA_ACTIONS: SchemaAction[] = ['Create', 'Update'];
-
-function renderSchema(action: SchemaAction, name: string): string {
-    switch (action) {
-        case 'Create':
-            return `import { z } from 'zod';
-
-export const Create${name}Schema = z.object({
-  // add create fields here
-});
-
-export type Create${name} = z.infer<typeof Create${name}Schema>;
-`;
-        case 'Update':
-            return `import { z } from 'zod';
-
-export const Update${name}Schema = z.object({
-  id: z.string(),
-  // add update fields here
-});
-
-export type Update${name} = z.infer<typeof Update${name}Schema>;
-`;
-    }
-}
+import { assertLayer, hasLayer } from '../stack/registry';
+import { WRITE_ACTIONS } from '../templates/actions';
+import { RenderContext } from '../templates/context';
+import { renderDto } from '../templates/nest/dto';
+import { renderSchema } from '../templates/shared/schema';
+import { hintNestjsZod } from './hints';
+import { ensureLayerDir, requireFeature } from './resolve';
+import { writeActionFiles } from './write';
 
 export function makeSchema(feature: string, name: string): void {
-    const base = ensureFeatureExists(feature, 'schemas');
+    const ctx = requireFeature(feature);
+    assertLayer(ctx.profile, 'schema', 'make:schema');
 
-    for (const action of SCHEMA_ACTIONS) {
-        const filePath = path.join(base, `${action}${name}.schema.ts`);
+    const schemaDir = ensureLayerDir(ctx, 'schema');
+    writeActionFiles(schemaDir, name, 'schema', WRITE_ACTIONS, (action) => renderSchema(action, name));
+    console.log(`✅ Schemas for "${name}" created at ${schemaDir}`);
 
-        if (fileExists(filePath)) {
-            console.warn(`⚠️  Skipping "${action}${name}.schema.ts" — already exists`);
-            continue;
-        }
+    if (hasLayer(ctx.profile, 'dto')) writeDtos(ctx, name);
+}
 
-        writeFileSafe(filePath, renderSchema(action, name));
-    }
-
-    console.log(`✅ Schemas for "${name}" created at ${base}`);
+function writeDtos(ctx: RenderContext, name: string): void {
+    const dtoDir = ensureLayerDir(ctx, 'dto');
+    writeActionFiles(dtoDir, name, 'dto', WRITE_ACTIONS, (action, filePath) =>
+        renderDto(ctx, action, name, filePath)
+    );
+    hintNestjsZod(ctx.stack);
+    console.log(`✅ DTOs for "${name}" created at ${dtoDir}`);
 }
