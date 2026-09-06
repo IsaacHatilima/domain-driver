@@ -1,0 +1,43 @@
+import { StackProfile } from '../types';
+
+export const nextFullstack: StackProfile = Object.freeze({
+    name: 'next-fullstack',
+    folders: [
+        'components/client',
+        'components/server',
+        'containers',
+        'hooks',
+        'client/services',
+        'client/repositories',
+        'server/services',
+        'server/repositories',
+        'schemas',
+        'types',
+    ] as const,
+    layers: [
+        'page',
+        'component',
+        'container',
+        'hook',
+        'clientService',
+        'clientRepository',
+        'serverService',
+        'serverRepository',
+        'controller',
+        'schema',
+        'types',
+    ] as const,
+    layerDirs: {
+        component: 'components',
+        container: 'containers',
+        hook: 'hooks',
+        clientService: 'client/services',
+        clientRepository: 'client/repositories',
+        serverService: 'server/services',
+        serverRepository: 'server/repositories',
+        schema: 'schemas',
+        types: 'types',
+    },
+    clientDirective: true,
+    serverComponents: true,
+});

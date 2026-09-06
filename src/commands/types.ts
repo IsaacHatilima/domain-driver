@@ -1,25 +1,15 @@
 import * as path from 'path';
-import { ensureFeatureExists, writeFileSafe, fileExists } from '../utils';
-
-function renderTypes(name: string): string {
-    return `export interface ${name} {
-  id: string;
-  // add ${name} fields here
-  createdAt: string;
-  updatedAt: string;
-}
-`;
-}
+import { assertLayer } from '../stack/registry';
+import { renderTypes } from '../templates/shared/types';
+import { ensureLayerDir, requireFeature } from './resolve';
+import { writeIfAbsent } from './write';
 
 export function makeTypes(feature: string, name: string): void {
-    const base = ensureFeatureExists(feature, 'types');
-    const filePath = path.join(base, `${name}.types.ts`);
+    const ctx = requireFeature(feature);
+    assertLayer(ctx.profile, 'types', 'make:types');
 
-    if (fileExists(filePath)) {
-        console.warn(`⚠️  Skipping "${name}.types.ts" — already exists`);
-        return;
+    const filePath = path.join(ensureLayerDir(ctx, 'types'), `${name}.types.ts`);
+    if (writeIfAbsent(filePath, () => renderTypes(name))) {
+        console.log(`✅ Types for "${name}" created at ${filePath}`);
     }
-
-    writeFileSafe(filePath, renderTypes(name));
-    console.log(`✅ Types for "${name}" created at ${filePath}`);
 }

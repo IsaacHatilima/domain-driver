@@ -1,8 +1,8 @@
 {
   "name": "domain-driver",
-  "version": "0.1.0",
-  "description": "CLI scaffolding tool for domain-driven development in Next.js",
-  "main": "index.js",
+  "version": "0.2.0",
+  "description": "CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, and NestJS projects, with per-action files, bespoke actions, and agent guidance",
+  "main": "dist/index.js",
   "bin": {
     "domain-driver": "./dist/index.js"
   },
@@ -10,15 +10,36 @@
     "type": "git",
     "url": "https://github.com/IsaacHatilima/domain-driver"
   },
+  "files": [
+    "dist",
+    "scripts/postinstall.js"
+  ],
   "scripts": {
-    "build": "tsc",
-    "test": "vitest run"
+    "build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && tsc",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "postinstall": "node ./scripts/postinstall.js"
   },
-  "keywords": [],
+  "keywords": [
+    "cli",
+    "scaffolding",
+    "domain-driven",
+    "nextjs",
+    "react",
+    "nestjs",
+    "node",
+    "express",
+    "fastify",
+    "hono"
+  ],
   "author": "Isaac Hatilima",
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "devDependencies": {
     "@types/node": "^25.4.0",
+    "@vitest/coverage-v8": "^4.1.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.2"
   },
