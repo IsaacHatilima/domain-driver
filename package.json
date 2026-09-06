@@ -1,7 +1,7 @@
 {
   "name": "domain-driver",
-  "version": "0.1.0",
-  "description": "CLI scaffolding tool for domain-driven development in Next.js",
+  "version": "0.2.0",
+  "description": "CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, and NestJS projects",
   "main": "index.js",
   "bin": {
     "domain-driver": "./dist/index.js"
@@ -12,13 +12,26 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
-  "keywords": [],
+  "keywords": [
+    "cli",
+    "scaffolding",
+    "domain-driven",
+    "nextjs",
+    "react",
+    "nestjs",
+    "node",
+    "express",
+    "fastify",
+    "hono"
+  ],
   "author": "Isaac Hatilima",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^25.4.0",
+    "@vitest/coverage-v8": "^4.1.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.2"
   },
