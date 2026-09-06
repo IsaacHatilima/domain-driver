@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { runUpdate, UpdateDeps, SpawnResult } from '../update';
 import { FetchLike } from '../../update/registry';
@@ -8,6 +10,16 @@ const LOCAL_BIN = path.join(ROOT, 'node_modules', 'domain-driver', 'dist', 'inde
 const GLOBAL_BIN = path.resolve(path.sep, 'usr', 'local', 'lib', 'node_modules', 'domain-driver', 'dist', 'index.js');
 const NPX_BIN = path.resolve(path.sep, 'home', 'u', '.npm', '_npx', 'x', 'node_modules', 'domain-driver', 'dist', 'index.js');
 const NODE = path.resolve(path.sep, 'usr', 'bin', 'node');
+
+let cacheDir: string;
+
+beforeEach(() => {
+    cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dd-update-cache-'));
+});
+
+afterEach(() => {
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+});
 
 const registry = (latest: string | null): FetchLike => async () =>
     latest === null
@@ -30,7 +42,7 @@ function harness(overrides: Partial<UpdateDeps> = {}, spawnResults: readonly Spa
         [LOCAL_BIN]: '',
     };
     const deps: UpdateDeps = {
-        env: { DOMAIN_DRIVER_CACHE_DIR: path.join(ROOT, '.cache') },
+        env: { DOMAIN_DRIVER_CACHE_DIR: cacheDir },
         homedir: '/nope',
         now: () => Date.parse('2026-09-06T12:00:00.000Z'),
         fetchImpl: registry('0.3.0'),
@@ -49,7 +61,6 @@ function harness(overrides: Partial<UpdateDeps> = {}, spawnResults: readonly Spa
         },
         execPath: NODE,
         log: (line) => lines.push(line),
-        writeCache: false,
         ...overrides,
     };
     return { deps, lines, spawned };

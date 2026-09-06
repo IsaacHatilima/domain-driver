@@ -108,7 +108,6 @@ describe('createProgram', () => {
             },
             execPath: '/usr/bin/node',
             log: (line) => updateLines.push(line),
-            writeCache: false,
         };
         await run(cliDeps({ updateDeps: () => updateDeps }), ['update', '--dry-run']);
         expect(updateLines).toEqual([`Would run: npm install domain-driver@latest in ${root}`]);

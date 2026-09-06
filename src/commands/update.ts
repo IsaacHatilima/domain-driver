@@ -2,12 +2,11 @@ import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { formatNotice } from '../update/check';
+import { formatNotice, latestVersion } from '../update/check';
 import { detectInstallMode, InstallInfo } from '../update/install-mode';
 import { detectPackageManager, updateCommand, UpdateCommand } from '../update/package-manager';
-import { FetchLike, fetchLatestVersion, nodeFetch } from '../update/registry';
+import { FetchLike, nodeFetch } from '../update/registry';
 import { currentVersion, isNewer } from '../update/version';
-import { cacheDir, writeCache as persistCache } from '../update/cache';
 
 export interface UpdateOptions {
     readonly dryRun: boolean;
@@ -32,7 +31,6 @@ export interface UpdateDeps {
     readonly spawn: (command: string, args: readonly string[], cwd: string) => SpawnResult;
     readonly execPath: string;
     readonly log: (line: string) => void;
-    readonly writeCache: boolean;
 }
 
 const NPX_MESSAGE =
@@ -73,7 +71,6 @@ export function defaultUpdateDeps(): UpdateDeps {
         },
         execPath: process.execPath,
         log: (line) => console.log(line),
-        writeCache: true,
     };
 }
 
@@ -95,7 +92,14 @@ export async function runUpdate(options: UpdateOptions, deps: UpdateDeps): Promi
         return;
     }
 
-    const latest = await freshLatest(deps);
+    const latest = await latestVersion({
+        env: deps.env,
+        homedir: deps.homedir,
+        now: deps.now,
+        fetchImpl: deps.fetchImpl,
+        current: deps.current,
+        force: true,
+    });
     if (latest !== null && !isNewer(latest, deps.current)) {
         deps.log(`domain-driver ${deps.current} is already the latest version.`);
         return;
@@ -116,14 +120,6 @@ function commandFor(install: InstallInfo, deps: UpdateDeps): UpdateCommand {
         return updateCommand('local', detectPackageManager(install.root, { readFile: deps.readFile, exists: deps.exists }));
     }
     return updateCommand('global', 'npm');
-}
-
-async function freshLatest(deps: UpdateDeps): Promise<string | null> {
-    const latest = await fetchLatestVersion(deps.fetchImpl);
-    if (deps.writeCache) {
-        persistCache(cacheDir(deps.env, deps.homedir), { latest, checkedAt: new Date(deps.now()).toISOString() });
-    }
-    return latest;
 }
 
 function runInstall(command: UpdateCommand, install: InstallInfo, deps: UpdateDeps): void {
