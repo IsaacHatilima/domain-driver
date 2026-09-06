@@ -3,3 +3,4 @@ app
 dist
 node_modules
 .claude.superpowers
+coverage
