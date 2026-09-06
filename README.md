@@ -209,6 +209,12 @@ Server-side repositories throw a clear not-implemented error until you wire your
 
 ---
 
+## Upgrading from 0.1.0
+
+Every layer command now takes a single `<feature>/<Name>` target instead of separate feature and name arguments, for example `make:schema users User` becomes `make:schema users/User`. `make:feature users -a` still works and names the entity `Users`; write `users/User` if you want a different entity name.
+
+---
+
 ## Requirements
 
 - Node.js 18+
