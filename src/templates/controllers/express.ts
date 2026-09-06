@@ -16,6 +16,7 @@ export function renderExpressController(
         serviceImport(ctx, fromFile, action, entity),
     ].join('\n');
     const reqName = shape.usesBody || shape.usesId ? 'req' : '_req';
+    const requestType = shape.usesId ? 'Request<{ id: string }>' : 'Request';
     const validate = shape.usesBody
         ? `  const parsed = ${action}${entity}Schema.safeParse(req.body);
   if (!parsed.success) {
@@ -35,7 +36,7 @@ export function renderExpressController(
 
 const service = new ${action}${entity}Service();
 
-export async function ${handlerName(action, entity)}(${reqName}: Request, res: Response, next: NextFunction): Promise<void> {
+export async function ${handlerName(action, entity)}(${reqName}: ${requestType}, res: Response, next: NextFunction): Promise<void> {
 ${validate}  try {
 ${respond}
   } catch (error) {

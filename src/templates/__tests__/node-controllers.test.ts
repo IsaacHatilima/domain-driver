@@ -50,10 +50,19 @@ describe('express', () => {
         expect(content).toContain('next(error);');
     });
 
+    it('does not type id for create', () => {
+        const content = renderExpressController(ctx(), 'Create', 'Cat', controllerFile(ctx(), 'Create'));
+        expect(content).toContain('createCatController(req: Request, res: Response, next: NextFunction)');
+    });
+
     it('uses the id on update and delete', () => {
+        const show = renderExpressController(ctx(), 'Show', 'Cat', controllerFile(ctx(), 'Show'));
+        expect(show).toContain('showCatController(req: Request<{ id: string }>, res: Response, next: NextFunction)');
         const update = renderExpressController(ctx(), 'Update', 'Cat', controllerFile(ctx(), 'Update'));
+        expect(update).toContain('updateCatController(req: Request<{ id: string }>, res: Response, next: NextFunction)');
         expect(update).toContain('service.handle(req.params.id, parsed.data)');
         const del = renderExpressController(ctx(), 'Delete', 'Cat', controllerFile(ctx(), 'Delete'));
+        expect(del).toContain('deleteCatController(req: Request<{ id: string }>, res: Response, next: NextFunction)');
         expect(del).toContain('await service.handle(req.params.id);');
         expect(del).toContain('res.status(204).send();');
         expect(del).not.toContain('Schema');
@@ -110,7 +119,7 @@ describe('hono', () => {
     it('reads params and json from the context', () => {
         const content = renderHonoController(ctx(), 'Update', 'Cat', controllerFile(ctx(), 'Update'));
         expect(content).toContain("import { Context } from 'hono';");
-        expect(content).toContain('export async function updateCatController(c: Context): Promise<Response> {');
+        expect(content).toContain("export async function updateCatController(c: Context<{}, '/:id'>): Promise<Response> {");
         expect(content).toContain('const parsed = UpdateCatSchema.safeParse(await c.req.json());');
         expect(content).toContain("return c.json({ errors: parsed.error.flatten() }, 400);");
         expect(content).toContain("return c.json(await service.handle(c.req.param('id'), parsed.data), 200);");
@@ -120,6 +129,11 @@ describe('hono', () => {
         const content = renderHonoController(ctx(), 'Delete', 'Cat', controllerFile(ctx(), 'Delete'));
         expect(content).toContain("await service.handle(c.req.param('id'));");
         expect(content).toContain('return c.body(null, 204);');
+    });
+
+    it('does not type context path for list', () => {
+        const content = renderHonoController(ctx(), 'List', 'Cat', controllerFile(ctx(), 'List'));
+        expect(content).toContain('export async function listCatController(c: Context): Promise<Response> {');
     });
 
     it('renders a Hono app', () => {

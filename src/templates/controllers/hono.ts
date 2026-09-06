@@ -15,6 +15,7 @@ export function renderHonoController(
         ...(shape.usesBody ? [schemaImport(ctx, fromFile, action, entity)] : []),
         serviceImport(ctx, fromFile, action, entity),
     ].join('\n');
+    const contextType = shape.usesId ? "Context<{}, '/:id'>" : 'Context';
     const validate = shape.usesBody
         ? `  const parsed = ${action}${entity}Schema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ errors: parsed.error.flatten() }, 400);
@@ -31,7 +32,7 @@ export function renderHonoController(
 
 const service = new ${action}${entity}Service();
 
-export async function ${handlerName(action, entity)}(c: Context): Promise<Response> {
+export async function ${handlerName(action, entity)}(c: ${contextType}): Promise<Response> {
 ${validate}${respond}
 }
 `;
