@@ -1,5 +1,4 @@
 import * as path from 'path';
-import { InstallMode } from './install-mode';
 
 export type PackageManager = 'npm' | 'pnpm' | 'yarn-classic' | 'yarn-berry' | 'bun';
 
@@ -55,7 +54,7 @@ function build(command: string, ...args: string[]): UpdateCommand {
     return Object.freeze({ command, args: Object.freeze(args), display: [command, ...args].join(' ') });
 }
 
-export function updateCommand(mode: Exclude<InstallMode, 'npx'>, manager: PackageManager): UpdateCommand {
+export function updateCommand(mode: 'local' | 'global', manager: PackageManager): UpdateCommand {
     if (mode === 'global') return build('npm', 'install', '-g', PACKAGE);
     switch (manager) {
         case 'npm':

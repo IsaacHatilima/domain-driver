@@ -35,11 +35,19 @@ describe('detectInstallMode', () => {
         expect(detectInstallMode(bin, files({}))).toEqual({ mode: 'global', root: null });
     });
 
-    it('is global when the nearest package.json does not depend on domain-driver', () => {
-        const root = P('work', 'app');
+    it('is unknown with the root for a hoisted workspace root without the dependency', () => {
+        const root = P('work', 'monorepo');
         const bin = path.join(root, 'node_modules', 'domain-driver', 'dist', 'index.js');
-        const read = files({ [path.join(root, 'package.json')]: { dependencies: { react: '19' } } });
-        expect(detectInstallMode(bin, read)).toEqual({ mode: 'global', root: null });
+        const read = files({ [path.join(root, 'package.json')]: { workspaces: ['packages/*'] } });
+        expect(detectInstallMode(bin, read)).toEqual({ mode: 'unknown', root });
+    });
+
+    // Only <cache>/_npx/<hash>/node_modules/domain-driver is npx: _npx anywhere else in the path is not.
+    it('is not npx when a directory named _npx sits elsewhere in the path', () => {
+        const root = P('work', '_npx', 'projects', 'app');
+        const bin = path.join(root, 'node_modules', 'domain-driver', 'dist', 'index.js');
+        const read = files({ [path.join(root, 'package.json')]: { dependencies: { 'domain-driver': '0.3.0' } } });
+        expect(detectInstallMode(bin, read)).toEqual({ mode: 'local', root });
     });
 
     it('is global when there is no node_modules segment at all', () => {

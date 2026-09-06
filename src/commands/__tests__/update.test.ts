@@ -65,6 +65,27 @@ describe('runUpdate', () => {
         expect(h.spawned).toEqual([]);
     });
 
+    it('refuses to guess in a hoisted workspace and exits non-zero', async () => {
+        const workspaceRoot = path.resolve(path.sep, 'work', 'monorepo');
+        const bin = path.join(workspaceRoot, 'node_modules', 'domain-driver', 'dist', 'index.js');
+        const message =
+            `Could not tell how domain-driver was installed: ${path.join(workspaceRoot, 'package.json')} exists but does not depend on domain-driver ` +
+            '(this happens in hoisted workspaces). Run the update yourself in the package that depends on it, ' +
+            'for example: npm install domain-driver@latest -w <workspace>';
+        const readWorkspace = (filePath: string): string => {
+            if (path.resolve(filePath) === path.resolve(path.join(workspaceRoot, 'package.json'))) {
+                return JSON.stringify({ workspaces: ['packages/*'] });
+            }
+            throw new Error(`ENOENT ${filePath}`);
+        };
+        for (const options of [{ dryRun: false, check: false }, { dryRun: true, check: false }, { dryRun: false, check: true }]) {
+            const h = harness({ binPath: bin, readFile: readWorkspace });
+            await expect(runUpdate(options, h.deps)).rejects.toThrow(message);
+            expect(h.lines).toEqual([message]);
+            expect(h.spawned).toEqual([]);
+        }
+    });
+
     it('stops when already on the latest version', async () => {
         const h = harness({ fetchImpl: registry('0.2.0') });
         await runUpdate({ dryRun: false, check: false }, h.deps);

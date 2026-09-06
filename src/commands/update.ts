@@ -40,6 +40,14 @@ const NPX_MESSAGE =
 
 const REFRESH_FAILED = 'ℹ️  Guidance refresh failed; run: domain-driver init';
 
+function unknownInstallMessage(root: string): string {
+    return (
+        `Could not tell how domain-driver was installed: ${path.join(root, 'package.json')} exists but does not depend on domain-driver ` +
+        '(this happens in hoisted workspaces). Run the update yourself in the package that depends on it, ' +
+        'for example: npm install domain-driver@latest -w <workspace>'
+    );
+}
+
 function safeRealpath(target: string): string {
     try {
         return fs.realpathSync(target);
@@ -74,6 +82,11 @@ export async function runUpdate(options: UpdateOptions, deps: UpdateDeps): Promi
     if (install.mode === 'npx') {
         deps.log(NPX_MESSAGE);
         return;
+    }
+    if (install.mode === 'unknown') {
+        const message = unknownInstallMessage(install.root ?? deps.cwd);
+        deps.log(message);
+        throw new Error(message);
     }
 
     const command = commandFor(install, deps);

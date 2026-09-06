@@ -63,9 +63,14 @@ Exactly: `ℹ️  domain-driver 0.3.0 is available (you have 0.2.0). Run: domain
 
 | Condition | Mode | Root |
 |---|---|---|
-| The path contains a `_npx` directory | `npx` | none |
+| The segment three before `domain-driver` — the parent of the `node_modules` directory's parent, that is the `_npx` in `<cache>/_npx/<hash>/node_modules/domain-driver` — is `_npx` | `npx` | none |
 | The install root, or one of its ancestors up to six levels up (pnpm stores the real package under node_modules/.pnpm/…), has a `package.json` whose `dependencies` or `devDependencies` names `domain-driver` | `local` | that directory |
-| Anything else (no segment found, or no such `package.json`) | `global` | none |
+| No such `package.json`, but the install root itself has a readable `package.json` (a hoisted workspace: the dependency is declared in a workspace package, not here) | `unknown` | the install root |
+| Anything else (no `node_modules/domain-driver` segment, or no readable `package.json` at the install root) | `global` | none |
+
+The npx rule is positional on purpose: a directory merely named `_npx` somewhere else in the path is not an npx cache.
+
+In `unknown` mode `update` refuses to guess. It prints, and fails with, `Could not tell how domain-driver was installed: <root>/package.json exists but does not depend on domain-driver (this happens in hoisted workspaces). Run the update yourself in the package that depends on it, for example: npm install domain-driver@latest -w <workspace>`, so the exit code is 1. `--dry-run` and `--check` behave the same way in this mode.
 
 ### 5.2 Package manager
 
