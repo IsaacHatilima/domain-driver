@@ -46,7 +46,9 @@ describe('make:action on node with express', () => {
         expect(readProjectFile('src/features/users/repositories/FindActiveUsers.repository.ts')).toContain('is not implemented');
         expect(readProjectFile('src/features/users/controllers/FindActiveUsers.controller.ts')).toContain('export async function findActiveUsersController(_req: Request');
         expect(projectFileExists('src/features/users/schemas')).toBe(false);
-        expect(logged()).toContain("ℹ️  Add to users.routes.ts: router.get('/find-active-users', findActiveUsersController);");
+        expect(logged()).toContain(
+            "ℹ️  Add to users.routes.ts above the '/:id' routes: router.get('/find-active-users', findActiveUsersController);"
+        );
         expect(logged()).toContain('✅ Action "FindActiveUsers" scaffolded in "users"');
     });
 
@@ -66,13 +68,18 @@ describe('make:action on node with express', () => {
         expect(controller).toContain('const parsed = NotifyUsersSchema.safeParse(req.body);');
         expect(controller).toContain('res.status(204).send();');
         expect(readProjectFile('src/features/users/repositories/NotifyUsers.repository.ts')).toContain('async handle(data: NotifyUsers): Promise<void> {');
-        expect(logged()).toContain("ℹ️  Add to users.routes.ts: router.post('/notify-users', notifyUsersController);");
+        expect(logged()).toContain(
+            "ℹ️  Add to users.routes.ts above the '/:id' routes: router.post('/notify-users', notifyUsersController);"
+        );
     });
 
     it('skips existing files', () => {
         makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
+        vi.mocked(console.log).mockClear();
         makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
         expect(console.warn).toHaveBeenCalledWith('⚠️  Skipping "FindActiveUsers.service.ts" — already exists');
+        expect(logged().some((line) => line.includes('✅ Action "FindActiveUsers" scaffolded'))).toBe(false);
+        expect(logged().some((line) => line.includes('routes.ts'))).toBe(false);
     });
 
     it('rejects a bad action name before writing', () => {

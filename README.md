@@ -93,8 +93,8 @@ Scaffolds a bespoke operation as its own files, so it never lands inside `ShowUs
 
 | Stack | Files written |
 |---|---|
-| `node` | service, repository, controller for the detected framework, plus the line to add to `<feature>.routes.ts` printed |
-| `nest` | injectable service and repository, `@Controller` class, DTO with input, plus the classes to register printed |
+| `node` | service, repository, controller for the detected framework, plus the line to add above the `/:id` routes in `<feature>.routes.ts` printed |
+| `nest` | injectable service and repository, `@Controller` class, DTO with input, plus the classes to register printed, with the controller listed before `Show<Entity>Controller` |
 | `next-fullstack` | server service and repository, client service and repository, `app/api/<feature>/<slug>/route.ts` |
 | `next-frontend`, `react` | client service and repository calling `/api/<feature>/<slug>` |
 

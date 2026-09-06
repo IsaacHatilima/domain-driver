@@ -90,4 +90,14 @@ describe('make:schema', () => {
         const logged = vi.mocked(console.log).mock.calls.map(([message]) => String(message));
         expect(logged.some((line) => line.includes('nestjs-zod'))).toBe(false);
     });
+
+    it('does not print the created lines again on a re-run', () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/cat');
+        makeSchema('cat', 'Cat');
+        vi.mocked(console.log).mockClear();
+        makeSchema('cat', 'Cat');
+        const logged = vi.mocked(console.log).mock.calls.map(([message]) => String(message));
+        expect(logged.some((line) => line.includes('✅'))).toBe(false);
+    });
 });

@@ -53,14 +53,25 @@ describe('on next-frontend', () => {
 
     it('make:service skips existing files without throwing', () => {
         makeService('cat', 'Cat');
+        vi.mocked(console.log).mockClear();
         expect(() => makeService('cat', 'Cat')).not.toThrow();
         expect(console.warn).toHaveBeenCalledWith('⚠️  Skipping "ListCat.service.ts" — already exists');
+        const logged = vi.mocked(console.log).mock.calls.map(([message]) => String(message));
+        expect(logged.some((line) => line.includes('✅'))).toBe(false);
     });
 
     it('make:repository writes fetch repositories', () => {
         makeRepository('cat', 'Cat');
         expect(listFiles('app/cat/repositories')).toEqual(ACTION_FILES('Cat', 'repository'));
         expect(readProjectFile('app/cat/repositories/CreateCat.repository.ts')).toContain("fetch('/api/cat'");
+    });
+
+    it('make:repository does not print the created line again on a re-run', () => {
+        makeRepository('cat', 'Cat');
+        vi.mocked(console.log).mockClear();
+        makeRepository('cat', 'Cat');
+        const logged = vi.mocked(console.log).mock.calls.map(([message]) => String(message));
+        expect(logged.some((line) => line.includes('✅'))).toBe(false);
     });
 
     it('rejects the server side', () => {

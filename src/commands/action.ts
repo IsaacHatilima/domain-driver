@@ -28,17 +28,19 @@ export function makeAction(
     entity: string,
     actionName: string,
     options: CustomActionOptions
-): void {
+): boolean {
     const ctx = requireFeature(feature);
     const spec = customAction(entity, actionName, options);
 
     hintMissingTypes(ctx, entity);
-    if (spec.schema !== null) writeInput(ctx, spec);
-    if (hasLayer(ctx.profile, 'serverRepository')) writeSide(ctx, spec, entity, 'server');
-    if (hasLayer(ctx.profile, 'controller')) writeController(ctx, spec, entity);
-    if (hasLayer(ctx.profile, 'clientRepository')) writeSide(ctx, spec, entity, 'client');
+    let wroteAny = false;
+    if (spec.schema !== null) wroteAny = writeInput(ctx, spec) || wroteAny;
+    if (hasLayer(ctx.profile, 'serverRepository')) wroteAny = writeSide(ctx, spec, entity, 'server') || wroteAny;
+    if (hasLayer(ctx.profile, 'controller')) wroteAny = writeController(ctx, spec, entity) || wroteAny;
+    if (hasLayer(ctx.profile, 'clientRepository')) wroteAny = writeSide(ctx, spec, entity, 'client') || wroteAny;
 
-    console.log(`✅ Action "${spec.name}" scaffolded in "${feature}"`);
+    if (wroteAny) console.log(`✅ Action "${spec.name}" scaffolded in "${feature}"`);
+    return wroteAny;
 }
 
 function hintMissingTypes(ctx: RenderContext, entity: string): void {
@@ -47,41 +49,47 @@ function hintMissingTypes(ctx: RenderContext, entity: string): void {
     console.log(`ℹ️  types/${entity}.types.ts not found. Run: domain-driver make:types ${ctx.feature}/${entity}`);
 }
 
-function writeInput(ctx: RenderContext, spec: ActionSpec): void {
+function writeInput(ctx: RenderContext, spec: ActionSpec): boolean {
     const schemaFile = path.join(ensureLayerDir(ctx, 'schema'), `${spec.name}.schema.ts`);
-    writeIfAbsent(schemaFile, () => renderSchema(spec.name, lowerFirst(spec.name)));
+    const wroteSchema = writeIfAbsent(schemaFile, () => renderSchema(spec.name, lowerFirst(spec.name)));
 
-    if (!hasLayer(ctx.profile, 'dto')) return;
+    if (!hasLayer(ctx.profile, 'dto')) return wroteSchema;
     const dtoFile = path.join(ensureLayerDir(ctx, 'dto'), `${spec.name}.dto.ts`);
-    writeIfAbsent(dtoFile, () => renderDto(ctx, spec.name, dtoFile));
+    const wroteDto = writeIfAbsent(dtoFile, () => renderDto(ctx, spec.name, dtoFile));
     hintNestjsZod(ctx.stack);
+    return wroteSchema || wroteDto;
 }
 
-function writeSide(ctx: RenderContext, spec: ActionSpec, entity: string, side: Side): void {
+function writeSide(ctx: RenderContext, spec: ActionSpec, entity: string, side: Side): boolean {
     const repositoryLayer = side === 'client' ? 'clientRepository' : 'serverRepository';
     const serviceLayer = side === 'client' ? 'clientService' : 'serverService';
     const renderRepository = side === 'client' ? renderClientRepository : renderServerRepository;
 
     const repositoryFile = path.join(ensureLayerDir(ctx, repositoryLayer), `${spec.name}.repository.ts`);
-    writeIfAbsent(repositoryFile, () => renderRepository(ctx, spec, entity, repositoryFile));
+    const wroteRepository = writeIfAbsent(repositoryFile, () => renderRepository(ctx, spec, entity, repositoryFile));
 
     const serviceFile = path.join(ensureLayerDir(ctx, serviceLayer), `${spec.name}.service.ts`);
-    writeIfAbsent(serviceFile, () => renderService(ctx, spec, entity, serviceFile, side));
+    const wroteService = writeIfAbsent(serviceFile, () => renderService(ctx, spec, entity, serviceFile, side));
+
+    return wroteRepository || wroteService;
 }
 
-function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): void {
+function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): boolean {
     if (ctx.profile.name === 'next-fullstack') {
         const routeDir = path.join(apiRouteDir(ctx.stack, ctx.feature), spec.path.slice(1));
         mkdirSafe(routeDir);
         const routeFile = path.join(routeDir, 'route.ts');
-        writeIfAbsent(routeFile, () => renderActionRoute(ctx, spec, routeFile));
-        return;
+        return writeIfAbsent(routeFile, () => renderActionRoute(ctx, spec, routeFile));
     }
 
     const controllerFile = path.join(ensureLayerDir(ctx, 'controller'), `${spec.name}.controller.ts`);
     const render = ctx.profile.name === 'nest' ? renderNestController : renderNodeController;
-    writeIfAbsent(controllerFile, () => render(ctx, spec, entity, controllerFile));
+    const wroteController = writeIfAbsent(controllerFile, () => render(ctx, spec, entity, controllerFile));
 
     const line = ctx.profile.name === 'node' ? renderNodeRouteLine(ctx, spec, entity) : null;
-    if (line !== null) console.log(`ℹ️  Add to ${ctx.feature}.routes.ts: ${line}`);
+    if (wroteController && line !== null) {
+        console.log(`ℹ️  Add to ${ctx.feature}.routes.ts above the '/:id' routes: ${line}`);
+    }
+
+    return wroteController;
 }

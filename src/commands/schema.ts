@@ -12,19 +12,19 @@ export function makeSchema(feature: string, name: string): void {
     assertLayer(ctx.profile, 'schema', 'make:schema');
 
     const schemaDir = ensureLayerDir(ctx, 'schema');
-    writeActionFiles(schemaDir, name, 'schema', WRITE_ACTIONS, (action) =>
+    const written = writeActionFiles(schemaDir, name, 'schema', WRITE_ACTIONS, (action) =>
         renderSchema(`${action}${name}`, action.toLowerCase())
     );
-    console.log(`✅ Schemas for "${name}" created at ${schemaDir}`);
+    if (written > 0) console.log(`✅ Schemas for "${name}" created at ${schemaDir}`);
 
     if (hasLayer(ctx.profile, 'dto')) writeDtos(ctx, name);
 }
 
 function writeDtos(ctx: RenderContext, name: string): void {
     const dtoDir = ensureLayerDir(ctx, 'dto');
-    writeActionFiles(dtoDir, name, 'dto', WRITE_ACTIONS, (action, filePath) =>
+    const written = writeActionFiles(dtoDir, name, 'dto', WRITE_ACTIONS, (action, filePath) =>
         renderDto(ctx, `${action}${name}`, filePath)
     );
     hintNestjsZod(ctx.stack);
-    console.log(`✅ DTOs for "${name}" created at ${dtoDir}`);
+    if (written > 0) console.log(`✅ DTOs for "${name}" created at ${dtoDir}`);
 }

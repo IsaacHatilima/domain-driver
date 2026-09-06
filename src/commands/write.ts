@@ -17,11 +17,13 @@ export function writeActionFiles<A extends Action>(
     suffix: string,
     actions: readonly A[],
     render: (action: A, filePath: string) => string
-): void {
+): number {
+    let written = 0;
     for (const action of actions) {
         const filePath = path.join(dir, `${action}${entity}.${suffix}.ts`);
-        writeIfAbsent(filePath, () => render(action, filePath));
+        if (writeIfAbsent(filePath, () => render(action, filePath))) written += 1;
     }
+    return written;
 }
 
 export function writeSpecFiles(
@@ -29,9 +31,11 @@ export function writeSpecFiles(
     specs: readonly ActionSpec[],
     suffix: string,
     render: (spec: ActionSpec, filePath: string) => string
-): void {
+): number {
+    let written = 0;
     for (const spec of specs) {
         const filePath = path.join(dir, `${spec.name}.${suffix}.ts`);
-        writeIfAbsent(filePath, () => render(spec, filePath));
+        if (writeIfAbsent(filePath, () => render(spec, filePath))) written += 1;
     }
+    return written;
 }

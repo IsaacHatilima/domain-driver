@@ -14,7 +14,8 @@ export function hintNestjsZod(stack: DetectedStack): void {
     console.log('   Then register the pipe in AppModule: { provide: APP_PIPE, useClass: ZodValidationPipe }');
 }
 
-export function hintRegisterInModule(feature: string, classNames: readonly string[]): void {
+export function hintRegisterInModule(feature: string, classNames: readonly string[], note?: string): void {
     if (detectStack().stack !== 'nest') return;
-    console.log(`ℹ️  Register ${classNames.join(', ')} in ${feature}.module.ts`);
+    const suffix = note !== undefined ? ` (${note})` : '';
+    console.log(`ℹ️  Register ${classNames.join(', ')} in ${feature}.module.ts${suffix}`);
 }

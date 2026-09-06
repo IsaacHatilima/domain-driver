@@ -82,8 +82,11 @@ describe('on next-fullstack', () => {
         mkdir('app/cat');
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         makeController('cat', 'Cat');
+        vi.mocked(console.log).mockClear();
         makeController('cat', 'Cat');
         expect(warn).toHaveBeenCalledWith('⚠️  Skipping "route.ts" — already exists');
+        const logged = vi.mocked(console.log).mock.calls.map(([message]) => String(message));
+        expect(logged.some((line) => line.includes('✅'))).toBe(false);
     });
 });
 

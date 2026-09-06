@@ -74,8 +74,8 @@ program
     .option('--side <side>', 'client, server, or both', 'both')
     .action((target: string, options: { side: string }) => {
         const { feature, name } = parseTarget(target);
-        makeService(feature, name, parseSide(options.side));
-        hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Service`));
+        const wrote = makeService(feature, name, parseSide(options.side));
+        if (wrote) hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Service`));
     });
 
 program
@@ -84,8 +84,8 @@ program
     .option('--side <side>', 'client, server, or both', 'both')
     .action((target: string, options: { side: string }) => {
         const { feature, name } = parseTarget(target);
-        makeRepository(feature, name, parseSide(options.side));
-        hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Repository`));
+        const wrote = makeRepository(feature, name, parseSide(options.side));
+        if (wrote) hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Repository`));
     });
 
 program
@@ -93,8 +93,8 @@ program
     .description('Scaffold single-responsibility controllers or route handlers inside an existing feature (<feature>/<Entity>)')
     .action((target: string) => {
         const { feature, name } = parseTarget(target);
-        makeController(feature, name);
-        hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Controller`));
+        const wrote = makeController(feature, name);
+        if (wrote) hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Controller`));
     });
 
 program
@@ -105,9 +105,15 @@ program
     .action((target: string, action: string, options: { withInput: boolean; returns: string }) => {
         const { feature, name } = parseTarget(target);
         const returns = parseReturns(options.returns);
-        makeAction(feature, name, action, { withInput: options.withInput, returns });
-        const { pascal } = actionCase(action);
-        hintRegisterInModule(feature, [`${pascal}Controller`, `${pascal}Service`, `${pascal}Repository`]);
+        const wrote = makeAction(feature, name, action, { withInput: options.withInput, returns });
+        if (wrote) {
+            const { pascal } = actionCase(action);
+            hintRegisterInModule(
+                feature,
+                [`${pascal}Controller`, `${pascal}Service`, `${pascal}Repository`],
+                `list ${pascal}Controller before Show${name}Controller in controllers`
+            );
+        }
     });
 
 program

@@ -100,8 +100,8 @@ The client repository calls `/api/<feature>/<slug>` with GET, or POST with a JSO
 
 ### 4.4 Hints after writing
 
-- `node` with a framework: `ℹ️  Add to <feature>.routes.ts: <line>` where the line is the framework's registration, for example `router.get('/find-active-users', findActiveUsersController);` for Express, `app.get('/find-active-users', findActiveUsersController);` for Fastify, `<name>.get('/find-active-users', findActiveUsersController);` for Hono.
-- `nest`: the existing `ℹ️  Register <Action>Controller, <Action>Service, <Action>Repository in <feature>.module.ts`.
+- `node` with a framework: `ℹ️  Add to <feature>.routes.ts above the '/:id' routes: <line>` where the line is the framework's registration, for example `router.get('/find-active-users', findActiveUsersController);` for Express, `app.get('/find-active-users', findActiveUsersController);` for Fastify, `<name>.get('/find-active-users', findActiveUsersController);` for Hono.
+- `nest`: `ℹ️  Register <Action>Controller, <Action>Service, <Action>Repository in <feature>.module.ts (list <Action>Controller before Show<Entity>Controller in controllers)`.
 - `next-fullstack`: none; Next routes by file path.
 
 Existing files are skipped with the standard `⚠️  Skipping "<file>" — already exists`.
