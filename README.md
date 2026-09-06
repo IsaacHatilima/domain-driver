@@ -64,19 +64,44 @@ Every layer that has actions gets one file per action: `List`, `Show`, `Create`,
 
 ## Commands
 
+Every layer command takes one target, `<feature>/<Name>`: the feature folder on the left, the name used inside the files on the right. `users/User` reads as "User inside users".
+
 ### `make:feature`
 
 ```bash
-domain-driver make:feature <name>       # folders + .gitkeep, plus page.tsx (Next) or the module (Nest)
-domain-driver make:feature <name> -a    # every layer for the detected stack
+domain-driver make:feature users            # folders + .gitkeep, plus page.tsx (Next) or the module (Nest)
+domain-driver make:feature users/User -a    # every layer for the detected stack, entity User
 ```
 
-Feature names must be kebab-case, for example `coffee-type`.
+Feature names must be kebab-case. Without `/Entity`, the entity is the PascalCase feature name (`users` becomes `Users`).
+
+### `make:action`
+
+```bash
+domain-driver make:action users/User findActiveUsers
+domain-driver make:action users/User archiveUser --with-input --returns one
+```
+
+Scaffolds a bespoke operation as its own files, so it never lands inside `ShowUser` or `ListUser`. The action name is used as-is for file and class names: `FindActiveUsers.service.ts`, `FindActiveUsersService`, handler `findActiveUsersController`, route `/find-active-users`. Include the noun in the name (`archiveUser`, not `archive`).
+
+| Option | Effect |
+|---|---|
+| `--with-input` | writes `FindActiveUsers.schema.ts` (and the Nest DTO), the service takes `data`, the controller is a `POST` with body validation |
+| `--returns list` | `Promise<User[]>` (default) |
+| `--returns one` | `Promise<User>` |
+| `--returns void` | `Promise<void>`, controller responds 204 |
+
+| Stack | Files written |
+|---|---|
+| `node` | service, repository, controller for the detected framework, plus the line to add to `<feature>.routes.ts` printed |
+| `nest` | injectable service and repository, `@Controller` class, DTO with input, plus the classes to register printed |
+| `next-fullstack` | server service and repository, client service and repository, `app/api/<feature>/<slug>/route.ts` |
+| `next-frontend`, `react` | client service and repository calling `/api/<feature>/<slug>` |
 
 ### `make:controller`
 
 ```bash
-domain-driver make:controller <feature> <Entity>
+domain-driver make:controller users/User
 ```
 
 Node: five controllers plus `<feature>.routes.ts` for Express, Fastify, or Hono. Nest: five single-action controllers. Next.js fullstack: `app/api/<feature>/route.ts` and `app/api/<feature>/[id]/route.ts`. Not available on frontend-only stacks.
@@ -84,8 +109,8 @@ Node: five controllers plus `<feature>.routes.ts` for Express, Fastify, or Hono.
 ### `make:service` and `make:repository`
 
 ```bash
-domain-driver make:service <feature> <Entity> [--side client|server|both]
-domain-driver make:repository <feature> <Entity> [--side client|server|both]
+domain-driver make:service users/User [--side client|server|both]
+domain-driver make:repository users/User [--side client|server|both]
 ```
 
 `--side` matters on `next-fullstack`, where both sides exist. Default is `both`.
@@ -93,21 +118,36 @@ domain-driver make:repository <feature> <Entity> [--side client|server|both]
 ### `make:schema`
 
 ```bash
-domain-driver make:schema <feature> <Entity>
+domain-driver make:schema users/User
 ```
 
-Writes `Create<Entity>.schema.ts` and `Update<Entity>.schema.ts`. On Nest it also writes the matching DTO classes derived with `createZodDto` from `nestjs-zod`.
+Writes `CreateUser.schema.ts` and `UpdateUser.schema.ts`. On Nest it also writes the matching DTO classes derived with `createZodDto` from `nestjs-zod`.
 
 ### `make:types`, `make:component`, `make:container`, `make:hook`
 
 ```bash
-domain-driver make:types <feature> <Entity>
-domain-driver make:component <feature> <Name> [client|server]
-domain-driver make:container <feature> <Name>
-domain-driver make:hook <feature> <useName>
+domain-driver make:types users/User
+domain-driver make:component users/UserCard [client|server]
+domain-driver make:container users/UserContainer
+domain-driver make:hook users/useUser
 ```
 
-Frontend commands fail with a clear message on backend stacks, and `server` components are rejected on React.
+Component, container, and hook commands fail with a clear message on backend stacks, and `server` components are rejected on React.
+
+### `init`
+
+```bash
+domain-driver init
+```
+
+Writes agent guidance into the current project so coding agents scaffold with domain-driver instead of hand-writing layers:
+
+- `AGENTS.md` and `CLAUDE.md` get a section between `<!-- domain-driver:start -->` and `<!-- domain-driver:end -->`. Existing content outside the markers is never touched; the section is created, refreshed in place, or left alone.
+- `.claude/skills/domain-driver/SKILL.md` is a Claude Code skill owned by the tool.
+
+Running `init` twice reports `unchanged`. Re-run it after upgrading domain-driver.
+
+**On install.** A local `npm install domain-driver` in a project runs `init` automatically. It does nothing when `CI` is set, for global installs, when there is no `package.json` in the installing project, or when domain-driver installs itself. Opt out with `npm install --ignore-scripts`, or delete the marked section afterwards.
 
 ---
 
@@ -131,7 +171,7 @@ src/features/coffee-type/
     └── CoffeeType.types.ts
 ```
 
-Mount the routes with `app.use('/coffee-type', coffeeTypeRoutes)`.
+Mount the routes with `app.use('/coffee-type', coffeeTypeRoutes)`. Then `make:action coffee-type/CoffeeType findActive` adds `FindActive.controller.ts`, `FindActive.service.ts`, `FindActive.repository.ts`, and prints `router.get('/find-active', findActiveController);` for the routes file.
 
 ## Example: `make:feature coffee-type -a` on NestJS
 
@@ -194,6 +234,8 @@ npm run test:coverage
 - [x] Stack detection for Next.js, React, Node, and NestJS
 - [x] `make:controller` with Express, Fastify, Hono, Nest, and Next route handlers
 - [x] Per-action files in every layer
+- [x] Bespoke actions with make:action
+- [x] Agent guidance with init and a guarded postinstall
 - [ ] Config file — override stack and feature root per project
 - [ ] Configurable API base URL for client repositories
 - [ ] ORM-aware server repositories
