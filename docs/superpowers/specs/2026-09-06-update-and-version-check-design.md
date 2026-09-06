@@ -49,7 +49,7 @@ Otherwise `checkForUpdate(deps)` reads the cache, fetches when stale, writes the
 
 ### 4.4 Wiring
 
-In `src/index.ts` the check starts in the `preAction` hook (a promise that is not awaited) and is awaited in a `postAction` hook, which prints the notice if there is one. So the command's own output always comes first, and the network round trip overlaps the command's work. `init` keeps skipping stack detection but does get the check.
+In `src/cli.ts` (which `src/index.ts` reduces to a single call into) the check starts in the `preAction` hook (a promise that is not awaited) and is awaited in a `postAction` hook, which prints the notice if there is one. So the command's own output always comes first, and the network round trip overlaps the command's work. `init` keeps skipping stack detection but does get the check.
 
 ### 4.5 Notice
 
@@ -142,6 +142,6 @@ src/commands/update.ts  runUpdate, UpdateDeps, defaultDeps
 - `detectPackageManager`: `packageManager` field wins, each lockfile, yarn classic vs berry, default npm.
 - `updateCommand`: every row of 5.3.
 - `runUpdate`: npx exit, already-latest exit, `--check`, `--dry-run`, successful spawn then init, failed spawn message with and without the sudo hint, unreachable registry path.
-- CLI smoke: built binary prints the notice when the cache points at a newer version (seed the cache file through `DOMAIN_DRIVER_CACHE_DIR`), prints nothing with `CI=1`, and `update --dry-run` from a scratch local install prints the npm command.
+- CLI wiring, in-process: `createProgram(deps)` from `src/cli.ts` is built over injected deps (a fake `fetchImpl`, `isTTY`, a temp `DOMAIN_DRIVER_CACHE_DIR`, a `current` version, and a `log` that collects lines) and driven with `parseAsync` inside a temp project. `make:types` prints the `Stack:` line first, writes the file, and prints the notice last; the notice is absent when `isTTY` is false and when `CI=1`; `init` prints the notice with no `Stack:` line; `update --dry-run` prints `Would run: …` with neither the `Stack:` line nor the notice.
 
 Coverage stays above the 80 percent thresholds.
