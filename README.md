@@ -147,7 +147,7 @@ Writes agent guidance into the current project so coding agents scaffold with do
 
 Running `init` twice reports `unchanged`. Re-run it after upgrading domain-driver.
 
-**On install.** A local `npm install domain-driver` in a project runs `init` automatically. It does nothing when `CI` is set, for global installs, when there is no `package.json` in the installing project, or when domain-driver installs itself. Opt out with `npm install --ignore-scripts`, or delete the marked section afterwards.
+**On install.** A local `npm install domain-driver` in a project runs `init` automatically. It does nothing when `CI` is set, for global installs, when there is no `package.json` in the installing project, or when domain-driver installs itself. Files are written to the directory you ran npm install from, which in a workspace is the repository root. Opt out with `npm install --ignore-scripts`, or delete the marked section afterwards.
 
 ---
 
