@@ -19,13 +19,14 @@ import { SectionStatus } from './init/markers';
 import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
 import { actionCase } from './templates/actions';
+import { currentVersion } from './update/version';
 
 const program = new Command();
 
 program
     .name('domain-driver')
     .description('CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, and NestJS projects')
-    .version('0.2.0')
+    .version(currentVersion())
     .option('--stack <name>', `Override stack detection (${STACK_NAMES.join(', ')})`);
 
 program.hook('preAction', (_thisCommand, actionCommand) => {
