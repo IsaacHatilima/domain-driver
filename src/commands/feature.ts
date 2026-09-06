@@ -15,14 +15,14 @@ import { makeSchema } from './schema';
 import { makeService } from './service';
 import { makeTypes } from './types';
 
-export async function makeFeature(name: string, all: boolean = false): Promise<void> {
+export async function makeFeature(name: string, all: boolean = false, entityName?: string): Promise<void> {
     const ctx = resolveFeature(name);
 
     if (fileExists(ctx.featureDir)) {
         throw new Error(`Feature "${name}" already exists at ${ctx.featureDir}`);
     }
 
-    const entity = toPascalCase(name);
+    const entity = entityName ?? toPascalCase(name);
     createFolders(ctx, all);
     console.log(`✅ Feature "${name}" scaffolded at ${ctx.featureDir}`);
 

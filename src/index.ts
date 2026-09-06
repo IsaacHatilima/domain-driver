@@ -11,6 +11,7 @@ import { makeRepository } from './commands/repository';
 import { makeSchema } from './commands/schema';
 import { makeService } from './commands/service';
 import { parseSide } from './commands/sides';
+import { parseFeatureTarget, parseTarget } from './commands/target';
 import { makeTypes } from './commands/types';
 import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
@@ -30,72 +31,81 @@ program.hook('preAction', () => {
 });
 
 program
-    .command('make:feature <name>')
-    .description('Scaffold a feature folder for the detected stack')
+    .command('make:feature <target>')
+    .description('Scaffold a feature folder for the detected stack (<feature> or <feature>/<Entity>)')
     .option('-a, --all', 'Scaffold all files inside each folder')
-    .action(async (name: string, options: { all?: boolean }) => {
-        await makeFeature(name, options.all ?? false);
+    .action(async (target: string, options: { all?: boolean }) => {
+        const { feature, entity } = parseFeatureTarget(target);
+        await makeFeature(feature, options.all ?? false, entity ?? undefined);
     });
 
 program
-    .command('make:component <feature> <name>')
-    .description('Scaffold a component inside an existing feature')
+    .command('make:component <target>')
+    .description('Scaffold a component inside an existing feature (<feature>/<Name>)')
     .argument('[type]', 'Component type: client or server', 'client')
-    .action((feature: string, name: string, type: string) => {
+    .action((target: string, type: string) => {
+        const { feature, name } = parseTarget(target);
         makeComponent(feature, name, parseComponentType(type));
     });
 
 program
-    .command('make:container <feature> <name>')
-    .description('Scaffold a smart container component inside an existing feature')
-    .action((feature: string, name: string) => {
+    .command('make:container <target>')
+    .description('Scaffold a smart container component inside an existing feature (<feature>/<Name>)')
+    .action((target: string) => {
+        const { feature, name } = parseTarget(target);
         makeContainer(feature, name);
     });
 
 program
-    .command('make:hook <feature> <name>')
-    .description('Scaffold a custom hook inside an existing feature')
-    .action((feature: string, name: string) => {
+    .command('make:hook <target>')
+    .description('Scaffold a custom hook inside an existing feature (<feature>/<useName>)')
+    .action((target: string) => {
+        const { feature, name } = parseTarget(target);
         makeHook(feature, name);
     });
 
 program
-    .command('make:service <feature> <name>')
-    .description('Scaffold single-responsibility service files inside an existing feature')
+    .command('make:service <target>')
+    .description('Scaffold single-responsibility service files inside an existing feature (<feature>/<Entity>)')
     .option('--side <side>', 'client, server, or both', 'both')
-    .action((feature: string, name: string, options: { side: string }) => {
+    .action((target: string, options: { side: string }) => {
+        const { feature, name } = parseTarget(target);
         makeService(feature, name, parseSide(options.side));
         hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Service`));
     });
 
 program
-    .command('make:repository <feature> <name>')
-    .description('Scaffold single-responsibility repository files inside an existing feature')
+    .command('make:repository <target>')
+    .description('Scaffold single-responsibility repository files inside an existing feature (<feature>/<Entity>)')
     .option('--side <side>', 'client, server, or both', 'both')
-    .action((feature: string, name: string, options: { side: string }) => {
+    .action((target: string, options: { side: string }) => {
+        const { feature, name } = parseTarget(target);
         makeRepository(feature, name, parseSide(options.side));
         hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Repository`));
     });
 
 program
-    .command('make:controller <feature> <name>')
-    .description('Scaffold single-responsibility controllers or route handlers inside an existing feature')
-    .action((feature: string, name: string) => {
+    .command('make:controller <target>')
+    .description('Scaffold single-responsibility controllers or route handlers inside an existing feature (<feature>/<Entity>)')
+    .action((target: string) => {
+        const { feature, name } = parseTarget(target);
         makeController(feature, name);
         hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Controller`));
     });
 
 program
-    .command('make:schema <feature> <name>')
-    .description('Scaffold Zod schemas (and Nest DTOs) for create and update operations')
-    .action((feature: string, name: string) => {
+    .command('make:schema <target>')
+    .description('Scaffold Zod schemas (and Nest DTOs) for create and update operations (<feature>/<Entity>)')
+    .action((target: string) => {
+        const { feature, name } = parseTarget(target);
         makeSchema(feature, name);
     });
 
 program
-    .command('make:types <feature> <name>')
-    .description('Scaffold a types file inside an existing feature')
-    .action((feature: string, name: string) => {
+    .command('make:types <target>')
+    .description('Scaffold a types file inside an existing feature (<feature>/<Entity>)')
+    .action((target: string) => {
+        const { feature, name } = parseTarget(target);
         makeTypes(feature, name);
     });
 

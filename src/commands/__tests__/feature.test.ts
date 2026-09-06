@@ -122,4 +122,13 @@ describe('make:feature on node', () => {
         expect(projectFileExists('src/features/cat/controllers/ListCat.controller.ts')).toBe(true);
         expect(projectFileExists('src/features/cat/hooks')).toBe(false);
     });
+
+    it('uses the explicit entity name with -a', async () => {
+        writePackageJson({ express: '1' });
+        mkdir('src');
+        await makeFeature('users', true, 'User');
+        expect(projectFileExists('src/features/users/types/User.types.ts')).toBe(true);
+        expect(projectFileExists('src/features/users/services/ListUser.service.ts')).toBe(true);
+        expect(projectFileExists('src/features/users/types/Users.types.ts')).toBe(false);
+    });
 });
