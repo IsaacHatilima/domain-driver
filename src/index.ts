@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // src/index.ts
 import { Command } from 'commander';
+import * as os from 'os';
 import { makeAction, parseReturns } from './commands/action';
 import { makeComponent, parseComponentType } from './commands/component';
 import { makeContainer } from './commands/container';
@@ -14,10 +15,12 @@ import { makeService } from './commands/service';
 import { parseSide } from './commands/sides';
 import { parseFeatureTarget, parseTarget } from './commands/target';
 import { makeTypes } from './commands/types';
+import { runUpdate, defaultUpdateDeps } from './commands/update';
 import { INIT_ICONS, runInit } from './init/init';
 import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
 import { actionCase } from './templates/actions';
+import { checkForUpdate, shouldCheck } from './update/check';
 import { currentVersion } from './update/version';
 
 const program = new Command();
@@ -28,10 +31,28 @@ program
     .version(currentVersion())
     .option('--stack <name>', `Override stack detection (${STACK_NAMES.join(', ')})`);
 
+const SKIP_DETECTION = new Set(['init', 'update']);
+let pendingNotice: Promise<string | null> = Promise.resolve(null);
+
 program.hook('preAction', (_thisCommand, actionCommand) => {
-    if (actionCommand.name() === 'init') return;
+    const name = actionCommand.name();
+    if (shouldCheck(process.env, process.stdout.isTTY === true, name)) {
+        pendingNotice = checkForUpdate({
+            env: process.env,
+            homedir: os.homedir(),
+            now: Date.now,
+            fetchImpl: fetch,
+            current: currentVersion(),
+        });
+    }
+    if (SKIP_DETECTION.has(name)) return;
     const { stack } = program.opts<{ stack?: string }>();
     console.log(describeStack(detectStack(stack)));
+});
+
+program.hook('postAction', async () => {
+    const notice = await pendingNotice;
+    if (notice !== null) console.log(notice);
 });
 
 program
@@ -139,6 +160,15 @@ program
         for (const result of runInit(process.cwd())) {
             console.log(`${INIT_ICONS[result.status]} ${result.file} ${result.status}`);
         }
+    });
+
+program
+    .command('update')
+    .description('Update domain-driver with your package manager, then refresh the agent guidance')
+    .option('--dry-run', 'Print the command without running it', false)
+    .option('--check', 'Only report whether a newer version exists', false)
+    .action(async (options: { dryRun: boolean; check: boolean }) => {
+        await runUpdate(options, defaultUpdateDeps());
     });
 
 function fail(error: unknown): never {

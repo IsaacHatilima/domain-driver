@@ -1,6 +1,6 @@
 {
   "name": "domain-driver",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, and NestJS projects, with per-action files, bespoke actions, and agent guidance",
   "main": "dist/index.js",
   "bin": {

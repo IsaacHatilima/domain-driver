@@ -101,7 +101,7 @@ Local commands run with `cwd` set to the install root so the manager updates the
 
 ### 5.5 Injectable dependencies
 
-`runUpdate(options, deps)` takes `{ env, fetch, spawn, readFile, exists, realpath, binPath, cwd, homedir, log, error }` with production defaults, so the command is unit-tested without touching the network or a package manager.
+`runUpdate(options, deps)` takes `{ env, homedir, now, fetchImpl, current, binPath, cwd, readFile, exists, spawn, init, log, writeCache }` with production defaults, so the command is unit-tested without touching the network or a package manager.
 
 ## 6. CLI surface
 
