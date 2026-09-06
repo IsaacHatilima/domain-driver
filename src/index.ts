@@ -14,8 +14,7 @@ import { makeService } from './commands/service';
 import { parseSide } from './commands/sides';
 import { parseFeatureTarget, parseTarget } from './commands/target';
 import { makeTypes } from './commands/types';
-import { runInit } from './init/init';
-import { SectionStatus } from './init/markers';
+import { INIT_ICONS, runInit } from './init/init';
 import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
 import { actionCase } from './templates/actions';
@@ -132,12 +131,6 @@ program
         const { feature, name } = parseTarget(target);
         makeTypes(feature, name);
     });
-
-const INIT_ICONS: Readonly<Record<SectionStatus, string>> = Object.freeze({
-    created: '✅',
-    updated: '✅',
-    unchanged: 'ℹ️ ',
-});
 
 program
     .command('init')

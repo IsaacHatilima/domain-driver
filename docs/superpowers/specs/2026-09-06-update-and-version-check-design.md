@@ -91,9 +91,9 @@ Local commands run with `cwd` set to the install root so the manager updates the
 `domain-driver update [--dry-run] [--check]`:
 
 1. Detect mode and manager. In `npx` mode print `Nothing to update: you are running domain-driver through npx, which fetches the requested version each time. Use: npx domain-driver@latest <command>` and exit 0.
-2. Force a registry check (ignore the cache, but write it). If the registry answers and `latest` is not newer, print `domain-driver <current> is already the latest version.` and exit 0. If the registry is unreachable print `Could not reach the registry; updating to @latest anyway.` and continue.
-3. With `--check`: print either the notice or the already-latest line and exit 0 without installing.
-4. With `--dry-run`: print `Would run: <command>` (and `in <root>` for local) and exit 0.
+2. With `--dry-run`: print `Would run: <command>` (and `in <root>` for local) and exit 0 without contacting the registry.
+3. Force a registry check (ignore the cache, but write it). If the registry answers and `latest` is not newer, print `domain-driver <current> is already the latest version.` and exit 0. If the registry is unreachable print `Could not reach the registry; updating to @latest anyway.` and continue.
+4. With `--check`: print either the notice or the already-latest line and exit 0 without installing.
 5. Run the command with `spawnSync(cmd, args, { stdio: 'inherit', cwd })`. On a non-zero exit, fail with `Update failed (exit <code>). Run it yourself: <command>`; when the mode is global, append ` (you may need sudo)`.
 6. On success print `✅ domain-driver updated to <latest>` (or `to @latest` when the registry was unreachable). Then refresh guidance: in local mode run `runInit(root)`; in global mode run `runInit(process.cwd())` only when the current directory has a `package.json`. Print the init results with the same icons `init` uses.
 

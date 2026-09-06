@@ -30,3 +30,9 @@ function writeSkill(root: string): InitResult {
     writeFileSafe(filePath, SKILL_CONTENT);
     return Object.freeze({ file: SKILL_FILE, status: existing === null ? 'created' : 'updated' });
 }
+
+export const INIT_ICONS: Readonly<Record<SectionStatus, string>> = Object.freeze({
+    created: '✅',
+    updated: '✅',
+    unchanged: 'ℹ️ ',
+});
