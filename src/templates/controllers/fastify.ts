@@ -1,42 +1,37 @@
 import { lowerFirst } from '../../utils/naming';
-import { Action } from '../actions';
+import { Action, ActionSpec, standardAction } from '../actions';
 import { RenderContext } from '../context';
-import { callArgs, controllerImports, controllerShape, handlerName, schemaImport, serviceImport } from './shape';
+import { callArgs, controllerImports, schemaImport, serviceImport } from './shape';
 
-export function renderFastifyController(
-    ctx: RenderContext,
-    action: Action,
-    entity: string,
-    fromFile: string
-): string {
-    const shape = controllerShape(action);
+export function renderFastifyController(ctx: RenderContext, spec: ActionSpec, fromFile: string): string {
     const imports = [
         "import { FastifyReply, FastifyRequest } from 'fastify';",
-        ...(shape.usesBody ? [schemaImport(ctx, fromFile, action, entity)] : []),
-        serviceImport(ctx, fromFile, action, entity),
+        ...(spec.schema !== null ? [schemaImport(ctx, fromFile, spec.schema)] : []),
+        serviceImport(ctx, fromFile, spec),
     ].join('\n');
-    const requestType = shape.usesId ? 'FastifyRequest<{ Params: { id: string } }>' : 'FastifyRequest';
-    const requestName = shape.usesBody || shape.usesId ? 'request' : '_request';
-    const validate = shape.usesBody
-        ? `  const parsed = ${action}${entity}Schema.safeParse(request.body);
+    const requestType = spec.usesId ? 'FastifyRequest<{ Params: { id: string } }>' : 'FastifyRequest';
+    const requestName = spec.schema !== null || spec.usesId ? 'request' : '_request';
+    const validate =
+        spec.schema !== null
+            ? `  const parsed = ${spec.schema}Schema.safeParse(request.body);
   if (!parsed.success) {
     reply.status(400).send({ errors: parsed.error.flatten() });
     return;
   }
 `
-        : '';
-    const args = callArgs(shape, 'request.params.id', 'parsed.data');
+            : '';
+    const args = callArgs(spec, 'request.params.id', 'parsed.data');
     const respond =
-        shape.status === 204
+        spec.status === 204
             ? `  await service.handle(${args});
   reply.status(204).send();`
-            : `  reply.status(${shape.status}).send(await service.handle(${args}));`;
+            : `  reply.status(${spec.status}).send(await service.handle(${args}));`;
 
     return `${imports}
 
-const service = new ${action}${entity}Service();
+const service = new ${spec.name}Service();
 
-export async function ${handlerName(action, entity)}(${requestName}: ${requestType}, reply: FastifyReply): Promise<void> {
+export async function ${spec.handler}(${requestName}: ${requestType}, reply: FastifyReply): Promise<void> {
 ${validate}${respond}
 }
 `;
@@ -44,15 +39,16 @@ ${validate}${respond}
 
 export function renderFastifyRoutes(ctx: RenderContext, entity: string, fromFile: string): string {
     const name = lowerFirst(entity);
+    const handler = (action: Action): string => standardAction(action, entity).handler;
     return `import { FastifyInstance } from 'fastify';
 ${controllerImports(ctx, fromFile, entity)}
 
 export async function ${name}Routes(app: FastifyInstance): Promise<void> {
-  app.get('/', ${handlerName('List', entity)});
-  app.get('/:id', ${handlerName('Show', entity)});
-  app.post('/', ${handlerName('Create', entity)});
-  app.put('/:id', ${handlerName('Update', entity)});
-  app.delete('/:id', ${handlerName('Delete', entity)});
+  app.get('/', ${handler('List')});
+  app.get('/:id', ${handler('Show')});
+  app.post('/', ${handler('Create')});
+  app.put('/:id', ${handler('Update')});
+  app.delete('/:id', ${handler('Delete')});
 }
 
 // app.register(${name}Routes, { prefix: '/${ctx.feature}' });

@@ -1,11 +1,12 @@
+import { standardAction } from '../actions';
 import { RenderContext } from '../context';
 import { schemaImport, serviceImport } from './shape';
 
 export function renderCollectionRoute(ctx: RenderContext, entity: string, fromFile: string): string {
     return `import { NextResponse } from 'next/server';
-${schemaImport(ctx, fromFile, 'Create', entity)}
-${serviceImport(ctx, fromFile, 'List', entity)}
-${serviceImport(ctx, fromFile, 'Create', entity)}
+${schemaImport(ctx, fromFile, `Create${entity}`)}
+${serviceImport(ctx, fromFile, standardAction('List', entity))}
+${serviceImport(ctx, fromFile, standardAction('Create', entity))}
 
 const listService = new List${entity}Service();
 const createService = new Create${entity}Service();
@@ -26,10 +27,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 export function renderItemRoute(ctx: RenderContext, entity: string, fromFile: string): string {
     return `import { NextResponse } from 'next/server';
-${schemaImport(ctx, fromFile, 'Update', entity)}
-${serviceImport(ctx, fromFile, 'Show', entity)}
-${serviceImport(ctx, fromFile, 'Update', entity)}
-${serviceImport(ctx, fromFile, 'Delete', entity)}
+${schemaImport(ctx, fromFile, `Update${entity}`)}
+${serviceImport(ctx, fromFile, standardAction('Show', entity))}
+${serviceImport(ctx, fromFile, standardAction('Update', entity))}
+${serviceImport(ctx, fromFile, standardAction('Delete', entity))}
 
 const showService = new Show${entity}Service();
 const updateService = new Update${entity}Service();

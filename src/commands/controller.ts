@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { assertLayer } from '../stack/registry';
-import { ACTIONS } from '../templates/actions';
+import { standardActions } from '../templates/actions';
 import { RenderContext } from '../templates/context';
 import { renderNestController } from '../templates/controllers/nest';
 import { renderCollectionRoute, renderItemRoute } from '../templates/controllers/next-route';
@@ -8,7 +8,7 @@ import { renderNodeController, renderNodeRoutes } from '../templates/controllers
 import { mkdirSafe } from '../utils/fs';
 import { apiRouteDir } from '../utils/paths';
 import { ensureLayerDir, requireFeature } from './resolve';
-import { writeActionFiles, writeIfAbsent } from './write';
+import { writeSpecFiles, writeIfAbsent } from './write';
 
 export function makeController(feature: string, name: string): void {
     const ctx = requireFeature(feature);
@@ -21,8 +21,8 @@ export function makeController(feature: string, name: string): void {
 
     const dir = ensureLayerDir(ctx, 'controller');
     const render = ctx.profile.name === 'nest' ? renderNestController : renderNodeController;
-    writeActionFiles(dir, name, 'controller', ACTIONS, (action, filePath) =>
-        render(ctx, action, name, filePath)
+    writeSpecFiles(dir, standardActions(name), 'controller', (spec, filePath) =>
+        render(ctx, spec, name, filePath)
     );
     console.log(`✅ Controllers for "${name}" created at ${dir}`);
 

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import { renderCollectionRoute, renderItemRoute } from '../controllers/next-route';
+import { renderActionRoute } from '../controllers/next-action-route';
+import { customAction } from '../actions';
 import { apiRouteDir } from '../../utils/paths';
 import { contextFor } from '../../__tests__/helpers/context';
 import { createTempProject, writeTsconfig, TempProject } from '../../__tests__/helpers/project';
@@ -53,6 +55,40 @@ describe('renderItemRoute', () => {
         expect(content).toContain('return NextResponse.json(await updateService.handle(id, parsed.data));');
         expect(content).toContain('export async function DELETE(_request: Request, { params }: RouteContext): Promise<Response> {');
         expect(content).toContain('await deleteService.handle(id);');
+        expect(content).toContain('return new Response(null, { status: 204 });');
+    });
+});
+
+describe('renderActionRoute', () => {
+    it('GET list', () => {
+        const ctx = contextFor('next-fullstack', 'users');
+        const spec = customAction('User', 'findActiveUsers', { withInput: false, returns: 'list' });
+        const fromFile = path.join(apiRouteDir(ctx.stack, 'users'), 'find-active-users', 'route.ts');
+        const content = renderActionRoute(ctx, spec, fromFile);
+        expect(content).toContain("import { FindActiveUsersService } from '../../../users/server/services/FindActiveUsers.service';");
+        expect(content).not.toContain('Schema');
+        expect(content).toContain('export async function GET(): Promise<NextResponse> {');
+        expect(content).toContain('return NextResponse.json(await service.handle());');
+    });
+
+    it('POST with input returning one', () => {
+        const ctx = contextFor('next-fullstack', 'users');
+        const spec = customAction('User', 'archiveUser', { withInput: true, returns: 'one' });
+        const fromFile = path.join(apiRouteDir(ctx.stack, 'users'), 'archive-user', 'route.ts');
+        const content = renderActionRoute(ctx, spec, fromFile);
+        expect(content).toContain("import { ArchiveUserSchema } from '../../../users/schemas/ArchiveUser.schema';");
+        expect(content).toContain('export async function POST(request: Request): Promise<NextResponse> {');
+        expect(content).toContain('const parsed = ArchiveUserSchema.safeParse(await request.json());');
+        expect(content).toContain('return NextResponse.json(await service.handle(parsed.data));');
+    });
+
+    it('void returns an empty 204', () => {
+        const ctx = contextFor('next-fullstack', 'users');
+        const spec = customAction('User', 'purgeUsers', { withInput: false, returns: 'void' });
+        const fromFile = path.join(apiRouteDir(ctx.stack, 'users'), 'purge-users', 'route.ts');
+        const content = renderActionRoute(ctx, spec, fromFile);
+        expect(content).toContain('export async function GET(): Promise<Response> {');
+        expect(content).toContain('await service.handle();');
         expect(content).toContain('return new Response(null, { status: 204 });');
     });
 });

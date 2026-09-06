@@ -1,19 +1,5 @@
-import { Action, ActionSpec, standardAction } from './actions';
+import { ActionSpec } from './actions';
 import { RenderContext } from './context';
-
-export interface ActionSignature {
-    readonly params: string;
-    readonly args: string;
-    readonly returns: string;
-    readonly usesEntityType: boolean;
-    readonly usesSchema: boolean;
-}
-
-/** @deprecated removed in the controller refactor; use ActionSpec */
-export function actionSignature(action: Action, entity: string): ActionSignature {
-    const spec = standardAction(action, entity);
-    return { params: spec.params, args: spec.args, returns: spec.returns, usesEntityType: spec.usesEntityType, usesSchema: spec.schema !== null };
-}
 
 export function domainImports(
     ctx: RenderContext,

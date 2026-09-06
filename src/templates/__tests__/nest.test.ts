@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import { renderNestController } from '../controllers/nest';
+import { customAction, standardAction } from '../actions';
 import { renderDto } from '../nest/dto';
 import { renderModule } from '../nest/module';
 import { contextFor } from '../../__tests__/helpers/context';
@@ -20,7 +21,7 @@ const controllerFile = (action: string): string =>
 
 describe('renderNestController', () => {
     it('renders a single-action Post controller with a DTO body', () => {
-        const content = renderNestController(ctx(), 'Create', 'CoffeeType', controllerFile('Create'));
+        const content = renderNestController(ctx(), standardAction('Create', 'CoffeeType'), 'CoffeeType', controllerFile('Create'));
         expect(content).toContain("import { Body, Controller, Post } from '@nestjs/common';");
         expect(content).toContain("import { CoffeeType } from '../types/CoffeeType.types';");
         expect(content).toContain("import { CreateCoffeeTypeDto } from '../dto/CreateCoffeeType.dto';");
@@ -34,7 +35,7 @@ describe('renderNestController', () => {
     });
 
     it('renders Get with a param on show', () => {
-        const content = renderNestController(ctx(), 'Show', 'CoffeeType', controllerFile('Show'));
+        const content = renderNestController(ctx(), standardAction('Show', 'CoffeeType'), 'CoffeeType', controllerFile('Show'));
         expect(content).toContain("import { Controller, Get, Param } from '@nestjs/common';");
         expect(content).toContain("@Get(':id')");
         expect(content).toContain("handle(@Param('id') id: string): Promise<CoffeeType> {");
@@ -42,14 +43,14 @@ describe('renderNestController', () => {
     });
 
     it('renders list without params', () => {
-        const content = renderNestController(ctx(), 'List', 'CoffeeType', controllerFile('List'));
+        const content = renderNestController(ctx(), standardAction('List', 'CoffeeType'), 'CoffeeType', controllerFile('List'));
         expect(content).toContain("import { Controller, Get } from '@nestjs/common';");
         expect(content).toContain('@Get()');
         expect(content).toContain('handle(): Promise<CoffeeType[]> {');
     });
 
     it('renders Put with param and body on update', () => {
-        const content = renderNestController(ctx(), 'Update', 'CoffeeType', controllerFile('Update'));
+        const content = renderNestController(ctx(), standardAction('Update', 'CoffeeType'), 'CoffeeType', controllerFile('Update'));
         expect(content).toContain("import { Body, Controller, Param, Put } from '@nestjs/common';");
         expect(content).toContain("@Put(':id')");
         expect(content).toContain("handle(@Param('id') id: string, @Body() body: UpdateCoffeeTypeDto): Promise<CoffeeType> {");
@@ -57,7 +58,7 @@ describe('renderNestController', () => {
     });
 
     it('renders Delete with a 204', () => {
-        const content = renderNestController(ctx(), 'Delete', 'CoffeeType', controllerFile('Delete'));
+        const content = renderNestController(ctx(), standardAction('Delete', 'CoffeeType'), 'CoffeeType', controllerFile('Delete'));
         expect(content).toContain("import { Controller, Delete, HttpCode, Param } from '@nestjs/common';");
         expect(content).toContain("@Delete(':id')");
         expect(content).toContain('@HttpCode(204)');
@@ -104,5 +105,31 @@ export class CoffeeTypeModule {}
         expect(content).toContain('    ListCoffeeTypeService,\n');
         expect(content).toContain('    DeleteCoffeeTypeRepository,\n  ],');
         expect(content).toContain('export class CoffeeTypeModule {}');
+    });
+});
+
+describe('renderNestController for custom actions', () => {
+    it('POST returning 200 sets HttpCode explicitly', () => {
+        const spec = customAction('CoffeeType', 'archiveCoffeeType', { withInput: true, returns: 'one' });
+        const content = renderNestController(ctx(), spec, 'CoffeeType', controllerFile('Archive'));
+        expect(content).toContain("import { Body, Controller, HttpCode, Post } from '@nestjs/common';");
+        expect(content).toContain("import { ArchiveCoffeeTypeDto } from '../dto/ArchiveCoffeeType.dto';");
+        expect(content).toContain('export class ArchiveCoffeeTypeController {');
+        expect(content).toContain("@Post('archive-coffee-type')\n  @HttpCode(200)");
+        expect(content).toContain('handle(@Body() body: ArchiveCoffeeTypeDto): Promise<CoffeeType> {');
+    });
+
+    it('GET returning a list needs no HttpCode', () => {
+        const spec = customAction('CoffeeType', 'findActive', { withInput: false, returns: 'list' });
+        const content = renderNestController(ctx(), spec, 'CoffeeType', controllerFile('FindActive'));
+        expect(content).toContain("import { Controller, Get } from '@nestjs/common';");
+        expect(content).toContain("@Get('find-active')\n  handle(): Promise<CoffeeType[]> {");
+    });
+
+    it('GET returning void sets 204', () => {
+        const spec = customAction('CoffeeType', 'purge', { withInput: false, returns: 'void' });
+        const content = renderNestController(ctx(), spec, 'CoffeeType', controllerFile('Purge'));
+        expect(content).toContain("@Get('purge')\n  @HttpCode(204)");
+        expect(content).not.toContain('types/CoffeeType.types');
     });
 });

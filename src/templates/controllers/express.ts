@@ -1,42 +1,37 @@
 import { lowerFirst } from '../../utils/naming';
-import { Action } from '../actions';
+import { Action, ActionSpec, standardAction } from '../actions';
 import { RenderContext } from '../context';
-import { callArgs, controllerImports, controllerShape, handlerName, schemaImport, serviceImport } from './shape';
+import { callArgs, controllerImports, schemaImport, serviceImport } from './shape';
 
-export function renderExpressController(
-    ctx: RenderContext,
-    action: Action,
-    entity: string,
-    fromFile: string
-): string {
-    const shape = controllerShape(action);
+export function renderExpressController(ctx: RenderContext, spec: ActionSpec, fromFile: string): string {
     const imports = [
         "import { NextFunction, Request, Response } from 'express';",
-        ...(shape.usesBody ? [schemaImport(ctx, fromFile, action, entity)] : []),
-        serviceImport(ctx, fromFile, action, entity),
+        ...(spec.schema !== null ? [schemaImport(ctx, fromFile, spec.schema)] : []),
+        serviceImport(ctx, fromFile, spec),
     ].join('\n');
-    const reqName = shape.usesBody || shape.usesId ? 'req' : '_req';
-    const requestType = shape.usesId ? 'Request<{ id: string }>' : 'Request';
-    const validate = shape.usesBody
-        ? `  const parsed = ${action}${entity}Schema.safeParse(req.body);
+    const reqName = spec.schema !== null || spec.usesId ? 'req' : '_req';
+    const requestType = spec.usesId ? 'Request<{ id: string }>' : 'Request';
+    const validate =
+        spec.schema !== null
+            ? `  const parsed = ${spec.schema}Schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ errors: parsed.error.flatten() });
     return;
   }
 `
-        : '';
-    const args = callArgs(shape, 'req.params.id', 'parsed.data');
+            : '';
+    const args = callArgs(spec, 'req.params.id', 'parsed.data');
     const respond =
-        shape.status === 204
+        spec.status === 204
             ? `    await service.handle(${args});
     res.status(204).send();`
-            : `    res.status(${shape.status}).json(await service.handle(${args}));`;
+            : `    res.status(${spec.status}).json(await service.handle(${args}));`;
 
     return `${imports}
 
-const service = new ${action}${entity}Service();
+const service = new ${spec.name}Service();
 
-export async function ${handlerName(action, entity)}(${reqName}: ${requestType}, res: Response, next: NextFunction): Promise<void> {
+export async function ${spec.handler}(${reqName}: ${requestType}, res: Response, next: NextFunction): Promise<void> {
 ${validate}  try {
 ${respond}
   } catch (error) {
@@ -48,16 +43,17 @@ ${respond}
 
 export function renderExpressRoutes(ctx: RenderContext, entity: string, fromFile: string): string {
     const name = lowerFirst(entity);
+    const handler = (action: Action): string => standardAction(action, entity).handler;
     return `import { Router } from 'express';
 ${controllerImports(ctx, fromFile, entity)}
 
 const router = Router();
 
-router.get('/', ${handlerName('List', entity)});
-router.get('/:id', ${handlerName('Show', entity)});
-router.post('/', ${handlerName('Create', entity)});
-router.put('/:id', ${handlerName('Update', entity)});
-router.delete('/:id', ${handlerName('Delete', entity)});
+router.get('/', ${handler('List')});
+router.get('/:id', ${handler('Show')});
+router.post('/', ${handler('Create')});
+router.put('/:id', ${handler('Update')});
+router.delete('/:id', ${handler('Delete')});
 
 export default router;
 
