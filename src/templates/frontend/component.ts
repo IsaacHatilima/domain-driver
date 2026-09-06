@@ -8,7 +8,7 @@ export function renderComponent(name: string, directive: boolean): string {
 export default function ${name}({ id }: ${name}Props) {
   return (
     <div>
-      <h1>${name}</h1>
+      <h1>${name} {id}</h1>
     </div>
   );
 }

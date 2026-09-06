@@ -38,10 +38,13 @@ describe('renderComponent', () => {
         expect(content.startsWith("'use client';")).toBe(true);
         expect(content).toContain('interface CatProps');
         expect(content).toContain('export default function Cat({ id }: CatProps)');
+        expect(content).toContain('<h1>Cat {id}</h1>');
     });
 
     it('omits the directive otherwise', () => {
-        expect(renderComponent('Cat', false)).not.toContain("'use client'");
+        const content = renderComponent('Cat', false);
+        expect(content).not.toContain("'use client'");
+        expect(content).toContain('<h1>Cat {id}</h1>');
     });
 });
 
