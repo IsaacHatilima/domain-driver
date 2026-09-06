@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -24,7 +25,11 @@ jobs:
 
       # Trusted publishing (OIDC) needs npm 11.5.1 or newer; Node 22 ships npm 10.
       - run: npm install -g npm@latest
+      - run: npm --version
       - run: npm ci
       - run: npm run build
       - run: npm test
       - run: npm publish --provenance --access public
+        env:
+          # Verbose so the OIDC token exchange with the registry is visible in the log.
+          NPM_CONFIG_LOGLEVEL: verbose
