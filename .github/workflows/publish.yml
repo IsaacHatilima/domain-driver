@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +29,33 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
-      - run: npm publish --provenance --access public
+
+      - name: Publish if this version is not on the registry yet
+        id: publish
         env:
           # Verbose so the OIDC token exchange with the registry is visible in the log.
           NPM_CONFIG_LOGLEVEL: verbose
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if npm view "domain-driver@$VERSION" version >/dev/null 2>&1; then
+            echo "domain-driver@$VERSION is already published; skipping."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          npm publish --provenance --access public
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+      - name: Tag and release the published version
+        if: steps.publish.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.publish.outputs.version }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1 || git ls-remote --exit-code --tags origin "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already exists; skipping."
+            exit 0
+          fi
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" --title "$TAG" --generate-notes
