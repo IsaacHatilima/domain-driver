@@ -209,6 +209,28 @@ Server-side repositories throw a clear not-implemented error until you wire your
 
 ---
 
+## Updating
+
+Every command checks the registry at most once a day and, when a newer release exists, prints one line after its output:
+
+```
+ℹ️  domain-driver 0.3.0 is available (you have 0.2.0). Run: domain-driver update
+```
+
+```bash
+domain-driver update            # detects how it was installed, runs your package manager, refreshes the guidance
+domain-driver update --dry-run  # show the command it would run
+domain-driver update --check    # only report whether a newer version exists
+```
+
+Local installs use the package manager the project uses (npm, pnpm, yarn, or bun, from the `packageManager` field or the lockfile). Global installs use `npm install -g`. Running through `npx` needs no update: `npx domain-driver@latest` always fetches the newest.
+
+The check is skipped in CI (any `CI` value other than empty, `0`, or `false`), when output is not a terminal, when `DOMAIN_DRIVER_NO_UPDATE_CHECK` is set (same value rule), or when `NO_UPDATE_NOTIFIER` is set to anything.
+
+The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`); `DOMAIN_DRIVER_CACHE_DIR` overrides it.
+
+---
+
 ## Upgrading from 0.1.0
 
 Every layer command now takes a single `<feature>/<Name>` target instead of separate feature and name arguments, for example `make:schema users User` becomes `make:schema users/User`. `make:feature users -a` still works and names the entity `Users`; write `users/User` if you want a different entity name.
