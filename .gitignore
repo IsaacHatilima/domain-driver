@@ -2,5 +2,6 @@
 app
 dist
 node_modules
-.claude.superpowers
+.claude
+.superpowers
 coverage
