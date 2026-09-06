@@ -1,27 +1,26 @@
 import { Side } from '../stack/types';
-import { Action } from './actions';
+import { ActionSpec } from './actions';
 import { RenderContext } from './context';
-import { actionSignature, domainImports } from './signatures';
+import { domainImports } from './signatures';
 
 const INJECTABLE_IMPORT = "import { Injectable } from '@nestjs/common';";
 
 export function renderService(
     ctx: RenderContext,
-    action: Action,
+    spec: ActionSpec,
     entity: string,
     fromFile: string,
     side: Side
 ): string {
-    const signature = actionSignature(action, entity);
-    const repositoryClass = `${action}${entity}Repository`;
-    const serviceClass = `${action}${entity}Service`;
+    const repositoryClass = `${spec.name}Repository`;
+    const serviceClass = `${spec.name}Service`;
     const repositoryLayer = side === 'client' ? 'clientRepository' : 'serverRepository';
-    const repositoryPath = ctx.importLayer(fromFile, repositoryLayer, `${action}${entity}.repository`);
+    const repositoryPath = ctx.importLayer(fromFile, repositoryLayer, `${spec.name}.repository`);
     const injectable = side === 'server' && ctx.profile.name === 'nest';
 
     const imports = [
         ...(injectable ? [INJECTABLE_IMPORT] : []),
-        ...domainImports(ctx, fromFile, action, entity),
+        ...domainImports(ctx, fromFile, spec, entity),
         `import { ${repositoryClass} } from '${repositoryPath}';`,
     ].join('\n');
 
@@ -32,8 +31,8 @@ export function renderService(
 export class ${serviceClass} {
   constructor(private readonly repository: ${repositoryClass}) {}
 
-  async handle(${signature.params}): ${signature.returns} {
-    return this.repository.handle(${signature.args});
+  async handle(${spec.params}): ${spec.returns} {
+    return this.repository.handle(${spec.args});
   }
 }
 `;
@@ -44,8 +43,8 @@ export class ${serviceClass} {
 const repository = new ${repositoryClass}();
 
 export class ${serviceClass} {
-  async handle(${signature.params}): ${signature.returns} {
-    return repository.handle(${signature.args});
+  async handle(${spec.params}): ${spec.returns} {
+    return repository.handle(${spec.args});
   }
 }
 `;

@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { Action } from '../templates/actions';
+import { Action, ActionSpec } from '../templates/actions';
 import { fileExists, writeFileSafe } from '../utils/fs';
 
 export function writeIfAbsent(filePath: string, render: () => string): boolean {
@@ -21,5 +21,17 @@ export function writeActionFiles<A extends Action>(
     for (const action of actions) {
         const filePath = path.join(dir, `${action}${entity}.${suffix}.ts`);
         writeIfAbsent(filePath, () => render(action, filePath));
+    }
+}
+
+export function writeSpecFiles(
+    dir: string,
+    specs: readonly ActionSpec[],
+    suffix: string,
+    render: (spec: ActionSpec, filePath: string) => string
+): void {
+    for (const spec of specs) {
+        const filePath = path.join(dir, `${spec.name}.${suffix}.ts`);
+        writeIfAbsent(filePath, () => render(spec, filePath));
     }
 }

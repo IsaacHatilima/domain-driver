@@ -69,7 +69,7 @@ describe('renderNestController', () => {
 describe('renderDto', () => {
     it('derives the class from the schema', () => {
         const fromFile = path.join(ctx().featureDir, 'dto', 'CreateCoffeeType.dto.ts');
-        const content = renderDto(ctx(), 'Create', 'CoffeeType', fromFile);
+        const content = renderDto(ctx(), 'CreateCoffeeType', fromFile);
         expect(content).toBe(`import { createZodDto } from 'nestjs-zod';
 import { CreateCoffeeTypeSchema } from '../schemas/CreateCoffeeType.schema';
 

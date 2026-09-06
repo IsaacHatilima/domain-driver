@@ -1,12 +1,11 @@
-import { WriteAction } from '../actions';
 import { RenderContext } from '../context';
 
-export function renderDto(ctx: RenderContext, action: WriteAction, entity: string, fromFile: string): string {
-    const schemaName = `${action}${entity}Schema`;
-    const schemaPath = ctx.importLayer(fromFile, 'schema', `${action}${entity}.schema`);
+export function renderDto(ctx: RenderContext, name: string, fromFile: string): string {
+    const schemaName = `${name}Schema`;
+    const schemaPath = ctx.importLayer(fromFile, 'schema', `${name}.schema`);
     return `import { createZodDto } from 'nestjs-zod';
 import { ${schemaName} } from '${schemaPath}';
 
-export class ${action}${entity}Dto extends createZodDto(${schemaName}) {}
+export class ${name}Dto extends createZodDto(${schemaName}) {}
 `;
 }

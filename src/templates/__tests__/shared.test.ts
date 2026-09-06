@@ -13,14 +13,15 @@ describe('renderTypes', () => {
 
 describe('renderSchema', () => {
     it('renders the Create schema and inferred type', () => {
-        const content = renderSchema('Create', 'Cat');
+        const content = renderSchema('CreateCat', 'create');
         expect(content).toContain("import { z } from 'zod';");
         expect(content).toContain('export const CreateCatSchema = z.object({');
         expect(content).toContain('export type CreateCat = z.infer<typeof CreateCatSchema>;');
+        expect(content).toContain('// add create fields here');
     });
 
     it('renders the Update schema without an id field', () => {
-        const content = renderSchema('Update', 'Cat');
+        const content = renderSchema('UpdateCat', 'update');
         expect(content).toContain('export const UpdateCatSchema = z.object({');
         expect(content).not.toContain('id: z.string()');
     });

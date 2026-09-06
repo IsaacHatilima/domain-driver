@@ -1,4 +1,4 @@
-import { Action } from './actions';
+import { Action, ActionSpec, standardAction } from './actions';
 import { RenderContext } from './context';
 
 export interface ActionSignature {
@@ -9,37 +9,27 @@ export interface ActionSignature {
     readonly usesSchema: boolean;
 }
 
+/** @deprecated removed in the controller refactor; use ActionSpec */
 export function actionSignature(action: Action, entity: string): ActionSignature {
-    switch (action) {
-        case 'List':
-            return { params: '', args: '', returns: `Promise<${entity}[]>`, usesEntityType: true, usesSchema: false };
-        case 'Show':
-            return { params: 'id: string', args: 'id', returns: `Promise<${entity}>`, usesEntityType: true, usesSchema: false };
-        case 'Create':
-            return { params: `data: Create${entity}`, args: 'data', returns: `Promise<${entity}>`, usesEntityType: true, usesSchema: true };
-        case 'Update':
-            return { params: `id: string, data: Update${entity}`, args: 'id, data', returns: `Promise<${entity}>`, usesEntityType: true, usesSchema: true };
-        case 'Delete':
-            return { params: 'id: string', args: 'id', returns: 'Promise<void>', usesEntityType: false, usesSchema: false };
-    }
+    const spec = standardAction(action, entity);
+    return { params: spec.params, args: spec.args, returns: spec.returns, usesEntityType: spec.usesEntityType, usesSchema: spec.schema !== null };
 }
 
 export function domainImports(
     ctx: RenderContext,
     fromFile: string,
-    action: Action,
+    spec: ActionSpec,
     entity: string
 ): readonly string[] {
-    const signature = actionSignature(action, entity);
     const lines: string[] = [];
 
-    if (signature.usesEntityType) {
+    if (spec.usesEntityType) {
         const typePath = ctx.importLayer(fromFile, 'types', `${entity}.types`);
         lines.push(`import { ${entity} } from '${typePath}';`);
     }
-    if (signature.usesSchema) {
-        const schemaPath = ctx.importLayer(fromFile, 'schema', `${action}${entity}.schema`);
-        lines.push(`import { ${action}${entity} } from '${schemaPath}';`);
+    if (spec.schema !== null) {
+        const schemaPath = ctx.importLayer(fromFile, 'schema', `${spec.schema}.schema`);
+        lines.push(`import { ${spec.schema} } from '${schemaPath}';`);
     }
     return lines;
 }
