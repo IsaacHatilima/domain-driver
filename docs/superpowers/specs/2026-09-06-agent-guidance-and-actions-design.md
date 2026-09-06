@@ -213,7 +213,7 @@ On `next-fullstack`, `make:service` and `make:repository` take `--side client|se
 ## Rules
 
 1. **Scaffold before writing.** If a file the tool can generate does not exist yet, generate it. Do not create `services/FindActiveUsers.service.ts` by hand.
-2. **One action, one file, every layer.** A new operation is a `make:action`, never a new method on an existing action's class and never a branch inside Show or List.
+2. **One action, one file, every layer.** A new operation is a `make:action`, never a new method on an existing action class and never a branch inside Show or List.
 3. **Keep the chain.** Controller or hook calls one service. Service calls one repository. Repositories do data access only.
 4. **Names.** Feature folders kebab-case. Entities, actions, and classes PascalCase. Action names include their noun: `archiveUser`, `findActiveUsers`.
 5. **Do not widen the standard five.** List returns all, Show returns one by id, Create takes the create schema, Update takes id and the update schema, Delete takes id. Anything else is a bespoke action.
