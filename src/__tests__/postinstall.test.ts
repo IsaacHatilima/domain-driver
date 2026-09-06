@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readPackageName, run, shouldRunPostinstall } from '../postinstall';
 import { createTempProject, writePackageJson } from './helpers/project';
@@ -38,12 +40,22 @@ describe('shouldRunPostinstall', () => {
 });
 
 describe('readPackageName', () => {
-    it('reads the name, returns an empty string when unnamed, null when missing', () => {
+    it('reads the name, returns null when missing', () => {
         const project = createTempProject('postinstall');
         try {
             expect(readPackageName(process.cwd())).toBeNull();
             writePackageJson({});
             expect(readPackageName(process.cwd())).toBe('fixture');
+        } finally {
+            project.cleanup();
+        }
+    });
+
+    it('returns an empty string when the package has no name', () => {
+        const project = createTempProject('postinstall-unnamed');
+        try {
+            fs.writeFileSync(path.join(process.cwd(), 'package.json'), JSON.stringify({ version: '1.0.0' }));
+            expect(readPackageName(process.cwd())).toBe('');
         } finally {
             project.cleanup();
         }

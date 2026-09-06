@@ -1,4 +1,4 @@
-import { StackProfile, Layer } from '../types';
+import { StackProfile } from '../types';
 
 export const react: StackProfile = Object.freeze({
     name: 'react',

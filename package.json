@@ -2,7 +2,7 @@
   "name": "domain-driver",
   "version": "0.2.0",
   "description": "CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, and NestJS projects, with per-action files, bespoke actions, and agent guidance",
-  "main": "index.js",
+  "main": "dist/index.js",
   "bin": {
     "domain-driver": "./dist/index.js"
   },
@@ -15,7 +15,7 @@
     "scripts/postinstall.js"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "postinstall": "node ./scripts/postinstall.js"
@@ -34,6 +34,9 @@
   ],
   "author": "Isaac Hatilima",
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "devDependencies": {
     "@types/node": "^25.4.0",
     "@vitest/coverage-v8": "^4.1.2",

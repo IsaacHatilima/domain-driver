@@ -6,7 +6,7 @@ import { makeComponent, parseComponentType } from './commands/component';
 import { makeContainer } from './commands/container';
 import { makeController } from './commands/controller';
 import { makeFeature } from './commands/feature';
-import { hintRegisterInModule } from './commands/hints';
+import { hintRegisterInModule, standardClassNames } from './commands/hints';
 import { makeHook } from './commands/hook';
 import { makeRepository } from './commands/repository';
 import { makeSchema } from './commands/schema';
@@ -18,7 +18,7 @@ import { runInit } from './init/init';
 import { SectionStatus } from './init/markers';
 import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
-import { ACTIONS, actionCase } from './templates/actions';
+import { actionCase } from './templates/actions';
 
 const program = new Command();
 
@@ -75,7 +75,7 @@ program
     .action((target: string, options: { side: string }) => {
         const { feature, name } = parseTarget(target);
         const wrote = makeService(feature, name, parseSide(options.side));
-        if (wrote) hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Service`));
+        if (wrote) hintRegisterInModule(feature, standardClassNames(name, 'Service'));
     });
 
 program
@@ -85,7 +85,7 @@ program
     .action((target: string, options: { side: string }) => {
         const { feature, name } = parseTarget(target);
         const wrote = makeRepository(feature, name, parseSide(options.side));
-        if (wrote) hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Repository`));
+        if (wrote) hintRegisterInModule(feature, standardClassNames(name, 'Repository'));
     });
 
 program
@@ -94,7 +94,7 @@ program
     .action((target: string) => {
         const { feature, name } = parseTarget(target);
         const wrote = makeController(feature, name);
-        if (wrote) hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Controller`));
+        if (wrote) hintRegisterInModule(feature, standardClassNames(name, 'Controller'));
     });
 
 program

@@ -13,7 +13,7 @@ npm install -g domain-driver
 Or use without installing:
 
 ```bash
-npx domain-driver make:feature <name>
+npx domain-driver make:feature <feature>[/<Entity>]
 ```
 
 ---
@@ -86,7 +86,7 @@ Scaffolds a bespoke operation as its own files, so it never lands inside `ShowUs
 
 | Option | Effect |
 |---|---|
-| `--with-input` | writes `FindActiveUsers.schema.ts` (and the Nest DTO), the service takes `data`, the controller is a `POST` with body validation |
+| `--with-input` | writes `ArchiveUser.schema.ts` (and the Nest DTO), the service takes `data`, the controller is a `POST` with body validation |
 | `--returns list` | `Promise<User[]>` (default) |
 | `--returns one` | `Promise<User>` |
 | `--returns void` | `Promise<void>`, controller responds 204 |

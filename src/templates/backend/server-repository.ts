@@ -1,8 +1,7 @@
 import { ActionSpec } from '../actions';
 import { RenderContext } from '../context';
+import { INJECTABLE_IMPORT } from '../nest/injectable';
 import { domainImports } from '../signatures';
-
-const INJECTABLE_IMPORT = "import { Injectable } from '@nestjs/common';";
 
 export function renderServerRepository(
     ctx: RenderContext,

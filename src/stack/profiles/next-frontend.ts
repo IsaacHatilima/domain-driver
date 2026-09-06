@@ -1,4 +1,4 @@
-import { StackProfile, Layer } from '../types';
+import { StackProfile } from '../types';
 
 export const nextFrontend: StackProfile = Object.freeze({
     name: 'next-frontend',

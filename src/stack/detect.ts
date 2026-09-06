@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { isDirectory } from '../utils/fs';
 import {
     DetectedStack,
     HttpFramework,
@@ -106,8 +107,4 @@ function resolveFeatureRoot(cwd: string, stack: StackName): string {
         case 'nest':
             return 'src';
     }
-}
-
-function isDirectory(target: string): boolean {
-    return fs.existsSync(target) && fs.statSync(target).isDirectory();
 }

@@ -1,4 +1,4 @@
-import { StackProfile, Layer } from '../types';
+import { StackProfile } from '../types';
 
 export const nest: StackProfile = Object.freeze({
     name: 'nest',
