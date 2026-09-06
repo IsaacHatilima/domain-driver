@@ -62,7 +62,7 @@ Exactly: `ℹ️  domain-driver 0.3.0 is available (you have 0.2.0). Run: domain
 | Condition | Mode | Root |
 |---|---|---|
 | The path contains a `_npx` directory | `npx` | none |
-| The install root has a `package.json` whose `dependencies` or `devDependencies` names `domain-driver` | `local` | the install root |
+| The install root, or one of its ancestors up to six levels up (pnpm stores the real package under node_modules/.pnpm/…), has a `package.json` whose `dependencies` or `devDependencies` names `domain-driver` | `local` | that directory |
 | Anything else (no segment found, or no such `package.json`) | `global` | none |
 
 ### 5.2 Package manager
