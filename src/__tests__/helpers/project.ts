@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { resetStackCache } from '../../stack/detect';
+import { resetAliasCache } from '../../utils/alias';
 
 export interface TempProject {
     readonly dir: string;
@@ -10,6 +11,7 @@ export interface TempProject {
 
 export function resetCaches(): void {
     resetStackCache();
+    resetAliasCache();
 }
 
 export function createTempProject(prefix: string): TempProject {
