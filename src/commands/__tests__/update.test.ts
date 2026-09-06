@@ -7,6 +7,7 @@ const ROOT = path.resolve(path.sep, 'work', 'app');
 const LOCAL_BIN = path.join(ROOT, 'node_modules', 'domain-driver', 'dist', 'index.js');
 const GLOBAL_BIN = path.resolve(path.sep, 'usr', 'local', 'lib', 'node_modules', 'domain-driver', 'dist', 'index.js');
 const NPX_BIN = path.resolve(path.sep, 'home', 'u', '.npm', '_npx', 'x', 'node_modules', 'domain-driver', 'dist', 'index.js');
+const NODE = path.resolve(path.sep, 'usr', 'bin', 'node');
 
 const registry = (latest: string | null): FetchLike => async () =>
     latest === null
@@ -17,16 +18,16 @@ interface Harness {
     readonly deps: UpdateDeps;
     readonly lines: string[];
     readonly spawned: { command: string; args: readonly string[]; cwd: string }[];
-    readonly inits: string[];
 }
 
-function harness(overrides: Partial<UpdateDeps> = {}, spawnResult: SpawnResult = { status: 0 }): Harness {
+function harness(overrides: Partial<UpdateDeps> = {}, spawnResults: readonly SpawnResult[] = [{ status: 0 }]): Harness {
     const lines: string[] = [];
     const spawned: Harness['spawned'] = [];
-    const inits: string[] = [];
+    const queue = [...spawnResults];
     const files: Record<string, string> = {
         [path.join(ROOT, 'package.json')]: JSON.stringify({ devDependencies: { 'domain-driver': '^0.2.0' } }),
         [path.join(ROOT, 'pnpm-lock.yaml')]: '',
+        [LOCAL_BIN]: '',
     };
     const deps: UpdateDeps = {
         env: { DOMAIN_DRIVER_CACHE_DIR: path.join(ROOT, '.cache') },
@@ -44,17 +45,14 @@ function harness(overrides: Partial<UpdateDeps> = {}, spawnResult: SpawnResult =
         exists: (filePath) => Object.keys(files).some((candidate) => path.resolve(candidate) === path.resolve(filePath)),
         spawn: (command, args, cwd) => {
             spawned.push({ command, args, cwd });
-            return spawnResult;
+            return queue.shift() ?? { status: 0 };
         },
-        init: (root) => {
-            inits.push(root);
-            return [{ file: 'AGENTS.md', status: 'updated' }];
-        },
+        execPath: NODE,
         log: (line) => lines.push(line),
         writeCache: false,
         ...overrides,
     };
-    return { deps, lines, spawned, inits };
+    return { deps, lines, spawned };
 }
 
 describe('runUpdate', () => {
@@ -97,12 +95,21 @@ describe('runUpdate', () => {
         expect(h.spawned).toEqual([]);
     });
 
-    it('runs the package manager in the project root and refreshes guidance', async () => {
+    it('runs the package manager in the project root and refreshes guidance from the new install', async () => {
         const h = harness();
         await runUpdate({ dryRun: false, check: false }, h.deps);
-        expect(h.spawned).toEqual([{ command: 'pnpm', args: ['update', 'domain-driver@latest'], cwd: ROOT }]);
-        expect(h.inits).toEqual([ROOT]);
-        expect(h.lines).toEqual(['✅ domain-driver updated to 0.3.0', '✅ AGENTS.md updated']);
+        expect(h.spawned).toEqual([
+            { command: 'pnpm', args: ['update', 'domain-driver@latest'], cwd: ROOT },
+            { command: NODE, args: [LOCAL_BIN, 'init'], cwd: ROOT },
+        ]);
+        expect(h.lines).toEqual(['✅ domain-driver updated to 0.3.0']);
+    });
+
+    it('reports a failed guidance refresh without failing the update', async () => {
+        const h = harness({}, [{ status: 0 }, { status: 1 }]);
+        await runUpdate({ dryRun: false, check: false }, h.deps);
+        expect(h.spawned).toHaveLength(2);
+        expect(h.lines).toEqual(['✅ domain-driver updated to 0.3.0', 'ℹ️  Guidance refresh failed; run: domain-driver init']);
     });
 
     it('continues to @latest when the registry is unreachable', async () => {
@@ -110,25 +117,25 @@ describe('runUpdate', () => {
         await runUpdate({ dryRun: false, check: false }, h.deps);
         expect(h.lines[0]).toBe('Could not reach the registry; updating to @latest anyway.');
         expect(h.lines).toContain('✅ domain-driver updated to @latest');
-        expect(h.spawned).toHaveLength(1);
+        expect(h.spawned).toHaveLength(2);
     });
 
     it('global uses npm -g, hints sudo on failure, and inits only when cwd has a package.json', async () => {
-        const failing = harness({ binPath: GLOBAL_BIN, cwd: path.resolve(path.sep, 'elsewhere') }, { status: 243 });
+        const failing = harness({ binPath: GLOBAL_BIN, cwd: path.resolve(path.sep, 'elsewhere') }, [{ status: 243 }]);
         await expect(runUpdate({ dryRun: false, check: false }, failing.deps)).rejects.toThrow(
             'Update failed (exit 243). Run it yourself: npm install -g domain-driver@latest (you may need sudo)'
         );
         const ok = harness({ binPath: GLOBAL_BIN, cwd: ROOT });
         await runUpdate({ dryRun: false, check: false }, ok.deps);
         expect(ok.spawned[0]).toEqual({ command: 'npm', args: ['install', '-g', 'domain-driver@latest'], cwd: ROOT });
-        expect(ok.inits).toEqual([ROOT]);
+        expect(ok.spawned[1]).toEqual({ command: NODE, args: [GLOBAL_BIN, 'init'], cwd: ROOT });
         const noProject = harness({ binPath: GLOBAL_BIN, cwd: path.resolve(path.sep, 'elsewhere') });
         await runUpdate({ dryRun: false, check: false }, noProject.deps);
-        expect(noProject.inits).toEqual([]);
+        expect(noProject.spawned).toHaveLength(1);
     });
 
     it('local failure has no sudo hint and reports a spawn error', async () => {
-        const h = harness({}, { status: null, error: new Error('spawn pnpm ENOENT') });
+        const h = harness({}, [{ status: null, error: new Error('spawn pnpm ENOENT') }]);
         await expect(runUpdate({ dryRun: false, check: false }, h.deps)).rejects.toThrow(
             'Update failed (exit error). Run it yourself: pnpm update domain-driver@latest'
         );

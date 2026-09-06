@@ -2,7 +2,6 @@ import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { INIT_ICONS, InitResult, runInit } from '../init/init';
 import { formatNotice } from '../update/check';
 import { detectInstallMode, InstallInfo } from '../update/install-mode';
 import { detectPackageManager, updateCommand, UpdateCommand } from '../update/package-manager';
@@ -31,13 +30,15 @@ export interface UpdateDeps {
     readonly readFile: (filePath: string) => string;
     readonly exists: (filePath: string) => boolean;
     readonly spawn: (command: string, args: readonly string[], cwd: string) => SpawnResult;
-    readonly init: (root: string) => readonly InitResult[];
+    readonly execPath: string;
     readonly log: (line: string) => void;
     readonly writeCache: boolean;
 }
 
 const NPX_MESSAGE =
     'Nothing to update: you are running domain-driver through npx, which fetches the requested version each time. Use: npx domain-driver@latest <command>';
+
+const REFRESH_FAILED = 'ℹ️  Guidance refresh failed; run: domain-driver init';
 
 function safeRealpath(target: string): string {
     try {
@@ -62,7 +63,7 @@ export function defaultUpdateDeps(): UpdateDeps {
             const result = spawnSync(command, [...args], { stdio: 'inherit', cwd, shell: process.platform === 'win32' });
             return { status: result.status, error: result.error };
         },
-        init: runInit,
+        execPath: process.execPath,
         log: (line) => console.log(line),
         writeCache: true,
     };
@@ -122,10 +123,16 @@ function runInstall(command: UpdateCommand, install: InstallInfo, deps: UpdateDe
     throw new Error(`Update failed (exit ${code}). Run it yourself: ${command.display}${sudo}`);
 }
 
+// The freshly installed package is run in a new process: this one already has the old modules loaded.
 function refreshGuidance(install: InstallInfo, deps: UpdateDeps): void {
     const root = install.mode === 'local' ? install.root : deps.exists(path.join(deps.cwd, 'package.json')) ? deps.cwd : null;
     if (root === null) return;
-    for (const result of deps.init(root)) {
-        deps.log(`${INIT_ICONS[result.status]} ${result.file} ${result.status}`);
-    }
+    const result = deps.spawn(deps.execPath, [installedEntry(install, root, deps), 'init'], root);
+    if (result.error !== undefined || result.status !== 0) deps.log(REFRESH_FAILED);
+}
+
+function installedEntry(install: InstallInfo, root: string, deps: UpdateDeps): string {
+    if (install.mode !== 'local') return deps.binPath;
+    const entry = path.join(root, 'node_modules', 'domain-driver', 'dist', 'index.js');
+    return deps.exists(entry) ? entry : deps.binPath;
 }

@@ -97,13 +97,13 @@ Local commands run with `cwd` set to the install root so the manager updates the
 3. Force a registry check (ignore the cache, but write it). If the registry answers and `latest` is not newer, print `domain-driver <current> is already the latest version.` and exit 0. If the registry is unreachable print `Could not reach the registry; updating to @latest anyway.` and continue.
 4. With `--check`: print either the notice or the already-latest line and exit 0 without installing.
 5. Run the command with `spawnSync(cmd, args, { stdio: 'inherit', cwd })`. On a non-zero exit, fail with `Update failed (exit <code>). Run it yourself: <command>`; when the mode is global, append ` (you may need sudo)`.
-6. On success print `✅ domain-driver updated to <latest>` (or `to @latest` when the registry was unreachable). Then refresh guidance: in local mode run `runInit(root)`; in global mode run `runInit(process.cwd())` only when the current directory has a `package.json`. Print the init results with the same icons `init` uses.
+6. On success print `✅ domain-driver updated to <latest>` (or `to @latest` when the registry was unreachable). Then refresh guidance by spawning the freshly installed binary with `init`, because this process still has the pre-update modules loaded: in local mode spawn `<execPath> <root>/node_modules/domain-driver/dist/index.js init` with `cwd` set to the root, falling back to the running `binPath` when that file is missing; in global mode spawn `<execPath> <binPath> init` in the current directory, and only when the current directory has a `package.json`. The child prints its own init lines. If the spawn fails (non-zero exit or a spawn error) print `ℹ️  Guidance refresh failed; run: domain-driver init` and still exit 0 — the update itself succeeded.
 
 `update` skips the stack detection hook and the version-check notice.
 
 ### 5.5 Injectable dependencies
 
-`runUpdate(options, deps)` takes `{ env, homedir, now, fetchImpl, current, binPath, cwd, readFile, exists, spawn, init, log, writeCache }` with production defaults, so the command is unit-tested without touching the network or a package manager.
+`runUpdate(options, deps)` takes `{ env, homedir, now, fetchImpl, current, binPath, cwd, readFile, exists, spawn, execPath, log, writeCache }` with production defaults, so the command is unit-tested without touching the network or a package manager.
 
 ## 6. CLI surface
 
