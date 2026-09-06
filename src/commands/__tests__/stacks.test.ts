@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { makeAction } from '../action';
 import { makeFeature } from '../feature';
 import { AliasConfig } from '../../utils/alias';
 import {
@@ -163,5 +164,57 @@ describe('make:feature -a per stack', () => {
             ].sort()
         );
         assertImportsResolve('src', null);
+    });
+});
+
+describe('make:action after make:feature -a per stack', () => {
+    const scaffold = async (): Promise<void> => {
+        await makeFeature('coffee-type', true, 'CoffeeType');
+        makeAction('coffee-type', 'CoffeeType', 'findActiveCoffeeTypes', { withInput: false, returns: 'list' });
+        makeAction('coffee-type', 'CoffeeType', 'archiveCoffeeType', { withInput: true, returns: 'one' });
+    };
+
+    it('node with express', async () => {
+        writePackageJson({ express: '1' });
+        mkdir('src');
+        await scaffold();
+        const files = listFiles('src/features');
+        expect(files).toContain('coffee-type/controllers/FindActiveCoffeeTypes.controller.ts');
+        expect(files).toContain('coffee-type/services/ArchiveCoffeeType.service.ts');
+        expect(files).toContain('coffee-type/schemas/ArchiveCoffeeType.schema.ts');
+        expect(files).not.toContain('coffee-type/schemas/FindActiveCoffeeTypes.schema.ts');
+        assertImportsResolve('src/features', null);
+    });
+
+    it('nest', async () => {
+        writePackageJson({ '@nestjs/core': '1', 'nestjs-zod': '1' });
+        await scaffold();
+        const files = listFiles('src');
+        expect(files).toContain('coffee-type/dto/ArchiveCoffeeType.dto.ts');
+        expect(files).toContain('coffee-type/controllers/FindActiveCoffeeTypes.controller.ts');
+        assertImportsResolve('src', null);
+    });
+
+    it('next-fullstack', async () => {
+        writePackageJson({ next: '1' });
+        mkdir('app/api');
+        await scaffold();
+        const files = listFiles('app');
+        expect(files).toContain('api/coffee-type/find-active-coffee-types/route.ts');
+        expect(files).toContain('api/coffee-type/archive-coffee-type/route.ts');
+        expect(files).toContain('coffee-type/client/repositories/FindActiveCoffeeTypes.repository.ts');
+        expect(files).toContain('coffee-type/server/services/ArchiveCoffeeType.service.ts');
+        assertImportsResolve('app', null);
+    });
+
+    it('react', async () => {
+        writePackageJson({ react: '1' });
+        mkdir('src');
+        await scaffold();
+        const files = listFiles('src/features');
+        expect(files).toContain('coffee-type/services/FindActiveCoffeeTypes.service.ts');
+        expect(files).toContain('coffee-type/repositories/ArchiveCoffeeType.repository.ts');
+        expect(files.some((file) => file.includes('controllers/'))).toBe(false);
+        assertImportsResolve('src/features', null);
     });
 });

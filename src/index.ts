@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // src/index.ts
 import { Command } from 'commander';
+import { makeAction, parseReturns } from './commands/action';
 import { makeComponent, parseComponentType } from './commands/component';
 import { makeContainer } from './commands/container';
 import { makeController } from './commands/controller';
@@ -15,7 +16,7 @@ import { parseFeatureTarget, parseTarget } from './commands/target';
 import { makeTypes } from './commands/types';
 import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
-import { ACTIONS } from './templates/actions';
+import { ACTIONS, actionCase } from './templates/actions';
 
 const program = new Command();
 
@@ -91,6 +92,19 @@ program
         const { feature, name } = parseTarget(target);
         makeController(feature, name);
         hintRegisterInModule(feature, ACTIONS.map((action) => `${action}${name}Controller`));
+    });
+
+program
+    .command('make:action <target> <action>')
+    .description('Scaffold a bespoke action as its own service, repository, and controller (<feature>/<Entity> <actionName>)')
+    .option('--with-input', 'The action takes a request body validated by a Zod schema', false)
+    .option('--returns <kind>', 'list, one, or void', 'list')
+    .action((target: string, action: string, options: { withInput: boolean; returns: string }) => {
+        const { feature, name } = parseTarget(target);
+        const returns = parseReturns(options.returns);
+        makeAction(feature, name, action, { withInput: options.withInput, returns });
+        const { pascal } = actionCase(action);
+        hintRegisterInModule(feature, [`${pascal}Controller`, `${pascal}Service`, `${pascal}Repository`]);
     });
 
 program
