@@ -25,3 +25,8 @@ export function fileExists(filePath: string): boolean {
 export function isDirectory(target: string): boolean {
     return fs.existsSync(target) && fs.statSync(target).isDirectory();
 }
+
+export function readTextFile(filePath: string): string | null {
+    if (!fs.existsSync(filePath)) return null;
+    return fs.readFileSync(filePath, 'utf-8');
+}

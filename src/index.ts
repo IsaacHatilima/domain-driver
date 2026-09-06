@@ -14,6 +14,8 @@ import { makeService } from './commands/service';
 import { parseSide } from './commands/sides';
 import { parseFeatureTarget, parseTarget } from './commands/target';
 import { makeTypes } from './commands/types';
+import { runInit } from './init/init';
+import { SectionStatus } from './init/markers';
 import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
 import { ACTIONS, actionCase } from './templates/actions';
@@ -26,7 +28,8 @@ program
     .version('0.2.0')
     .option('--stack <name>', `Override stack detection (${STACK_NAMES.join(', ')})`);
 
-program.hook('preAction', () => {
+program.hook('preAction', (_thisCommand, actionCommand) => {
+    if (actionCommand.name() === 'init') return;
     const { stack } = program.opts<{ stack?: string }>();
     console.log(describeStack(detectStack(stack)));
 });
@@ -121,6 +124,21 @@ program
     .action((target: string) => {
         const { feature, name } = parseTarget(target);
         makeTypes(feature, name);
+    });
+
+const INIT_ICONS: Readonly<Record<SectionStatus, string>> = Object.freeze({
+    created: '✅',
+    updated: '✅',
+    unchanged: 'ℹ️ ',
+});
+
+program
+    .command('init')
+    .description('Write agent guidance into this project: AGENTS.md, CLAUDE.md, and .claude/skills/domain-driver/SKILL.md')
+    .action(() => {
+        for (const result of runInit(process.cwd())) {
+            console.log(`${INIT_ICONS[result.status]} ${result.file} ${result.status}`);
+        }
     });
 
 function fail(error: unknown): never {
