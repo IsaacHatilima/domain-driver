@@ -6,7 +6,7 @@ import { INIT_ICONS, InitResult, runInit } from '../init/init';
 import { formatNotice } from '../update/check';
 import { detectInstallMode, InstallInfo } from '../update/install-mode';
 import { detectPackageManager, updateCommand, UpdateCommand } from '../update/package-manager';
-import { FetchLike, fetchLatestVersion } from '../update/registry';
+import { FetchLike, fetchLatestVersion, nodeFetch } from '../update/registry';
 import { currentVersion, isNewer } from '../update/version';
 import { cacheDir, writeCache as persistCache } from '../update/cache';
 
@@ -52,7 +52,7 @@ export function defaultUpdateDeps(): UpdateDeps {
         env: process.env,
         homedir: os.homedir(),
         now: Date.now,
-        fetchImpl: fetch,
+        fetchImpl: nodeFetch,
         current: currentVersion(),
         binPath: safeRealpath(process.argv[1] ?? ''),
         cwd: process.cwd(),

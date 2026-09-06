@@ -1,3 +1,6 @@
+import * as http from 'http';
+import * as https from 'https';
+
 export const DIST_TAGS_URL = 'https://registry.npmjs.org/-/package/domain-driver/dist-tags';
 export const FETCH_TIMEOUT_MS = 1500;
 
@@ -9,8 +12,27 @@ export interface FetchResponseLike {
 
 export type FetchLike = (url: string, init?: { signal?: AbortSignal }) => Promise<FetchResponseLike>;
 
+export const nodeFetch: FetchLike = (url, init) =>
+    new Promise<FetchResponseLike>((resolve, reject) => {
+        const client = url.startsWith('https:') ? https : http;
+        const request = client.get(url, { signal: init?.signal, headers: { accept: 'application/json' } }, (response) => {
+            let body = '';
+            response.setEncoding('utf-8');
+            response.on('data', (chunk: string) => {
+                body += chunk;
+            });
+            response.on('end', () => {
+                const status = response.statusCode ?? 0;
+                resolve({ ok: status >= 200 && status < 300, status, json: async () => JSON.parse(body) as unknown });
+            });
+            response.on('error', reject);
+        });
+        request.on('socket', (socket) => socket.unref());
+        request.on('error', reject);
+    });
+
 export async function fetchLatestVersion(
-    fetchImpl: FetchLike = fetch,
+    fetchImpl: FetchLike = nodeFetch,
     timeoutMs: number = FETCH_TIMEOUT_MS
 ): Promise<string | null> {
     const controller = new AbortController();

@@ -28,7 +28,9 @@ Users learn that a newer domain-driver exists and can pull it with one command, 
 
 ### 4.1 Registry request
 
-`fetchLatestVersion(fetchImpl = fetch, timeoutMs = 1500): Promise<string | null>` does `GET https://registry.npmjs.org/-/package/domain-driver/dist-tags`, aborts after the timeout, and returns `dist-tags.latest` when the response is 200 with a string `latest`, otherwise `null`. It never throws.
+`fetchLatestVersion(fetchImpl = nodeFetch, timeoutMs = 1500): Promise<string | null>` does `GET https://registry.npmjs.org/-/package/domain-driver/dist-tags`, aborts after the timeout, and returns `dist-tags.latest` when the response is 200 with a string `latest`, otherwise `null`. It never throws.
+
+The default `nodeFetch` is a small `FetchLike` on Node's `http`/`https` client rather than global `fetch`. The abort signal is passed to the request itself, so the timeout destroys the socket instead of only rejecting the promise, and the request's socket is unref'd, so an abandoned connect never keeps the event loop alive or delays process exit.
 
 ### 4.2 Cache
 

@@ -21,6 +21,7 @@ import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
 import { actionCase } from './templates/actions';
 import { checkForUpdate, shouldCheck } from './update/check';
+import { nodeFetch } from './update/registry';
 import { currentVersion } from './update/version';
 
 const program = new Command();
@@ -41,7 +42,7 @@ program.hook('preAction', (_thisCommand, actionCommand) => {
             env: process.env,
             homedir: os.homedir(),
             now: Date.now,
-            fetchImpl: fetch,
+            fetchImpl: nodeFetch,
             current: currentVersion(),
         });
     }
