@@ -10,10 +10,15 @@
     "type": "git",
     "url": "https://github.com/IsaacHatilima/domain-driver"
   },
+  "files": [
+    "dist",
+    "scripts/postinstall.js"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "postinstall": "node ./scripts/postinstall.js"
   },
   "keywords": [
     "cli",
