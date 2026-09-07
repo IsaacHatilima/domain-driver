@@ -1,6 +1,6 @@
 {
   "name": "domain-driver",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, and NestJS projects, with per-action files, bespoke actions, and agent guidance",
   "main": "dist/index.js",
   "bin": {
@@ -35,7 +35,7 @@
   "author": "Isaac Hatilima",
   "license": "MIT",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "devDependencies": {
     "@types/node": "^25.4.0",
