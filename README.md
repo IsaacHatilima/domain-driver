@@ -239,7 +239,7 @@ Every layer command now takes a single `<feature>/<Name>` target instead of sepa
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 20+
 
 ---
 
