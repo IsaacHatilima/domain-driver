@@ -50,6 +50,16 @@ describe('detectStack rules', () => {
         writePackageJson({});
         expect(detectStack().source).toBe('detected');
     });
+
+    it('detects tanstack-start from @tanstack/react-start', () => {
+        writePackageJson({ '@tanstack/react-start': '1', react: '1' });
+        expect(detectStack().stack).toBe('tanstack-start');
+    });
+
+    it('prefers tanstack-start over react and next', () => {
+        writePackageJson({ '@tanstack/react-start': '1', react: '1', next: '1' });
+        expect(detectStack().stack).toBe('tanstack-start');
+    });
 });
 
 describe('secondary detection', () => {
@@ -96,6 +106,23 @@ describe('secondary detection', () => {
         expect(detectStack().featureRoot).toBe('src');
     });
 
+    it('roots a tanstack-start feature at src/routes when it exists', () => {
+        writePackageJson({ '@tanstack/react-start': '1' });
+        mkdir('src/routes');
+        expect(detectStack().featureRoot).toBe('src/routes');
+    });
+
+    it('falls back to routes when only that directory exists', () => {
+        writePackageJson({ '@tanstack/react-start': '1' });
+        mkdir('routes');
+        expect(detectStack().featureRoot).toBe('routes');
+    });
+
+    it('defaults a bare tanstack-start project to src/routes', () => {
+        writePackageJson({ '@tanstack/react-start': '1' });
+        expect(detectStack().featureRoot).toBe('src/routes');
+    });
+
     it('records nestjs-zod presence', () => {
         writePackageJson({ '@nestjs/core': '1', 'nestjs-zod': '1' });
         expect(detectStack().hasNestjsZod).toBe(true);
@@ -127,7 +154,7 @@ describe('override', () => {
     it('rejects an unknown stack name', () => {
         writePackageJson({});
         expect(() => detectStack('remix')).toThrow(
-            'Unknown stack "remix". Valid stacks: next-fullstack, next-frontend, react, node, nest.'
+            'Unknown stack "remix". Valid stacks: next-fullstack, next-frontend, react, node, nest, tanstack-start.'
         );
     });
 });

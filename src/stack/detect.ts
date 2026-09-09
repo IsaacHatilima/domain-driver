@@ -83,6 +83,7 @@ function parseOverride(value: string): StackName {
 
 function inferStack(cwd: string, deps: ReadonlySet<string>): StackName {
     if (deps.has('@nestjs/core')) return 'nest';
+    if (deps.has('@tanstack/react-start')) return 'tanstack-start';
     if (deps.has('next')) return hasApiDir(cwd) ? 'next-fullstack' : 'next-frontend';
     if (deps.has('react')) return 'react';
     return 'node';
@@ -106,5 +107,8 @@ function resolveFeatureRoot(cwd: string, stack: StackName): string {
             return isDirectory(path.join(cwd, 'src')) ? 'src/features' : 'features';
         case 'nest':
             return 'src';
+        case 'tanstack-start':
+            if (isDirectory(path.join(cwd, 'src', 'routes'))) return 'src/routes';
+            return isDirectory(path.join(cwd, 'routes')) ? 'routes' : 'src/routes';
     }
 }

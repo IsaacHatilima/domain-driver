@@ -1,4 +1,4 @@
-export const STACK_NAMES = ['next-fullstack', 'next-frontend', 'react', 'node', 'nest'] as const;
+export const STACK_NAMES = ['next-fullstack', 'next-frontend', 'react', 'node', 'nest', 'tanstack-start'] as const;
 export type StackName = (typeof STACK_NAMES)[number];
 
 export const HTTP_FRAMEWORKS = ['express', 'fastify', 'hono'] as const;
@@ -41,6 +41,7 @@ export interface StackProfile {
     readonly layerDirs: Readonly<Partial<Record<Layer, string>>>;
     readonly clientDirective: boolean;
     readonly serverComponents: boolean;
+    readonly queryHooks: boolean;
 }
 
 export function isStackName(value: string): value is StackName {

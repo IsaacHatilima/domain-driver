@@ -99,8 +99,17 @@ describe('componentDir', () => {
         expect(componentDir(getProfile('next-frontend'), 'client')).toBe('components/client');
     });
 
+    it('splits by type for next-fullstack too', () => {
+        expect(componentDir(getProfile('next-fullstack'), 'client')).toBe('components/client');
+        expect(componentDir(getProfile('next-fullstack'), 'server')).toBe('components/server');
+    });
+
     it('flattens for react', () => {
         expect(componentDir(getProfile('react'), 'client')).toBe('components');
+    });
+
+    it('uses the dash-prefixed directory for tanstack-start', () => {
+        expect(componentDir(getProfile('tanstack-start'), 'client')).toBe('-components');
     });
 });
 
