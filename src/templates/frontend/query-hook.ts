@@ -3,10 +3,6 @@ import { RenderContext } from '../context';
 import { domainImports } from '../signatures';
 import { keysConstant } from './query-keys';
 
-function payloadType(spec: ActionSpec): string {
-    return spec.returns.replace(/^Promise<(.*)>$/, '$1');
-}
-
 function preamble(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string, imported: string): string {
     const servicePath = ctx.importLayer(fromFile, 'clientService', `${spec.name}.service`);
     const keysPath = ctx.importLayer(fromFile, 'hook', `${ctx.feature}.keys`);
