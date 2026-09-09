@@ -2,11 +2,11 @@ import * as path from 'path';
 import { assertLayer } from '../stack/registry';
 import { standardActions } from '../templates/actions';
 import { RenderContext } from '../templates/context';
-import { renderNestController } from '../templates/controllers/nest';
 import { renderCollectionRoute, renderItemRoute } from '../templates/controllers/next-route';
-import { renderNodeController, renderNodeRoutes } from '../templates/controllers/node';
+import { renderNodeRoutes } from '../templates/controllers/node';
 import { mkdirSafe } from '../utils/fs';
 import { apiRouteDir } from '../utils/paths';
+import { controllerRenderer, controllerSuffix } from './controller-renderer';
 import { ensureLayerDir, requireFeature } from './resolve';
 import { writeSpecFiles, writeIfAbsent } from './write';
 
@@ -19,11 +19,13 @@ export function makeController(feature: string, name: string): boolean {
     }
 
     const dir = ensureLayerDir(ctx, 'controller');
-    const render = ctx.profile.name === 'nest' ? renderNestController : renderNodeController;
-    const written = writeSpecFiles(dir, standardActions(name), 'controller', (spec, filePath) =>
+    const render = controllerRenderer(ctx.profile.name);
+    const suffix = controllerSuffix(ctx.profile.name);
+    const written = writeSpecFiles(dir, standardActions(name), suffix, (spec, filePath) =>
         render(ctx, spec, name, filePath)
     );
-    if (written > 0) console.log(`✅ Controllers for "${name}" created at ${dir}`);
+    const label = ctx.profile.name === 'tanstack-start' ? 'Server functions' : 'Controllers';
+    if (written > 0) console.log(`✅ ${label} for "${name}" created at ${dir}`);
 
     const wroteRoutes = ctx.profile.name === 'node' ? writeNodeRoutes(ctx, name) : false;
     return written > 0 || wroteRoutes;
