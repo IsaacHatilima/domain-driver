@@ -61,7 +61,7 @@ describe('make:feature -a per stack', () => {
             [
                 'coffee-type/components/client/CoffeeType.tsx',
                 'coffee-type/containers/CoffeeTypeContainer.tsx',
-                'coffee-type/hooks/useCoffeeType.ts',
+                ...perAction('coffee-type/hooks', 'hook'),
                 'coffee-type/page.tsx',
                 ...perAction('coffee-type/repositories', 'repository'),
                 ...writeActions('coffee-type/schemas', 'schema'),
@@ -84,7 +84,7 @@ describe('make:feature -a per stack', () => {
                 ...perAction('coffee-type/client/services', 'service'),
                 'coffee-type/components/client/CoffeeType.tsx',
                 'coffee-type/containers/CoffeeTypeContainer.tsx',
-                'coffee-type/hooks/useCoffeeType.ts',
+                ...perAction('coffee-type/hooks', 'hook'),
                 'coffee-type/page.tsx',
                 ...writeActions('coffee-type/schemas', 'schema'),
                 ...perAction('coffee-type/server/repositories', 'repository'),
@@ -113,7 +113,7 @@ describe('make:feature -a per stack', () => {
             [
                 'coffee-type/components/CoffeeType.tsx',
                 'coffee-type/containers/CoffeeTypeContainer.tsx',
-                'coffee-type/hooks/useCoffeeType.ts',
+                ...perAction('coffee-type/hooks', 'hook'),
                 ...perAction('coffee-type/repositories', 'repository'),
                 ...writeActions('coffee-type/schemas', 'schema'),
                 ...perAction('coffee-type/services', 'service'),

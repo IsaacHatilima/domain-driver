@@ -7,6 +7,7 @@ import {
     writePackageJson,
     mkdir,
     readProjectFile,
+    projectFileExists,
     TempProject,
 } from '../../__tests__/helpers/project';
 
@@ -15,6 +16,7 @@ let project: TempProject;
 beforeEach(() => {
     project = createTempProject('frontend-commands');
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 });
 
 afterEach(() => {
@@ -49,21 +51,30 @@ describe('on next-frontend', () => {
         makeContainer('cat', 'CatContainer');
         const content = readProjectFile('app/cat/containers/CatContainer.tsx');
         expect(content).toContain("'use client'");
-        expect(content).toContain("from '../hooks/useCat'");
+        expect(content).toContain("from '../hooks/ListCat.hook'");
         expect(content).toContain("from '../components/client/Cat'");
     });
 
-    it('make:hook writes a hook with the directive', () => {
-        makeHook('cat', 'useCat');
-        const content = readProjectFile('app/cat/hooks/useCat.ts');
+    it('make:hook writes five hooks with the directive', () => {
+        makeHook('cat', 'Cat');
+        for (const action of ['List', 'Show', 'Create', 'Update', 'Delete']) {
+            expect(projectFileExists(`app/cat/hooks/${action}Cat.hook.ts`)).toBe(true);
+        }
+        expect(projectFileExists('app/cat/hooks/useCat.ts')).toBe(false);
+
+        const content = readProjectFile('app/cat/hooks/ListCat.hook.ts');
         expect(content).toContain("'use client'");
-        expect(content).toContain('export function useCat()');
+        expect(content).toContain('export function useListCat()');
         expect(content).toContain("from '../services/ListCat.service'");
     });
 
-    it('make:hook throws when the file exists', () => {
-        makeHook('cat', 'useCat');
-        expect(() => makeHook('cat', 'useCat')).toThrow('already exists');
+    it('make:hook skips existing files without throwing', () => {
+        makeHook('cat', 'Cat');
+        vi.mocked(console.log).mockClear();
+        expect(() => makeHook('cat', 'Cat')).not.toThrow();
+        expect(console.warn).toHaveBeenCalledWith('⚠️  Skipping "ListCat.hook.ts" — already exists');
+        const logged = vi.mocked(console.log).mock.calls.map(([message]) => String(message));
+        expect(logged.some((line) => line.includes('✅'))).toBe(false);
     });
 });
 
@@ -97,7 +108,7 @@ describe('on node', () => {
     });
 
     it('make:hook is not available', () => {
-        expect(() => makeHook('cat', 'useCat')).toThrow(
+        expect(() => makeHook('cat', 'Cat')).toThrow(
             'make:hook is not available for the node stack. Available: make:service, make:repository, make:controller, make:schema, make:types.'
         );
     });

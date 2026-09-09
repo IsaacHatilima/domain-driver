@@ -59,7 +59,7 @@ describe('make:feature on next-frontend', () => {
         expect(files.some((file) => file.endsWith('.gitkeep'))).toBe(false);
         expect(files).toContain('components/client/CoffeeType.tsx');
         expect(files).toContain('containers/CoffeeTypeContainer.tsx');
-        expect(files).toContain('hooks/useCoffeeType.ts');
+        expect(files).toContain('hooks/ListCoffeeType.hook.ts');
         expect(files).toContain('services/ListCoffeeType.service.ts');
         expect(files).toContain('repositories/DeleteCoffeeType.repository.ts');
         expect(files).toContain('schemas/UpdateCoffeeType.schema.ts');

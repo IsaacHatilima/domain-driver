@@ -1,113 +1,99 @@
-import { ACTIONS } from '../actions';
+import { lowerFirst } from '../../utils/naming';
+import { ActionSpec } from '../actions';
 import { RenderContext } from '../context';
+import { domainImports } from '../signatures';
 
-function serviceImports(ctx: RenderContext, fromFile: string, entity: string): string {
-    return ACTIONS.map((action) => {
-        const servicePath = ctx.importLayer(fromFile, 'clientService', `${action}${entity}.service`);
-        return `import { ${action}${entity}Service } from '${servicePath}';`;
-    }).join('\n');
+function payloadType(spec: ActionSpec): string {
+    return spec.returns.replace(/^Promise<(.*)>$/, '$1');
 }
 
-function serviceInstances(entity: string): string {
-    return ACTIONS.map(
-        (action) => `const ${action.toLowerCase()}Service = new ${action}${entity}Service();`
-    ).join('\n');
+function header(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string, hooks: string): string {
+    const directive = ctx.profile.clientDirective ? "'use client';\n\n" : '';
+    const servicePath = ctx.importLayer(fromFile, 'clientService', `${spec.name}.service`);
+    const domain = domainImports(ctx, fromFile, spec, entity);
+
+    return `${directive}import { ${hooks} } from 'react';
+${domain.join('\n')}${domain.length > 0 ? '\n' : ''}import { ${spec.name}Service } from '${servicePath}';
+
+const service = new ${spec.name}Service();
+`;
 }
 
-export function renderHook(ctx: RenderContext, hookName: string, entity: string, fromFile: string): string {
-    const header = ctx.profile.clientDirective ? "'use client';\n\n" : '';
-    const typePath = ctx.importLayer(fromFile, 'types', `${entity}.types`);
-    const createPath = ctx.importLayer(fromFile, 'schema', `Create${entity}.schema`);
-    const updatePath = ctx.importLayer(fromFile, 'schema', `Update${entity}.schema`);
+function renderQuery(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {
+    const type = payloadType(spec);
+    const isList = type.endsWith('[]');
+    const stateType = isList ? type : `${type} | null`;
+    const initial = isList ? '[]' : 'null';
+    const deps = spec.usesId ? '[id]' : '[]';
 
-    return `${header}import { useState, useEffect, useCallback } from 'react';
-import { ${entity} } from '${typePath}';
-${serviceImports(ctx, fromFile, entity)}
-import { Create${entity} } from '${createPath}';
-import { Update${entity} } from '${updatePath}';
-
-${serviceInstances(entity)}
-
-export function ${hookName}() {
-  const [items, setItems] = useState<${entity}[]>([]);
-  const [selected, setSelected] = useState<${entity} | null>(null);
+    return `${header(ctx, spec, entity, fromFile, 'useState, useEffect, useCallback')}
+export function use${spec.name}(${spec.params}) {
+  const [data, setData] = useState<${stateType}>(${initial});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAll = useCallback(async () => {
+  const refetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await listService.handle();
-      setItems(data);
+      setData(await service.handle(${spec.args}));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch');
+      setError(err instanceof Error ? err.message : '${spec.failure}');
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  const fetchOne = useCallback(async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await showService.handle(id);
-      setSelected(data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const create = useCallback(async (data: Create${entity}) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const created = await createService.handle(data);
-      setItems((prev) => [...prev, created]);
-      return created;
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create');
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const update = useCallback(async (id: string, data: Update${entity}) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const updated = await updateService.handle(id, data);
-      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
-      return updated;
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update');
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const remove = useCallback(async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await deleteService.handle(id);
-      setItems((prev) => prev.filter((item) => item.id !== id));
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to delete');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  }, ${deps});
 
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    void refetch();
+  }, [refetch]);
 
-  return { items, selected, loading, error, fetchAll, fetchOne, create, update, remove };
+  return { data, loading, error, refetch };
 }
 `;
+}
+
+function renderMutation(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {
+    const callable = lowerFirst(spec.name);
+    const returnsValue = spec.usesEntityType;
+    const type = payloadType(spec);
+    const callbackType = returnsValue ? `(result: ${type}) => void` : '() => void';
+    const body = returnsValue
+        ? `      const result = await service.handle(${spec.args});
+      onSuccess?.(result);
+      return result;`
+        : `      await service.handle(${spec.args});
+      onSuccess?.();`;
+    const failure = returnsValue
+        ? `      setError(err instanceof Error ? err.message : '${spec.failure}');
+      return null;`
+        : `      setError(err instanceof Error ? err.message : '${spec.failure}');`;
+
+    return `${header(ctx, spec, entity, fromFile, 'useState, useCallback')}
+export function use${spec.name}(options: { onSuccess?: ${callbackType} } = {}) {
+  const { onSuccess } = options;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const ${callable} = useCallback(async (${spec.params}) => {
+    setLoading(true);
+    setError(null);
+    try {
+${body}
+    } catch (err: unknown) {
+${failure}
+    } finally {
+      setLoading(false);
+    }
+  }, [onSuccess]);
+
+  return { ${callable}, loading, error };
+}
+`;
+}
+
+export function renderHook(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {
+    return spec.method === 'get'
+        ? renderQuery(ctx, spec, entity, fromFile)
+        : renderMutation(ctx, spec, entity, fromFile);
 }

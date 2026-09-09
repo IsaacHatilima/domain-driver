@@ -49,7 +49,7 @@ function scaffoldLayers(ctx: RenderContext, entity: string): void {
     if (hasLayer(profile, 'controller')) makeController(feature, entity);
     if (hasLayer(profile, 'clientRepository')) makeRepository(feature, entity, 'client');
     if (hasLayer(profile, 'clientService')) makeService(feature, entity, 'client');
-    if (hasLayer(profile, 'hook')) makeHook(feature, `use${entity}`, entity);
+    if (hasLayer(profile, 'hook')) makeHook(feature, entity);
     if (hasLayer(profile, 'component')) makeComponent(feature, entity, 'client');
     if (hasLayer(profile, 'container')) makeContainer(feature, `${entity}Container`, entity);
 }

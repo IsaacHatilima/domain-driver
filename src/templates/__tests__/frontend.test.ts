@@ -4,6 +4,7 @@ import { renderPage } from '../frontend/page';
 import { renderComponent } from '../frontend/component';
 import { renderContainer } from '../frontend/container';
 import { renderHook } from '../frontend/hook';
+import { standardAction } from '../actions';
 import { contextFor } from '../../__tests__/helpers/context';
 import { createTempProject, TempProject } from '../../__tests__/helpers/project';
 
@@ -54,9 +55,10 @@ describe('renderContainer', () => {
         const fromFile = path.join(ctx.featureDir, 'containers', 'CatContainer.tsx');
         const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile);
         expect(content.startsWith("'use client';")).toBe(true);
-        expect(content).toContain("import { useCat } from '../hooks/useCat';");
+        expect(content).toContain("import { useListCat } from '../hooks/ListCat.hook';");
         expect(content).toContain("import Cat from '../components/client/Cat';");
         expect(content).toContain('export default function CatContainer()');
+        expect(content).toContain('const { data, loading, error } = useListCat();');
     });
 
     it('drops the directive and uses the flat component dir on react', () => {
@@ -64,33 +66,73 @@ describe('renderContainer', () => {
         const fromFile = path.join(ctx.featureDir, 'containers', 'CatContainer.tsx');
         const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile);
         expect(content).not.toContain("'use client'");
+        expect(content).toContain("import { useListCat } from '../hooks/ListCat.hook';");
         expect(content).toContain("import Cat from '../components/Cat';");
+    });
+
+    it('uses isPending, error.message, and a nullish-coalesced list on tanstack-start', () => {
+        const ctx = contextFor('tanstack-start', 'cat');
+        const fromFile = path.join(ctx.featureDir, '-containers', 'CatContainer.tsx');
+        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile);
+        expect(content).toContain("import { useListCat } from '../-hooks/ListCat.hook';");
+        expect(content).toContain('const { data, isPending, error } = useListCat();');
+        expect(content).toContain('if (isPending) return <div>Loading...</div>;');
+        expect(content).toContain('if (error) return <div>Error: {error.message}</div>;');
+        expect(content).toContain('{(data ?? []).map((item) => (');
     });
 });
 
 describe('renderHook', () => {
-    it('imports type, services, and schemas on next-frontend', () => {
-        const ctx = contextFor('next-frontend', 'cat');
-        const fromFile = path.join(ctx.featureDir, 'hooks', 'useCat.ts');
-        const content = renderHook(ctx, 'useCat', 'Cat', fromFile);
-        expect(content.startsWith("'use client';")).toBe(true);
-        expect(content).toContain("import { Cat } from '../types/Cat.types';");
-        expect(content).toContain("import { ListCatService } from '../services/ListCat.service';");
-        expect(content).toContain("import { UpdateCat } from '../schemas/UpdateCat.schema';");
-        expect(content).toContain('export function useCat()');
-        expect(content).toContain('return { items, selected, loading, error, fetchAll, fetchOne, create, update, remove };');
-    });
-
-    it('imports client services under fullstack', () => {
-        const ctx = contextFor('next-fullstack', 'cat');
-        const fromFile = path.join(ctx.featureDir, 'hooks', 'useCat.ts');
-        const content = renderHook(ctx, 'useCat', 'Cat', fromFile);
-        expect(content).toContain("from '../client/services/CreateCat.service';");
-    });
-
-    it('drops the directive on react', () => {
+    it('renders a list query hook that fetches on mount', () => {
         const ctx = contextFor('react', 'cat');
-        const fromFile = path.join(ctx.featureDir, 'hooks', 'useCat.ts');
-        expect(renderHook(ctx, 'useCat', 'Cat', fromFile)).not.toContain("'use client'");
+        const spec = standardAction('List', 'Cat');
+        const file = path.join(ctx.featureDir, 'hooks/ListCat.hook.ts');
+        const content = renderHook(ctx, spec, 'Cat', file);
+
+        expect(content).toContain('export function useListCat()');
+        expect(content).toContain('const [data, setData] = useState<Cat[]>([]);');
+        expect(content).toContain('setData(await service.handle());');
+        expect(content).toContain('}, []);');
+        expect(content).toContain('void refetch();');
+        expect(content).toContain('return { data, loading, error, refetch };');
+    });
+
+    it('renders a detail query hook keyed on the id', () => {
+        const ctx = contextFor('react', 'cat');
+        const content = renderHook(ctx, standardAction('Show', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/ShowCat.hook.ts'));
+
+        expect(content).toContain('export function useShowCat(id: string)');
+        expect(content).toContain('const [data, setData] = useState<Cat | null>(null);');
+        expect(content).toContain('setData(await service.handle(id));');
+        expect(content).toContain('}, [id]);');
+    });
+
+    it('renders a mutation hook with a destructured onSuccess', () => {
+        const ctx = contextFor('react', 'cat');
+        const content = renderHook(ctx, standardAction('Update', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/UpdateCat.hook.ts'));
+
+        expect(content).toContain('export function useUpdateCat(options: { onSuccess?: (result: Cat) => void } = {})');
+        expect(content).toContain('const { onSuccess } = options;');
+        expect(content).toContain('const updateCat = useCallback(async (id: string, data: UpdateCat) => {');
+        expect(content).toContain('const result = await service.handle(id, data);');
+        expect(content).toContain('onSuccess?.(result);');
+        expect(content).toContain('}, [onSuccess]);');
+        expect(content).toContain('return { updateCat, loading, error };');
+        expect(content).not.toContain('[options]');
+    });
+
+    it('renders a void mutation hook without a result argument', () => {
+        const ctx = contextFor('react', 'cat');
+        const content = renderHook(ctx, standardAction('Delete', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/DeleteCat.hook.ts'));
+
+        expect(content).toContain('options: { onSuccess?: () => void } = {}');
+        expect(content).toContain('onSuccess?.();');
+        expect(content).not.toContain('const result =');
+    });
+
+    it('adds the client directive on Next', () => {
+        const ctx = contextFor('next-frontend', 'cat');
+        const content = renderHook(ctx, standardAction('List', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/ListCat.hook.ts'));
+        expect(content.startsWith("'use client';")).toBe(true);
     });
 });
