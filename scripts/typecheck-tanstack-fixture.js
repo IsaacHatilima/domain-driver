@@ -185,19 +185,36 @@ function typeCheck(dir) {
 
 // Required files from different layers of the generated feature. These are
 // checked immediately after scaffolding to catch regressions where a layer
-// silently produces nothing while the rest succeeds.
+// silently produces nothing while the rest succeeds. One file per layer
+// directory (see the tanstack-start profile's `folders`), built from
+// FEATURE/ENTITY rather than hardcoded so this stays in sync with the name
+// scaffolded above.
+const FEATURE_ROOT = `src/routes/${FEATURE}`;
 const REQUIRED_GENERATED_FILES = Object.freeze([
-    // Route entry point: has no other consumer in the generated graph, so
-    // regressions here would pass type-checking vacuously without this check.
-    'src/routes/cat/index.tsx',
-    // Type definitions layer
-    'src/cat/Cat.entity.ts',
-    // Server functions layer
-    'src/cat/-server/functions/CreateCat.fn.ts',
-    // Client repositories layer
-    'src/cat/-client/repositories/ListCat.repository.ts',
+    // Route entry point: nothing else in the generated graph imports it, so
+    // a renderer regression emitting nothing for it would otherwise type-
+    // check clean without this check.
+    `${FEATURE_ROOT}/index.tsx`,
+    // Types layer
+    `${FEATURE_ROOT}/-types/${ENTITY}.types.ts`,
+    // Schemas layer (write actions only -- there is no "List" schema)
+    `${FEATURE_ROOT}/-schemas/Create${ENTITY}.schema.ts`,
+    // Component layer
+    `${FEATURE_ROOT}/-components/${ENTITY}.tsx`,
+    // Container layer
+    `${FEATURE_ROOT}/-containers/${ENTITY}Container.tsx`,
     // Hooks layer
-    'src/cat/-hooks/useCatsQuery.ts',
+    `${FEATURE_ROOT}/-hooks/List${ENTITY}.hook.ts`,
+    // Client services layer
+    `${FEATURE_ROOT}/-client/services/List${ENTITY}.service.ts`,
+    // Client repositories layer
+    `${FEATURE_ROOT}/-client/repositories/List${ENTITY}.repository.ts`,
+    // Server functions layer (controller)
+    `${FEATURE_ROOT}/-server/functions/List${ENTITY}.fn.ts`,
+    // Server services layer
+    `${FEATURE_ROOT}/-server/services/List${ENTITY}.service.ts`,
+    // Server repositories layer
+    `${FEATURE_ROOT}/-server/repositories/List${ENTITY}.repository.ts`,
 ]);
 
 function assertScaffoldingProduced(dir) {
