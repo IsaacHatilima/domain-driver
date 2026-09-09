@@ -188,12 +188,25 @@ And add the case to `resolveFeatureRoot`, which must prefer the `src` form unlik
 
 In `src/__tests__/helpers/context.ts`, add `'tanstack-start': 'src/routes',` to `DEFAULT_ROOTS`.
 
-- [ ] **Step 6: Run the full suite**
+- [ ] **Step 6: Derive componentDir from the profile**
+
+`componentDir` in `src/stack/registry.ts` hardcodes the string `'components'` and ignores `layerDirs.component`. On this profile that would write components to `src/routes/<feature>/components/` with no dash, and TanStack Router would treat every one of them as a route. Both `makeComponent` and `renderContainer` call it. Replace it with:
+
+```ts
+export function componentDir(profile: StackProfile, type: 'client' | 'server'): string {
+    const base = layerDir(profile, 'component');
+    return profile.serverComponents ? `${base}/${type}` : base;
+}
+```
+
+This is behaviour-preserving for the five existing profiles: the Next profiles still return `components/client` and `components/server`, react still returns `components`. Add a test in `src/stack/__tests__/registry.test.ts` asserting `componentDir(tanstackStart, 'client')` is `-components` and that the Next profiles are unchanged.
+
+- [ ] **Step 7: Run the full suite**
 
 Run: `npm test`
 Expected: PASS. The `registry.test.ts` assertions that enumerate stacks may need the new name added.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add -A && git commit -m "feat: add the tanstack-start stack profile and its detection"
