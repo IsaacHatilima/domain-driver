@@ -136,13 +136,20 @@ domain-driver make:hook users/User
 
 Component, container, and hook commands fail with a clear message on backend stacks, and `server` components are rejected on React.
 
-`make:hook` writes one file per action instead of a combined hook: `ListUser.hook.ts`, `ShowUser.hook.ts`, `CreateUser.hook.ts`, `UpdateUser.hook.ts`, `DeleteUser.hook.ts`, each exporting one hook (`useListUser`, `useShowUser`, `useCreateUser`, `useUpdateUser`, `useDeleteUser`). There is no combined `useUser.ts`. On `react`, `next-frontend`, and `next-fullstack` these hold plain React state; on `tanstack-start` they are TanStack Query hooks backed by a generated `<feature>.keys.ts` cache-key module, and generating them prints a hint to install `@tanstack/react-query` if it is not already a dependency, since TanStack Start does not bundle it.
+`make:hook` writes one file per action instead of a combined hook: `ListUser.hook.ts`, `ShowUser.hook.ts`, `CreateUser.hook.ts`, `UpdateUser.hook.ts`, `DeleteUser.hook.ts`, each exporting one hook (`useListUser`, `useShowUser`, `useCreateUser`, `useUpdateUser`, `useDeleteUser`). There is no combined `useUser.ts`. On `react`, `next-frontend`, and `next-fullstack` these hold plain React state; on `tanstack-start` they are TanStack Query hooks backed by a generated `<feature>.keys.ts` cache-key module. Generating hooks on this profile prints a one-time reminder to install `@tanstack/react-query`, since TanStack Start does not bundle it.
 
-Because the five hooks no longer share state, containers wire them together:
+Because the five hooks no longer share state, containers wire them together. On `react`, `next-frontend`, and `next-fullstack`, where hooks hold plain state:
 
 ```tsx
 const { data, loading, error, refetch } = useListCat();
 const { createCat } = useCreateCat({ onSuccess: refetch });
+```
+
+On `tanstack-start`, `useListCat()` returns the `useQuery` result (`data`, `isPending`, `error`, ...) and `useCreateCat()` returns the `useMutation` result (`mutate`, `mutateAsync`, `isPending`, ...) directly — there is no `createCat` property and no `onSuccess` option; the hook invalidates the query cache internally on success:
+
+```tsx
+const { data, isPending, error } = useListCat();
+const { mutate: createCat } = useCreateCat();
 ```
 
 ### `init`
@@ -227,7 +234,7 @@ src/routes/coffee-type/
     └── CoffeeType.types.ts
 ```
 
-Every layer directory carries a `-` prefix so TanStack Router excludes it from routing. The controller layer is server functions — `<Name>.fn.ts` built with `createServerFn` — and client repositories import and call them directly, so there is no `fetch` and no `Response.json`. Hooks are TanStack Query, backed by the generated `coffee-type.keys.ts`; generating them prints a hint to install `@tanstack/react-query` if it is not already a dependency, since TanStack Start does not bundle it.
+Every layer directory carries a `-` prefix so TanStack Router excludes it from routing. The controller layer is server functions — `<Name>.fn.ts` built with `createServerFn` — and client repositories import and call them directly, so there is no `fetch` and no `Response.json`. Hooks are TanStack Query, backed by the generated `coffee-type.keys.ts`. Generating hooks on this profile prints a one-time reminder to install `@tanstack/react-query`, since TanStack Start does not bundle it.
 
 ---
 
