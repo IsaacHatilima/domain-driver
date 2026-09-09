@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import { renderService } from '../service';
 import { renderClientRepository } from '../frontend/client-repository';
+import { renderServerFnRepository } from '../frontend/server-fn-repository';
 import { renderServerRepository } from '../backend/server-repository';
 import { customAction, standardAction } from '../actions';
 import { contextFor } from '../../__tests__/helpers/context';
@@ -155,5 +156,32 @@ describe('custom action specs through the data templates', () => {
         const service = renderService(ctx, spec, 'User', path.join(ctx.featureDir, 'services', 'ArchiveUser.service.ts'), 'server');
         expect(service).toContain("import { ArchiveUserRepository } from '../repositories/ArchiveUser.repository';");
         expect(service).toContain('constructor(private readonly repository: ArchiveUserRepository) {}');
+    });
+});
+
+describe('renderServerFnRepository', () => {
+    const ctx = contextFor('tanstack-start', 'cat');
+    const file = (name: string) => path.join(ctx.featureDir, `-client/repositories/${name}.repository.ts`);
+
+    it('calls a no-argument server function', () => {
+        const content = renderServerFnRepository(ctx, standardAction('List', 'Cat'), 'Cat', file('ListCat'));
+        expect(content).toContain("import { listCat } from '../../-server/functions/ListCat.fn';");
+        expect(content).toContain('return listCat();');
+        expect(content).not.toContain('fetch(');
+    });
+
+    it('passes a bare id as data', () => {
+        const content = renderServerFnRepository(ctx, standardAction('Show', 'Cat'), 'Cat', file('ShowCat'));
+        expect(content).toContain('return showCat({ data: id });');
+    });
+
+    it('passes a payload as data', () => {
+        const content = renderServerFnRepository(ctx, standardAction('Create', 'Cat'), 'Cat', file('CreateCat'));
+        expect(content).toContain('return createCat({ data });');
+    });
+
+    it('wraps id and payload together', () => {
+        const content = renderServerFnRepository(ctx, standardAction('Update', 'Cat'), 'Cat', file('UpdateCat'));
+        expect(content).toContain('return updateCat({ data: { id, data } });');
     });
 });
