@@ -136,3 +136,29 @@ describe('make:action on react', () => {
         expect(projectFileExists('src/features/users/controllers')).toBe(false);
     });
 });
+
+describe('make:action writes a hook', () => {
+    it('writes a hook for a custom action on react', () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/users');
+        makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
+        const content = readProjectFile('src/features/users/hooks/FindActiveUsers.hook.ts');
+        expect(content).toContain('export function useFindActiveUsers()');
+        expect(content).toContain('return { data, loading, error, refetch };');
+    });
+
+    it('writes a Query hook for a custom action on tanstack-start', () => {
+        writePackageJson({ '@tanstack/react-start': '1', react: '1' });
+        mkdir('src/routes/users');
+        makeAction('users', 'User', 'notifyUsers', { withInput: true, returns: 'void' });
+        const content = readProjectFile('src/routes/users/-hooks/NotifyUsers.hook.ts');
+        expect(content).toContain('useMutation');
+    });
+
+    it('writes no hook on a stack without the layer', () => {
+        writePackageJson({});
+        mkdir('src/features/users');
+        makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
+        expect(projectFileExists('src/features/users/hooks/FindActiveUsers.hook.ts')).toBe(false);
+    });
+});

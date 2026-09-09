@@ -6,6 +6,9 @@ import { renderServerRepository } from '../templates/backend/server-repository';
 import { RenderContext } from '../templates/context';
 import { renderActionRoute } from '../templates/controllers/next-action-route';
 import { renderNodeRouteLine } from '../templates/controllers/node';
+import { renderHook } from '../templates/frontend/hook';
+import { renderQueryHook } from '../templates/frontend/query-hook';
+import { renderQueryKeys } from '../templates/frontend/query-keys';
 import { renderDto } from '../templates/nest/dto';
 import { renderService } from '../templates/service';
 import { renderSchema } from '../templates/shared/schema';
@@ -13,7 +16,7 @@ import { fileExists, mkdirSafe } from '../utils/fs';
 import { lowerFirst } from '../utils/naming';
 import { apiRouteDir } from '../utils/paths';
 import { controllerRenderer, controllerSuffix } from './controller-renderer';
-import { hintNestjsZod } from './hints';
+import { hintNestjsZod, hintReactQuery } from './hints';
 import { clientRenderer } from './repository';
 import { ensureLayerDir, requireFeature } from './resolve';
 import { writeIfAbsent } from './write';
@@ -38,6 +41,7 @@ export function makeAction(
     if (hasLayer(ctx.profile, 'serverRepository')) wroteAny = writeSide(ctx, spec, entity, 'server') || wroteAny;
     if (hasLayer(ctx.profile, 'controller')) wroteAny = writeController(ctx, spec, entity) || wroteAny;
     if (hasLayer(ctx.profile, 'clientRepository')) wroteAny = writeSide(ctx, spec, entity, 'client') || wroteAny;
+    if (hasLayer(ctx.profile, 'hook')) wroteAny = writeHook(ctx, spec, entity) || wroteAny;
 
     if (wroteAny) console.log(`✅ Action "${spec.name}" scaffolded in "${feature}"`);
     return wroteAny;
@@ -72,6 +76,18 @@ function writeSide(ctx: RenderContext, spec: ActionSpec, entity: string, side: S
     const wroteService = writeIfAbsent(serviceFile, () => renderService(ctx, spec, entity, serviceFile, side));
 
     return wroteRepository || wroteService;
+}
+
+function writeHook(ctx: RenderContext, spec: ActionSpec, entity: string): boolean {
+    const dir = ensureLayerDir(ctx, 'hook');
+    const render = ctx.profile.queryHooks ? renderQueryHook : renderHook;
+    if (ctx.profile.queryHooks) {
+        writeIfAbsent(path.join(dir, `${ctx.feature}.keys.ts`), () => renderQueryKeys(ctx.feature));
+    }
+    const filePath = path.join(dir, `${spec.name}.hook.ts`);
+    const wrote = writeIfAbsent(filePath, () => render(ctx, spec, entity, filePath));
+    if (wrote) hintReactQuery(ctx.profile);
+    return wrote;
 }
 
 function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): boolean {
