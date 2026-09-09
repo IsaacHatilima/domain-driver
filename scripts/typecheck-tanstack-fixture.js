@@ -183,6 +183,32 @@ function typeCheck(dir) {
     run(localBin(REPO_ROOT, 'tsc'), ['--noEmit', '-p', 'tsconfig.json'], dir);
 }
 
+// Required files from different layers of the generated feature. These are
+// checked immediately after scaffolding to catch regressions where a layer
+// silently produces nothing while the rest succeeds.
+const REQUIRED_GENERATED_FILES = Object.freeze([
+    // Route entry point: has no other consumer in the generated graph, so
+    // regressions here would pass type-checking vacuously without this check.
+    'src/routes/cat/index.tsx',
+    // Type definitions layer
+    'src/cat/Cat.entity.ts',
+    // Server functions layer
+    'src/cat/-server/functions/CreateCat.fn.ts',
+    // Client repositories layer
+    'src/cat/-client/repositories/ListCat.repository.ts',
+    // Hooks layer
+    'src/cat/-hooks/useCatsQuery.ts',
+]);
+
+function assertScaffoldingProduced(dir) {
+    const missing = REQUIRED_GENERATED_FILES.filter((file) => !fs.existsSync(path.join(dir, file)));
+    if (missing.length > 0) {
+        throw new Error(
+            `Scaffolding did not produce expected files:\n  - ${missing.join('\n  - ')}`
+        );
+    }
+}
+
 async function main() {
     assertSupportedNode();
     buildDomainDriver();
@@ -194,6 +220,7 @@ async function main() {
         writeFixtureProject(fixtureDir);
         writeRootRoute(fixtureDir);
         await scaffoldFeature(fixtureDir);
+        assertScaffoldingProduced(fixtureDir);
         installDependencies(fixtureDir);
         generateRouteTree(fixtureDir);
         typeCheck(fixtureDir);
