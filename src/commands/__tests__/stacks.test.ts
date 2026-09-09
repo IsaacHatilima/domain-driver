@@ -165,6 +165,28 @@ describe('make:feature -a per stack', () => {
         );
         assertImportsResolve('src', null);
     });
+
+    it('tanstack-start', async () => {
+        writePackageJson({ '@tanstack/react-start': '1' });
+        await makeFeature('coffee-type', true);
+        expect(listFiles('src/routes')).toEqual(
+            [
+                ...perAction('coffee-type/-client/repositories', 'repository'),
+                ...perAction('coffee-type/-client/services', 'service'),
+                'coffee-type/-components/CoffeeType.tsx',
+                'coffee-type/-containers/CoffeeTypeContainer.tsx',
+                'coffee-type/-hooks/coffee-type.keys.ts',
+                ...perAction('coffee-type/-hooks', 'hook'),
+                ...writeActions('coffee-type/-schemas', 'schema'),
+                ...perAction('coffee-type/-server/functions', 'fn'),
+                ...perAction('coffee-type/-server/repositories', 'repository'),
+                ...perAction('coffee-type/-server/services', 'service'),
+                'coffee-type/-types/CoffeeType.types.ts',
+                'coffee-type/index.tsx',
+            ].sort()
+        );
+        assertImportsResolve('src/routes', null);
+    });
 });
 
 describe('make:action after make:feature -a per stack', () => {
@@ -216,5 +238,18 @@ describe('make:action after make:feature -a per stack', () => {
         expect(files).toContain('coffee-type/repositories/ArchiveCoffeeType.repository.ts');
         expect(files.some((file) => file.includes('controllers/'))).toBe(false);
         assertImportsResolve('src/features', null);
+    });
+
+    it('tanstack-start', async () => {
+        writePackageJson({ '@tanstack/react-start': '1' });
+        await scaffold();
+        const files = listFiles('src/routes');
+        expect(files).toContain('coffee-type/-server/functions/FindActiveCoffeeTypes.fn.ts');
+        expect(files).toContain('coffee-type/-server/functions/ArchiveCoffeeType.fn.ts');
+        expect(files).toContain('coffee-type/-client/repositories/ArchiveCoffeeType.repository.ts');
+        expect(files).toContain('coffee-type/-hooks/FindActiveCoffeeTypes.hook.ts');
+        expect(files).toContain('coffee-type/-schemas/ArchiveCoffeeType.schema.ts');
+        expect(files).not.toContain('coffee-type/-schemas/FindActiveCoffeeTypes.schema.ts');
+        assertImportsResolve('src/routes', null);
     });
 });
