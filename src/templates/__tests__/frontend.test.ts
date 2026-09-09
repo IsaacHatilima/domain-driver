@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import { renderPage } from '../frontend/page';
+import { renderRoute } from '../frontend/route';
 import { renderComponent } from '../frontend/component';
 import { renderContainer } from '../frontend/container';
 import { renderHook } from '../frontend/hook';
@@ -30,6 +31,24 @@ describe('renderPage', () => {
         const content = renderPage(ctx, 'CoffeeType', path.join(ctx.featureDir, 'page.tsx'), true);
         expect(content).toContain("import CoffeeTypeContainer from './containers/CoffeeTypeContainer';");
         expect(content).toContain('<CoffeeTypeContainer />');
+    });
+});
+
+describe('renderRoute', () => {
+    it('renders a bare route without a container', () => {
+        const ctx = contextFor('tanstack-start', 'coffee-type');
+        const content = renderRoute(ctx, 'CoffeeType', path.join(ctx.featureDir, 'index.tsx'), false);
+        expect(content).toContain("import { createFileRoute } from '@tanstack/react-router';");
+        expect(content).toContain("export const Route = createFileRoute('/coffee-type/')({");
+        expect(content).toContain('component: CoffeeTypePage,');
+        expect(content).toContain('<h1>CoffeeType</h1>');
+    });
+
+    it('imports the container as a default import when asked', () => {
+        const ctx = contextFor('tanstack-start', 'cat');
+        const content = renderRoute(ctx, 'Cat', path.join(ctx.featureDir, 'index.tsx'), true);
+        expect(content).toContain("import CatContainer from './-containers/CatContainer';");
+        expect(content).toContain('<CatContainer />');
     });
 });
 

@@ -132,3 +132,16 @@ describe('make:feature on node', () => {
         expect(projectFileExists('src/features/users/types/Users.types.ts')).toBe(false);
     });
 });
+
+describe('make:feature on tanstack-start', () => {
+    beforeEach(() => writePackageJson({ '@tanstack/react-start': '1', react: '1' }));
+
+    it('writes a route file with -a and no page.tsx', async () => {
+        await makeFeature('cat', true, 'Cat');
+        expect(projectFileExists('src/routes/cat/index.tsx')).toBe(true);
+        expect(projectFileExists('src/routes/cat/page.tsx')).toBe(false);
+        expect(readProjectFile('src/routes/cat/index.tsx')).toContain(
+            "import CatContainer from './-containers/CatContainer';"
+        );
+    });
+});
