@@ -76,6 +76,13 @@ describe('on next-frontend', () => {
         const logged = vi.mocked(console.log).mock.calls.map(([message]) => String(message));
         expect(logged.some((line) => line.includes('✅'))).toBe(false);
     });
+
+    it('make:hook rejects an old-style hook name instead of generating garbage', () => {
+        expect(() => makeHook('cat', 'useCat')).toThrow(
+            'make:hook now takes the entity, not the hook name — try make:hook cat/Cat.'
+        );
+        expect(projectFileExists('app/cat/hooks')).toBe(false);
+    });
 });
 
 describe('on react', () => {
