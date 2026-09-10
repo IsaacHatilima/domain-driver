@@ -100,3 +100,15 @@ export function customAction(entity: string, actionName: string, options: Custom
         failure: `Failed to ${camel} ${entity}`,
     });
 }
+
+/**
+ * Whether a hook renders as a query (auto-fetches, returns data) rather than a mutation
+ * (triggered imperatively). `spec.method === 'get'` alone is not enough: a custom action
+ * declared `--returns void` is also a GET (no input forces GET regardless of return kind),
+ * but it has no payload worth polling for and must not auto-fire on mount. `usesEntityType`
+ * is false exactly when the action returns void, so requiring it here routes that case to
+ * the mutation branch instead.
+ */
+export function isQueryAction(spec: ActionSpec): boolean {
+    return spec.method === 'get' && spec.usesEntityType;
+}

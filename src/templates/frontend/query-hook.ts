@@ -1,4 +1,4 @@
-import { ActionSpec } from '../actions';
+import { ActionSpec, isQueryAction } from '../actions';
 import { RenderContext } from '../context';
 import { domainImports } from '../signatures';
 import { keysConstant } from './query-keys';
@@ -16,13 +16,27 @@ const service = new ${spec.name}Service();
 `;
 }
 
-function renderQuery(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {
-    const key = spec.usesId ? `${keysConstant(ctx.feature)}.detail(id)` : `${keysConstant(ctx.feature)}.all`;
+/**
+ * A custom GET action (e.g. `FindActiveCats`) has `usesId: false`, just like List. Testing
+ * only `usesId` would give it the exact same key as List's `all` — one cache entry shared by
+ * two hooks, with whichever observer mounts last winning the `queryFn`. `spec.path === '/'`
+ * is what actually distinguishes List from a custom action, so it is the second branch.
+ * The `[...all, name]` spread (rather than a bare `[feature, name]`) is deliberate: TanStack
+ * Query invalidates by key prefix, so a Create mutation invalidating `keys.all` still
+ * invalidates this custom list for free.
+ */
+function queryKey(ctx: RenderContext, spec: ActionSpec): string {
+    const keys = keysConstant(ctx.feature);
+    if (spec.usesId) return `${keys}.detail(id)`;
+    if (spec.path === '/') return `${keys}.all`;
+    return `[...${keys}.all, '${spec.name}']`;
+}
 
+function renderQuery(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {
     return `${preamble(ctx, spec, entity, fromFile, 'useQuery')}
 export function use${spec.name}(${spec.params}) {
   return useQuery({
-    queryKey: ${key},
+    queryKey: ${queryKey(ctx, spec)},
     queryFn: (): ${spec.returns} => service.handle(${spec.args}),
   });
 }
@@ -66,7 +80,7 @@ export function use${spec.name}() {
 }
 
 export function renderQueryHook(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {
-    return spec.method === 'get'
+    return isQueryAction(spec)
         ? renderQuery(ctx, spec, entity, fromFile)
         : renderMutation(ctx, spec, entity, fromFile);
 }

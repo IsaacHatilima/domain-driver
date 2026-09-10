@@ -5,7 +5,7 @@ import { renderRoute } from '../frontend/route';
 import { renderComponent } from '../frontend/component';
 import { renderContainer } from '../frontend/container';
 import { renderHook } from '../frontend/hook';
-import { standardAction } from '../actions';
+import { customAction, standardAction } from '../actions';
 import { contextFor } from '../../__tests__/helpers/context';
 import { createTempProject, TempProject } from '../../__tests__/helpers/project';
 
@@ -147,6 +147,19 @@ describe('renderHook', () => {
         expect(content).toContain('options: { onSuccess?: () => void } = {}');
         expect(content).toContain('onSuccess?.();');
         expect(content).not.toContain('const result =');
+    });
+
+    it('renders a void custom action as a callable mutation, not an auto-fetching query', () => {
+        const ctx = contextFor('react', 'cat');
+        const spec = customAction('Cat', 'purgeCats', { withInput: false, returns: 'void' });
+        const content = renderHook(ctx, spec, 'Cat', path.join(ctx.featureDir, 'hooks/PurgeCats.hook.ts'));
+
+        expect(content).toContain('export function usePurgeCats(options: { onSuccess?: () => void } = {})');
+        expect(content).toContain('const purgeCats = useCallback(async () => {');
+        expect(content).toContain('await service.handle();');
+        expect(content).toContain('onSuccess?.();');
+        expect(content).not.toContain('useEffect');
+        expect(content).not.toContain('useState<void');
     });
 
     it('adds the client directive on Next', () => {

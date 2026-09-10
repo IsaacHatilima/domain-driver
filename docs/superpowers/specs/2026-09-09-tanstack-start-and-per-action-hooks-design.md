@@ -66,17 +66,22 @@ The file is `<spec.name>.hook.ts` and the exported symbol is `use<spec.name>`. R
 
 ### Query-shaped or mutation-shaped
 
-The rule is `spec.method === 'get'`. It classifies every standard action correctly and both custom-action forms:
+The rule is `spec.method === 'get' && spec.usesEntityType`.
 
-| Action | method | Shape |
-|---|---|---|
-| List | get | query, no argument |
-| Show | get, `usesId` | query, takes `id` |
-| Create | post | mutation |
-| Update | put | mutation |
-| Delete | delete | mutation |
-| custom without input | get | query, no argument |
-| custom with input | post | mutation |
+**Correction (final review, 2026-09-10):** this section originally gave the rule as `spec.method === 'get'` alone. That is wrong: a custom action declared `--returns void` (e.g. `make:action cat/Cat purgeCats --returns void`) is also a GET — `customAction` forces GET whenever there is no input, independent of return kind — but it has no payload worth polling for and must not auto-fire on mount the way a real query does. `spec.usesEntityType` is false exactly when the action returns void, so requiring it too routes that one case to the mutation branch, where it renders as a callable async action instead. Without this, both hook renderers (`hook.ts` and `query-hook.ts`) generated a query-shaped hook — `useState<void | null>` plus a `useEffect` that fired the action on every mount — for what should have been a plain callable mutation.
+
+It classifies every standard action correctly and all custom-action forms:
+
+| Action | method | usesEntityType | Shape |
+|---|---|---|---|
+| List | get | true | query, no argument |
+| Show | get, `usesId` | true | query, takes `id` |
+| Create | post | true | mutation |
+| Update | put | true | mutation |
+| Delete | delete | false | mutation |
+| custom without input | get | true | query, no argument |
+| custom without input, `--returns void` | get | false | mutation, no argument |
+| custom with input | post | true or false | mutation |
 
 ### Plain renderer (react, next-frontend, next-fullstack)
 
@@ -185,6 +190,14 @@ export function useCreateCat() {
 ```
 
 Show uses `catKeys.detail(id)`. Update and Delete invalidate both `catKeys.all` and `catKeys.detail(id)`.
+
+**Custom-action cache key — correction (final review, 2026-09-10):** this section originally did not say what key a custom GET action gets, and the implementation defaulted to `spec.usesId ? catKeys.detail(id) : catKeys.all`. That is wrong: List is also `usesId: false`, so every custom GET action (e.g. `FindActiveCats`) collapsed onto the exact same key as `useListCat` — `catKeys.all`. TanStack Query treats an identical key as the same cache entry, so whichever hook's observer mounted last silently won the `queryFn` for both, with no error. The key is a three-way rule, not two-way:
+
+- `spec.usesId` → `catKeys.detail(id)`
+- else `spec.path === '/'` (this is List) → `catKeys.all`
+- else (a custom action) → `[...catKeys.all, spec.name]`, e.g. `[...catKeys.all, 'FindActiveCats']`
+
+The spread is deliberate, not a stray stylistic choice: TanStack Query invalidates by key *prefix*, so a Create mutation's existing `invalidateQueries({ queryKey: catKeys.all })` still invalidates a custom list for free. Flattening this to a bare `['cat', 'FindActiveCats']` would opt the custom query out of that prefix invalidation.
 
 Because Start does not ship Query, generating these prints an install hint following the existing `hintNestjsZod` precedent:
 

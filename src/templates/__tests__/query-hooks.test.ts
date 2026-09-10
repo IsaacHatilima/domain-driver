@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as path from 'path';
 import { renderQueryHook } from '../frontend/query-hook';
 import { renderQueryKeys } from '../frontend/query-keys';
-import { standardAction } from '../actions';
+import { customAction, standardAction } from '../actions';
 import { contextFor } from '../../__tests__/helpers/context';
 
 describe('renderQueryKeys', () => {
@@ -50,5 +50,39 @@ describe('renderQueryHook', () => {
         const content = renderQueryHook(ctx, standardAction('Delete', 'Cat'), 'Cat', file('DeleteCat'));
         expect(content).toContain('mutationFn: (id: string): Promise<void> => service.handle(id),');
         expect(content).toContain('onSuccess: (_result, id) => {');
+    });
+
+    it('gives List, Show, and a custom GET action three distinct query keys', () => {
+        const listContent = renderQueryHook(ctx, standardAction('List', 'Cat'), 'Cat', file('ListCat'));
+        const showContent = renderQueryHook(ctx, standardAction('Show', 'Cat'), 'Cat', file('ShowCat'));
+        const customContent = renderQueryHook(
+            ctx,
+            customAction('Cat', 'findActiveCats', { withInput: false, returns: 'list' }),
+            'Cat',
+            file('FindActiveCats')
+        );
+
+        expect(listContent).toContain('queryKey: catKeys.all,');
+        expect(showContent).toContain('queryKey: catKeys.detail(id),');
+        expect(customContent).toContain("queryKey: [...catKeys.all, 'FindActiveCats'],");
+
+        // Regression guard: a custom GET action must never fall back to the exact same key
+        // expression as List (or Show) — same expression means the same TanStack Query cache
+        // entry, so the last-mounting hook's data would silently win under the other's name.
+        expect(customContent).not.toContain('queryKey: catKeys.all,');
+        expect(customContent).not.toContain('queryKey: catKeys.detail(id),');
+    });
+
+    it('renders a void custom action as a mutation, not an auto-firing query', () => {
+        const spec = customAction('Cat', 'purgeCats', { withInput: false, returns: 'void' });
+        const content = renderQueryHook(ctx, spec, 'Cat', file('PurgeCats'));
+
+        expect(content).toContain("import { useMutation, useQueryClient } from '@tanstack/react-query';");
+        expect(content).toContain('export function usePurgeCats() {');
+        expect(content).toContain('mutationFn: (): Promise<void> => service.handle(),');
+        expect(content).toContain('onSuccess: () => {');
+        expect(content).toContain('void queryClient.invalidateQueries({ queryKey: catKeys.all });');
+        expect(content).not.toContain('import { useQuery }');
+        expect(content).not.toContain('queryFn');
     });
 });

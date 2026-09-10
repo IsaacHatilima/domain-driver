@@ -1,5 +1,5 @@
 import { lowerFirst } from '../../utils/naming';
-import { ActionSpec } from '../actions';
+import { ActionSpec, isQueryAction } from '../actions';
 import { RenderContext } from '../context';
 import { domainImports } from '../signatures';
 
@@ -93,7 +93,7 @@ ${failure}
 }
 
 export function renderHook(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {
-    return spec.method === 'get'
+    return isQueryAction(spec)
         ? renderQuery(ctx, spec, entity, fromFile)
         : renderMutation(ctx, spec, entity, fromFile);
 }
