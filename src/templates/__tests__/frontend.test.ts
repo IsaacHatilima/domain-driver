@@ -167,4 +167,11 @@ describe('renderHook', () => {
         const content = renderHook(ctx, standardAction('List', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/ListCat.hook.ts'));
         expect(content.startsWith("'use client';")).toBe(true);
     });
+
+    it('imports the client service, not the server one, on next-fullstack', () => {
+        const ctx = contextFor('next-fullstack', 'cat');
+        const content = renderHook(ctx, standardAction('Create', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/CreateCat.hook.ts'));
+        expect(content).toContain("from '../client/services/CreateCat.service';");
+        expect(content).not.toContain('server/services');
+    });
 });
