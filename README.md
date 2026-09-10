@@ -47,17 +47,17 @@ domain-driver --stack nest make:feature cat -a
 
 ## What each stack generates
 
-| Layer | next-fullstack | next-frontend | react | node | nest |
-|---|---|---|---|---|---|
-| `page.tsx` | yes | yes | | | |
-| components | client + server | client + server | flat | | |
-| containers, hooks | yes | yes | yes | | |
-| client services + repositories (fetch) | `client/` | top level | top level | | |
-| server services + repositories (database stubs) | `server/` | | | yes | yes |
-| controllers | `app/api/<feature>/` route handlers | | | five files + routes file | five files |
-| module | | | | | yes |
-| DTOs (`nestjs-zod`) | | | | | yes |
-| schemas (Zod), types | yes | yes | yes | yes | yes |
+| Layer | next-fullstack | next-frontend | react | node | nest | tanstack-start |
+|---|---|---|---|---|---|---|
+| entry file (`page.tsx`; `index.tsx` on tanstack-start) | yes | yes | | | | yes |
+| components | client + server | client + server | flat | | | flat |
+| containers, hooks | yes | yes | yes | | | yes (Query hooks) |
+| client services + repositories | `client/` (fetch) | top level (fetch) | top level (fetch) | | | `-client/` (calls server functions, no fetch) |
+| server services + repositories (database stubs) | `server/` | | | yes | yes | `-server/` |
+| controllers | `app/api/<feature>/` route handlers | | | five files + routes file | five files | server functions (`-server/functions/*.fn.ts`) |
+| module | | | | | yes | |
+| DTOs (`nestjs-zod`) | | | | | yes | |
+| schemas (Zod), types | yes | yes | yes | yes | yes | yes |
 
 Every layer that has actions gets one file per action: `List`, `Show`, `Create`, `Update`, `Delete`. Saving a cat means `CreateCat.controller.ts`, `CreateCat.service.ts`, `CreateCat.repository.ts`, `CreateCat.schema.ts`, and, on stacks with a hook layer, `CreateCat.hook.ts` exporting `useCreateCat`.
 

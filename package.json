@@ -31,7 +31,9 @@
     "node",
     "express",
     "fastify",
-    "hono"
+    "hono",
+    "tanstack",
+    "tanstack-start"
   ],
   "author": "Isaac Hatilima",
   "license": "MIT",
