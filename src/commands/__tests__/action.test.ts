@@ -161,4 +161,16 @@ describe('make:action writes a hook', () => {
         makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
         expect(projectFileExists('src/features/users/hooks/FindActiveUsers.hook.ts')).toBe(false);
     });
+
+    it('does not warn when a second custom action re-ensures the shared keys file on tanstack-start', () => {
+        writePackageJson({ '@tanstack/react-start': '1', react: '1' });
+        mkdir('src/routes/users');
+        makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
+        vi.mocked(console.warn).mockClear();
+
+        makeAction('users', 'User', 'countUsers', { withInput: false, returns: 'one' });
+
+        expect(console.warn).not.toHaveBeenCalled();
+        expect(readProjectFile('src/routes/users/-hooks/users.keys.ts')).toContain('export const usersKeys');
+    });
 });

@@ -6,9 +6,6 @@ import { renderServerRepository } from '../templates/backend/server-repository';
 import { RenderContext } from '../templates/context';
 import { renderActionRoute } from '../templates/controllers/next-action-route';
 import { renderNodeRouteLine } from '../templates/controllers/node';
-import { renderHook } from '../templates/frontend/hook';
-import { renderQueryHook } from '../templates/frontend/query-hook';
-import { renderQueryKeys } from '../templates/frontend/query-keys';
 import { renderDto } from '../templates/nest/dto';
 import { renderService } from '../templates/service';
 import { renderSchema } from '../templates/shared/schema';
@@ -17,6 +14,7 @@ import { lowerFirst } from '../utils/naming';
 import { apiRouteDir } from '../utils/paths';
 import { controllerRenderer, controllerSuffix } from './controller-renderer';
 import { hintNestjsZod, hintReactQuery } from './hints';
+import { ensureQueryKeys, hookRenderer } from './hook-renderer';
 import { clientRenderer } from './repository';
 import { ensureLayerDir, requireFeature } from './resolve';
 import { writeIfAbsent } from './write';
@@ -80,10 +78,8 @@ function writeSide(ctx: RenderContext, spec: ActionSpec, entity: string, side: S
 
 function writeHook(ctx: RenderContext, spec: ActionSpec, entity: string): boolean {
     const dir = ensureLayerDir(ctx, 'hook');
-    const render = ctx.profile.queryHooks ? renderQueryHook : renderHook;
-    if (ctx.profile.queryHooks) {
-        writeIfAbsent(path.join(dir, `${ctx.feature}.keys.ts`), () => renderQueryKeys(ctx.feature));
-    }
+    ensureQueryKeys(ctx, dir);
+    const render = hookRenderer(ctx);
     const filePath = path.join(dir, `${spec.name}.hook.ts`);
     const wrote = writeIfAbsent(filePath, () => render(ctx, spec, entity, filePath));
     if (wrote) hintReactQuery(ctx.profile);
