@@ -8,6 +8,7 @@ const DEFAULT_ROOTS: Readonly<Record<StackName, string>> = Object.freeze({
     react: 'src/features',
     node: 'src/features',
     nest: 'src',
+    'tanstack-start': 'src/routes',
 });
 
 export function contextFor(

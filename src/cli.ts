@@ -109,7 +109,7 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('make:hook <target>')
-        .description('Scaffold a custom hook inside an existing feature (<feature>/<useName>)')
+        .description('Scaffold single-responsibility hook files inside an existing feature (<feature>/<Entity>)')
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             makeHook(feature, name);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { actionCase, customAction, standardAction, standardActions, RETURN_KINDS } from '../actions';
+import { actionCase, customAction, isQueryAction, standardAction, standardActions, RETURN_KINDS } from '../actions';
 
 describe('actionCase', () => {
     it('normalises camelCase and PascalCase', () => {
@@ -163,5 +163,24 @@ describe('customAction', () => {
 
     it('lists the return kinds', () => {
         expect(RETURN_KINDS).toEqual(['list', 'one', 'void']);
+    });
+});
+
+describe('isQueryAction', () => {
+    it('is true for GET actions that return data', () => {
+        expect(isQueryAction(standardAction('List', 'Cat'))).toBe(true);
+        expect(isQueryAction(standardAction('Show', 'Cat'))).toBe(true);
+        expect(isQueryAction(customAction('Cat', 'findActiveCats', { withInput: false, returns: 'list' }))).toBe(true);
+    });
+
+    it('is false for a GET action that returns void', () => {
+        expect(isQueryAction(customAction('Cat', 'purgeCats', { withInput: false, returns: 'void' }))).toBe(false);
+    });
+
+    it('is false for any non-GET action, regardless of return type', () => {
+        expect(isQueryAction(standardAction('Create', 'Cat'))).toBe(false);
+        expect(isQueryAction(standardAction('Update', 'Cat'))).toBe(false);
+        expect(isQueryAction(standardAction('Delete', 'Cat'))).toBe(false);
+        expect(isQueryAction(customAction('Cat', 'archiveCat', { withInput: true, returns: 'one' }))).toBe(false);
     });
 });

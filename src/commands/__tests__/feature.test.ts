@@ -59,7 +59,7 @@ describe('make:feature on next-frontend', () => {
         expect(files.some((file) => file.endsWith('.gitkeep'))).toBe(false);
         expect(files).toContain('components/client/CoffeeType.tsx');
         expect(files).toContain('containers/CoffeeTypeContainer.tsx');
-        expect(files).toContain('hooks/useCoffeeType.ts');
+        expect(files).toContain('hooks/ListCoffeeType.hook.ts');
         expect(files).toContain('services/ListCoffeeType.service.ts');
         expect(files).toContain('repositories/DeleteCoffeeType.repository.ts');
         expect(files).toContain('schemas/UpdateCoffeeType.schema.ts');
@@ -130,5 +130,18 @@ describe('make:feature on node', () => {
         expect(projectFileExists('src/features/users/types/User.types.ts')).toBe(true);
         expect(projectFileExists('src/features/users/services/ListUser.service.ts')).toBe(true);
         expect(projectFileExists('src/features/users/types/Users.types.ts')).toBe(false);
+    });
+});
+
+describe('make:feature on tanstack-start', () => {
+    beforeEach(() => writePackageJson({ '@tanstack/react-start': '1', react: '1' }));
+
+    it('writes a route file with -a and no page.tsx', async () => {
+        await makeFeature('cat', true, 'Cat');
+        expect(projectFileExists('src/routes/cat/index.tsx')).toBe(true);
+        expect(projectFileExists('src/routes/cat/page.tsx')).toBe(false);
+        expect(readProjectFile('src/routes/cat/index.tsx')).toContain(
+            "import CatContainer from './-containers/CatContainer';"
+        );
     });
 });

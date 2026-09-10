@@ -4,17 +4,18 @@ import { Side } from '../stack/types';
 import { ActionSpec, customAction, CustomActionOptions, RETURN_KINDS, ReturnKind } from '../templates/actions';
 import { renderServerRepository } from '../templates/backend/server-repository';
 import { RenderContext } from '../templates/context';
-import { renderNestController } from '../templates/controllers/nest';
 import { renderActionRoute } from '../templates/controllers/next-action-route';
-import { renderNodeController, renderNodeRouteLine } from '../templates/controllers/node';
-import { renderClientRepository } from '../templates/frontend/client-repository';
+import { renderNodeRouteLine } from '../templates/controllers/node';
 import { renderDto } from '../templates/nest/dto';
 import { renderService } from '../templates/service';
 import { renderSchema } from '../templates/shared/schema';
 import { fileExists, mkdirSafe } from '../utils/fs';
 import { lowerFirst } from '../utils/naming';
 import { apiRouteDir } from '../utils/paths';
-import { hintNestjsZod } from './hints';
+import { controllerRenderer, controllerSuffix } from './controller-renderer';
+import { hintNestjsZod, hintReactQuery } from './hints';
+import { ensureQueryKeys, hookRenderer } from './hook-renderer';
+import { clientRenderer } from './repository';
 import { ensureLayerDir, requireFeature } from './resolve';
 import { writeIfAbsent } from './write';
 
@@ -38,6 +39,7 @@ export function makeAction(
     if (hasLayer(ctx.profile, 'serverRepository')) wroteAny = writeSide(ctx, spec, entity, 'server') || wroteAny;
     if (hasLayer(ctx.profile, 'controller')) wroteAny = writeController(ctx, spec, entity) || wroteAny;
     if (hasLayer(ctx.profile, 'clientRepository')) wroteAny = writeSide(ctx, spec, entity, 'client') || wroteAny;
+    if (hasLayer(ctx.profile, 'hook')) wroteAny = writeHook(ctx, spec, entity) || wroteAny;
 
     if (wroteAny) console.log(`✅ Action "${spec.name}" scaffolded in "${feature}"`);
     return wroteAny;
@@ -63,7 +65,7 @@ function writeInput(ctx: RenderContext, spec: ActionSpec): boolean {
 function writeSide(ctx: RenderContext, spec: ActionSpec, entity: string, side: Side): boolean {
     const repositoryLayer = side === 'client' ? 'clientRepository' : 'serverRepository';
     const serviceLayer = side === 'client' ? 'clientService' : 'serverService';
-    const renderRepository = side === 'client' ? renderClientRepository : renderServerRepository;
+    const renderRepository = side === 'client' ? clientRenderer(ctx) : renderServerRepository;
 
     const repositoryFile = path.join(ensureLayerDir(ctx, repositoryLayer), `${spec.name}.repository.ts`);
     const wroteRepository = writeIfAbsent(repositoryFile, () => renderRepository(ctx, spec, entity, repositoryFile));
@@ -74,6 +76,16 @@ function writeSide(ctx: RenderContext, spec: ActionSpec, entity: string, side: S
     return wroteRepository || wroteService;
 }
 
+function writeHook(ctx: RenderContext, spec: ActionSpec, entity: string): boolean {
+    const dir = ensureLayerDir(ctx, 'hook');
+    ensureQueryKeys(ctx, dir);
+    const render = hookRenderer(ctx);
+    const filePath = path.join(dir, `${spec.name}.hook.ts`);
+    const wrote = writeIfAbsent(filePath, () => render(ctx, spec, entity, filePath));
+    if (wrote) hintReactQuery(ctx.profile);
+    return wrote;
+}
+
 function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): boolean {
     if (ctx.profile.name === 'next-fullstack') {
         const routeDir = path.join(apiRouteDir(ctx.stack, ctx.feature), spec.path.slice(1));
@@ -82,8 +94,9 @@ function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): 
         return writeIfAbsent(routeFile, () => renderActionRoute(ctx, spec, routeFile));
     }
 
-    const controllerFile = path.join(ensureLayerDir(ctx, 'controller'), `${spec.name}.controller.ts`);
-    const render = ctx.profile.name === 'nest' ? renderNestController : renderNodeController;
+    const suffix = controllerSuffix(ctx.profile.name);
+    const controllerFile = path.join(ensureLayerDir(ctx, 'controller'), `${spec.name}.${suffix}.ts`);
+    const render = controllerRenderer(ctx.profile.name);
     const wroteController = writeIfAbsent(controllerFile, () => render(ctx, spec, entity, controllerFile));
 
     const line = ctx.profile.name === 'node' ? renderNodeRouteLine(ctx, spec, entity) : null;

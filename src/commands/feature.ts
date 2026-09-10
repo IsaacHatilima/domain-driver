@@ -2,6 +2,7 @@ import * as path from 'path';
 import { hasLayer } from '../stack/registry';
 import { RenderContext } from '../templates/context';
 import { renderPage } from '../templates/frontend/page';
+import { renderRoute } from '../templates/frontend/route';
 import { renderModule } from '../templates/nest/module';
 import { fileExists, mkdirSafe, writeFileSafe } from '../utils/fs';
 import { toPascalCase } from '../utils/naming';
@@ -49,15 +50,19 @@ function scaffoldLayers(ctx: RenderContext, entity: string): void {
     if (hasLayer(profile, 'controller')) makeController(feature, entity);
     if (hasLayer(profile, 'clientRepository')) makeRepository(feature, entity, 'client');
     if (hasLayer(profile, 'clientService')) makeService(feature, entity, 'client');
-    if (hasLayer(profile, 'hook')) makeHook(feature, `use${entity}`, entity);
+    if (hasLayer(profile, 'hook')) makeHook(feature, entity);
     if (hasLayer(profile, 'component')) makeComponent(feature, entity, 'client');
     if (hasLayer(profile, 'container')) makeContainer(feature, `${entity}Container`, entity);
 }
 
 function writeEntryFile(ctx: RenderContext, entity: string, all: boolean): void {
     if (hasLayer(ctx.profile, 'page')) {
-        const filePath = path.join(ctx.featureDir, 'page.tsx');
-        writeFileSafe(filePath, renderPage(ctx, entity, filePath, all));
+        const isRoute = ctx.profile.name === 'tanstack-start';
+        const filePath = path.join(ctx.featureDir, isRoute ? 'index.tsx' : 'page.tsx');
+        const content = isRoute
+            ? renderRoute(ctx, entity, filePath, all)
+            : renderPage(ctx, entity, filePath, all);
+        writeFileSafe(filePath, content);
     }
     if (hasLayer(ctx.profile, 'module')) {
         const filePath = path.join(ctx.featureDir, `${ctx.feature}.module.ts`);

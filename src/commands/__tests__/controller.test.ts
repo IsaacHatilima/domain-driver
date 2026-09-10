@@ -16,6 +16,10 @@ const CONTROLLER_FILES = ['List', 'Show', 'Create', 'Update', 'Delete']
     .map((action) => `${action}Cat.controller.ts`)
     .sort();
 
+const FN_FILES = ['List', 'Show', 'Create', 'Update', 'Delete']
+    .map((action) => `${action}Cat.fn.ts`)
+    .sort();
+
 beforeEach(() => {
     project = createTempProject('controller');
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -62,6 +66,22 @@ describe('on nest', () => {
         expect(listFiles('src/cat/controllers')).toEqual(CONTROLLER_FILES);
         expect(readProjectFile('src/cat/controllers/ShowCat.controller.ts')).toContain("@Controller('cat')");
         expect(projectFileExists('src/cat/cat.routes.ts')).toBe(false);
+    });
+});
+
+describe('on tanstack-start', () => {
+    it('writes five server functions and no controller files', () => {
+        writePackageJson({ '@tanstack/react-start': '1' });
+        mkdir('src/routes/cat');
+        makeController('cat', 'Cat');
+        expect(listFiles('src/routes/cat/-server/functions')).toEqual(FN_FILES);
+        expect(readProjectFile('src/routes/cat/-server/functions/ListCat.fn.ts')).toContain(
+            "export const listCat = createServerFn({ method: 'GET' })"
+        );
+        expect(projectFileExists('src/routes/cat/-server/functions/CreateCat.controller.ts')).toBe(false);
+        expect(console.log).toHaveBeenCalledWith(
+            expect.stringContaining('✅ Server functions for "Cat" created at')
+        );
     });
 });
 

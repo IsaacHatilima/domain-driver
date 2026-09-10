@@ -1,7 +1,7 @@
 {
   "name": "domain-driver",
-  "version": "0.3.1",
-  "description": "CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, and NestJS projects, with per-action files, bespoke actions, and agent guidance",
+  "version": "0.4.0",
+  "description": "CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, NestJS, and TanStack Start projects, with per-action files, bespoke actions, and agent guidance",
   "main": "dist/index.js",
   "bin": {
     "domain-driver": "./dist/index.js"
@@ -18,6 +18,7 @@
     "build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "typecheck:tanstack-fixture": "node scripts/typecheck-tanstack-fixture.js",
     "postinstall": "node ./scripts/postinstall.js"
   },
   "keywords": [
@@ -30,7 +31,9 @@
     "node",
     "express",
     "fastify",
-    "hono"
+    "hono",
+    "tanstack",
+    "tanstack-start"
   ],
   "author": "Isaac Hatilima",
   "license": "MIT",

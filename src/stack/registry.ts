@@ -4,6 +4,7 @@ import { nextFrontend } from './profiles/next-frontend';
 import { react } from './profiles/react';
 import { node } from './profiles/node';
 import { nest } from './profiles/nest';
+import { tanstackStart } from './profiles/tanstack-start';
 
 const PROFILES: Readonly<Record<StackName, StackProfile>> = Object.freeze({
     'next-fullstack': nextFullstack,
@@ -11,6 +12,7 @@ const PROFILES: Readonly<Record<StackName, StackProfile>> = Object.freeze({
     react,
     node,
     nest,
+    'tanstack-start': tanstackStart,
 });
 
 const LAYER_COMMANDS: Readonly<Partial<Record<Layer, string>>> = Object.freeze({
@@ -44,7 +46,8 @@ export function layerDir(profile: StackProfile, layer: Layer): string {
 }
 
 export function componentDir(profile: StackProfile, type: 'client' | 'server'): string {
-    return profile.serverComponents ? `components/${type}` : 'components';
+    const base = layerDir(profile, 'component');
+    return profile.serverComponents ? `${base}/${type}` : base;
 }
 
 export function availableCommands(profile: StackProfile): readonly string[] {

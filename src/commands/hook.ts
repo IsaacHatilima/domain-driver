@@ -1,19 +1,34 @@
-import * as path from 'path';
 import { assertLayer } from '../stack/registry';
-import { renderHook } from '../templates/frontend/hook';
-import { fileExists, writeFileSafe } from '../utils/fs';
+import { standardActions } from '../templates/actions';
+import { hintReactQuery } from './hints';
+import { ensureQueryKeys, hookRenderer } from './hook-renderer';
 import { ensureLayerDir, requireFeature } from './resolve';
+import { writeSpecFiles } from './write';
 
-export function makeHook(feature: string, name: string, pascalName?: string): void {
+const OLD_HOOK_NAME_PATTERN = /^use[A-Z]/;
+
+function rejectOldHookName(feature: string, entity: string): void {
+    if (!OLD_HOOK_NAME_PATTERN.test(entity)) return;
+    const suggestedEntity = entity.slice('use'.length);
+    throw new Error(
+        `make:hook now takes the entity, not the hook name — try make:hook ${feature}/${suggestedEntity}.`
+    );
+}
+
+export function makeHook(feature: string, entity: string): boolean {
     const ctx = requireFeature(feature);
     assertLayer(ctx.profile, 'hook', 'make:hook');
+    rejectOldHookName(feature, entity);
 
-    const filePath = path.join(ensureLayerDir(ctx, 'hook'), `${name}.ts`);
-    if (fileExists(filePath)) {
-        throw new Error(`Hook "${name}" already exists at ${filePath}`);
+    const dir = ensureLayerDir(ctx, 'hook');
+    ensureQueryKeys(ctx, dir);
+    const render = hookRenderer(ctx);
+    const written = writeSpecFiles(dir, standardActions(entity), 'hook', (spec, filePath) =>
+        render(ctx, spec, entity, filePath)
+    );
+    if (written > 0) {
+        console.log(`✅ Hooks for "${entity}" created at ${dir}`);
+        hintReactQuery(ctx.profile);
     }
-
-    const entity = pascalName ?? name.replace(/^use/, '');
-    writeFileSafe(filePath, renderHook(ctx, name, entity, filePath));
-    console.log(`✅ Hook "${name}" created at ${filePath}`);
+    return written > 0;
 }
