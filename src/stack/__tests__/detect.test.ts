@@ -137,23 +137,23 @@ describe('secondary detection', () => {
 describe('override', () => {
     it('sets the stack and marks the source', () => {
         writePackageJson({ next: '1' });
-        const result = detectStack('node');
+        const result = detectStack({ stack: 'node' });
         expect(result.stack).toBe('node');
         expect(result.source).toBe('override');
     });
 
     it('works without a package.json', () => {
-        expect(detectStack('react').stack).toBe('react');
+        expect(detectStack({ stack: 'react' }).stack).toBe('react');
     });
 
     it('still detects the http framework from disk', () => {
         writePackageJson({ hono: '1' });
-        expect(detectStack('node').httpFramework).toBe('hono');
+        expect(detectStack({ stack: 'node' }).httpFramework).toBe('hono');
     });
 
     it('rejects an unknown stack name', () => {
         writePackageJson({});
-        expect(() => detectStack('remix')).toThrow(
+        expect(() => detectStack({ stack: 'remix' })).toThrow(
             'Unknown stack "remix". Valid stacks: next-fullstack, next-frontend, react, node, nest, tanstack-start.'
         );
     });
@@ -201,7 +201,7 @@ describe('describeStack', () => {
     });
 
     it('describes node without a framework under override', () => {
-        expect(describeStack(detectStack('node'))).toBe('Stack: node (override), http: none, root: features');
+        expect(describeStack(detectStack({ stack: 'node' }))).toBe('Stack: node (override), http: none, root: features');
     });
 });
 
@@ -221,7 +221,7 @@ describe('feature root resolution', () => {
     it('lets --root win over detection on any stack', () => {
         writePackageJson({ '@nestjs/core': '1' });
         mkdir('src/features');
-        const detected = detectStack(undefined, 'src/modules');
+        const detected = detectStack({ root: 'src/modules' });
         expect(detected.featureRoot).toBe('src/modules');
         expect(detected.featureRootSource).toBe('flag');
     });
@@ -235,7 +235,7 @@ describe('feature root resolution', () => {
 
     it('lets --root win over the package.json key', () => {
         writePackageJson({ '@nestjs/core': '1' }, {}, { domainDriver: { featureRoot: 'src/modules' } });
-        expect(detectStack(undefined, 'src/elsewhere').featureRoot).toBe('src/elsewhere');
+        expect(detectStack({ root: 'src/elsewhere' }).featureRoot).toBe('src/elsewhere');
     });
 
     it('reports a detected root as detected', () => {
@@ -246,7 +246,7 @@ describe('feature root resolution', () => {
 
     it.each(['/etc/passwd', '../escape', 'src/../../escape'])('rejects the unsafe root %s', (root) => {
         writePackageJson({ '@nestjs/core': '1' });
-        expect(() => detectStack(undefined, root)).toThrow(/must be a relative path inside the project/);
+        expect(() => detectStack({ root })).toThrow(/must be a relative path inside the project/);
     });
 
     it('rejects a non-string featureRoot in package.json', () => {
@@ -264,7 +264,7 @@ describe('describeStack root reporting', () => {
 
     it('marks a flag override', () => {
         writePackageJson({ '@nestjs/core': '1' });
-        expect(describeStack(detectStack(undefined, 'src/modules'))).toBe(
+        expect(describeStack(detectStack({ root: 'src/modules' }))).toBe(
             'Stack: nest (detected), root: src/modules (--root)'
         );
     });

@@ -16,7 +16,11 @@ const API_DIRS = ['app/api', 'src/app/api', 'pages/api', 'src/pages/api'] as con
 interface PackageJson {
     readonly dependencies?: Record<string, string>;
     readonly devDependencies?: Record<string, string>;
-    readonly domainDriver?: { readonly featureRoot?: unknown };
+    readonly domainDriver?: {
+        readonly featureRoot?: unknown;
+        readonly rootModule?: unknown;
+        readonly autoRegister?: unknown;
+    };
 }
 
 const ROOT_LABELS: Readonly<Record<RootSource, string>> = Object.freeze({
@@ -31,15 +35,22 @@ export function resetStackCache(): void {
     cached = undefined;
 }
 
-export function detectStack(override?: string, rootOverride?: string): DetectedStack {
+export interface DetectOptions {
+    readonly stack?: string;
+    readonly root?: string;
+    readonly autoRegister?: boolean;
+}
+
+export function detectStack(options: DetectOptions = {}): DetectedStack {
     if (cached) return cached;
 
     const cwd = process.cwd();
+    const override = options.stack;
     const overridden = override !== undefined;
     const pkg = readPackageJson(cwd, overridden);
     const deps = dependencyNames(pkg);
     const stack = overridden ? parseOverride(override) : inferStack(cwd, deps);
-    const root = resolveRoot(cwd, stack, pkg, rootOverride);
+    const root = resolveRoot(cwd, stack, pkg, options.root);
 
     const result: DetectedStack = Object.freeze({
         stack,
@@ -48,6 +59,8 @@ export function detectStack(override?: string, rootOverride?: string): DetectedS
         featureRoot: root.featureRoot,
         featureRootSource: root.source,
         hasNestjsZod: deps.has('nestjs-zod'),
+        rootModule: configuredRootModule(pkg),
+        autoRegister: options.autoRegister ?? configuredAutoRegister(pkg),
     });
 
     cached = result;
@@ -129,6 +142,26 @@ function resolveRoot(
         return { featureRoot: configured, source: 'config' };
     }
     return { featureRoot: conventionalRoot(cwd, stack), source: 'detected' };
+}
+
+function configuredRootModule(pkg: PackageJson): string | null {
+    const value = pkg.domainDriver?.rootModule;
+    if (value === undefined) return null;
+    if (typeof value !== 'string') {
+        throw new Error(
+            'package.json "domainDriver.rootModule" must be a string, for example "src/app.module.ts".'
+        );
+    }
+    return validateRoot(value, 'package.json');
+}
+
+function configuredAutoRegister(pkg: PackageJson): boolean {
+    const value = pkg.domainDriver?.autoRegister;
+    if (value === undefined) return true;
+    if (typeof value !== 'boolean') {
+        throw new Error('package.json "domainDriver.autoRegister" must be true or false.');
+    }
+    return value;
 }
 
 function configuredRoot(pkg: PackageJson): string | null {

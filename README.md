@@ -266,6 +266,49 @@ Every layer directory carries a `-` prefix so TanStack Router excludes it from r
 
 ---
 
+## Nest module registration
+
+On NestJS, generated classes are wired into the module files that have to know about them. `make:feature` adds the feature module to your root module, and `make:controller`, `make:service`, `make:repository` and `make:action` add their classes to `<feature>.module.ts`.
+
+```
+✅ Registered AssetsModule in src/app.module.ts
+```
+
+The edit is made through the TypeScript compiler API, borrowed from your own project rather than bundled, and applied as a text insertion at AST-computed positions. Your comments, import order and formatting survive untouched — only the two inserted lines are new. Registering the same class twice does nothing.
+
+A bespoke action's controller is inserted **before** `Show<Entity>Controller` rather than appended, because Nest matches routes in declaration order and a custom `GET /actives` would otherwise be swallowed by `GET /:id`.
+
+### When it does not edit
+
+If the root module cannot be found, TypeScript cannot be resolved, the file has no `@Module` decorator, or the edited result would not parse, nothing is written and the lines are printed for you to paste:
+
+```
+ℹ️  Did not edit src/app.module.ts (no @Module decorator with an object argument was found). Add by hand:
+     import { AssetsModule } from './features/assets/assets.module';
+     imports: [ ..., AssetsModule ]
+```
+
+The command still succeeds, because the files it generated were still generated.
+
+### Turning it off, and pointing it somewhere else
+
+```bash
+domain-driver --no-auto-register make:feature assets/Asset -a
+```
+
+```json
+{
+  "domainDriver": {
+    "autoRegister": false,
+    "rootModule": "src/core/root.module.ts"
+  }
+}
+```
+
+`autoRegister: false` restores the old behaviour, where nothing but newly generated files is ever written. `rootModule` names the root module for projects where `src/app.module.ts` and `app.module.ts` are both wrong.
+
+---
+
 ## Philosophy
 
 Everything for a feature lives in one folder, and every file does one thing.
