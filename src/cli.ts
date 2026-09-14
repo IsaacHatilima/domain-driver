@@ -6,7 +6,8 @@ import { makeComponent, parseComponentType } from './commands/component';
 import { makeContainer } from './commands/container';
 import { makeController } from './commands/controller';
 import { makeFeature } from './commands/feature';
-import { hintRegisterInModule, standardClassNames } from './commands/hints';
+import { registerClasses, registerCustomAction, standardActionNames } from './commands/register';
+import { requireFeature } from './commands/resolve';
 import { makeHook } from './commands/hook';
 import { makeRepository } from './commands/repository';
 import { makeSchema } from './commands/schema';
@@ -57,7 +58,8 @@ export function createProgram(deps: CliDeps): Command {
         .description('CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, and NestJS projects')
         .version(deps.current)
         .option('--stack <name>', `Override stack detection (${STACK_NAMES.join(', ')})`)
-        .option('--root <dir>', 'Override where feature folders are created, for example src/features');
+        .option('--root <dir>', 'Override where feature folders are created, for example src/features')
+        .option('--no-auto-register', 'Do not edit Nest module files; print what to add instead');
 
     let pendingNotice: Promise<string | null> = Promise.resolve(null);
 
@@ -74,7 +76,11 @@ export function createProgram(deps: CliDeps): Command {
         }
         if (SKIP_DETECTION.has(name)) return;
         const { stack, root } = program.opts<{ stack?: string; root?: string }>();
-        deps.log(describeStack(detectStack(stack, root)));
+        // commander defaults a --no-x flag to true, which would shadow the package.json key,
+        // so only an explicitly passed flag counts as an override.
+        const passed = program.getOptionValueSource('autoRegister') === 'cli';
+        const autoRegister = passed ? program.opts<{ autoRegister: boolean }>().autoRegister : undefined;
+        deps.log(describeStack(detectStack({ stack, root, autoRegister })));
     });
 
     program.hook('postAction', async () => {
@@ -123,7 +129,7 @@ export function createProgram(deps: CliDeps): Command {
         .action((target: string, options: { side: string }) => {
             const { feature, name } = parseTarget(target);
             const wrote = makeService(feature, name, parseSide(options.side));
-            if (wrote) hintRegisterInModule(feature, standardClassNames(name, 'Service'));
+            if (wrote) registerClasses(requireFeature(feature), 'service', standardActionNames(name));
         });
 
     program
@@ -133,7 +139,7 @@ export function createProgram(deps: CliDeps): Command {
         .action((target: string, options: { side: string }) => {
             const { feature, name } = parseTarget(target);
             const wrote = makeRepository(feature, name, parseSide(options.side));
-            if (wrote) hintRegisterInModule(feature, standardClassNames(name, 'Repository'));
+            if (wrote) registerClasses(requireFeature(feature), 'repository', standardActionNames(name));
         });
 
     program
@@ -142,7 +148,7 @@ export function createProgram(deps: CliDeps): Command {
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             const wrote = makeController(feature, name);
-            if (wrote) hintRegisterInModule(feature, standardClassNames(name, 'Controller'));
+            if (wrote) registerClasses(requireFeature(feature), 'controller', standardActionNames(name));
         });
 
     program
@@ -156,11 +162,7 @@ export function createProgram(deps: CliDeps): Command {
             const wrote = makeAction(feature, name, action, { withInput: options.withInput, returns });
             if (wrote) {
                 const { pascal } = actionCase(action);
-                hintRegisterInModule(
-                    feature,
-                    [`${pascal}Controller`, `${pascal}Service`, `${pascal}Repository`],
-                    `list ${pascal}Controller before Show${name}Controller in controllers`
-                );
+                registerCustomAction(requireFeature(feature), pascal, name);
             }
         });
 
