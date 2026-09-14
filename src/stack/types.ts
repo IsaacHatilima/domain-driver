@@ -16,6 +16,10 @@ export interface DetectedStack {
     readonly featureRoot: string;
     readonly featureRootSource: RootSource;
     readonly hasNestjsZod: boolean;
+    /** Explicit path to the Nest root module, when the conventional probe would miss it. */
+    readonly rootModule: string | null;
+    /** Whether generated Nest classes are wired into their module files automatically. */
+    readonly autoRegister: boolean;
 }
 
 export const LAYERS = [

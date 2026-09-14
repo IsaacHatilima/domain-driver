@@ -23,6 +23,8 @@ export function contextFor(
         featureRoot: DEFAULT_ROOTS[stack],
         featureRootSource: 'detected',
         hasNestjsZod: false,
+        rootModule: null,
+        autoRegister: true,
         ...extra,
     });
     return createContext(feature, detected, getProfile(stack));

@@ -36,6 +36,7 @@ const SKILL_LINES: readonly string[] = [
     '',
     'The tool reads `package.json` and prints `Stack: <stack> (detected), root: <dir>` before every command. Stacks: `next-fullstack`, `next-frontend`, `react`, `node` (Express, Fastify, Hono, or none), `nest`, `tanstack-start`. Override with `--stack <name>` if detection is wrong.',
     'Where features are written can be overridden too: `--root <dir>` for one command, or a `domainDriver.featureRoot` key in `package.json` for the project. Read the root off the stack line rather than assuming the convention.',
+    'On Nest the tool registers what it generates: the feature module in the root module, and controllers, services and repositories in `<feature>.module.ts`. Do not add those by hand — it prints what it registered, and prints the lines to paste when it cannot. A bespoke action controller is placed before `Show<Entity>Controller` so its route is not swallowed by `/:id`.',
     '',
     '## Commands',
     '',

@@ -1,6 +1,6 @@
 {
   "name": "domain-driver",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, NestJS, and TanStack Start projects, with per-action files, bespoke actions, and agent guidance",
   "main": "dist/index.js",
   "bin": {

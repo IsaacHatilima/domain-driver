@@ -266,6 +266,49 @@ Every layer directory carries a `-` prefix so TanStack Router excludes it from r
 
 ---
 
+## Nest module registration
+
+On NestJS, generated classes are wired into the module files that have to know about them. `make:feature` adds the feature module to your root module, and `make:controller`, `make:service`, `make:repository` and `make:action` add their classes to `<feature>.module.ts`.
+
+```
+✅ Registered AssetsModule in src/app.module.ts
+```
+
+The edit is made through the TypeScript compiler API, borrowed from your own project rather than bundled, and applied as a text insertion at AST-computed positions. Your comments, import order and formatting survive untouched — only the two inserted lines are new. Registering the same class twice does nothing.
+
+A bespoke action's controller is inserted **before** `Show<Entity>Controller` rather than appended, because Nest matches routes in declaration order and a custom `GET /actives` would otherwise be swallowed by `GET /:id`.
+
+### When it does not edit
+
+If the root module cannot be found, TypeScript cannot be resolved, the file has no `@Module` decorator, or the edited result would not parse, nothing is written and the lines are printed for you to paste:
+
+```
+ℹ️  Did not edit src/app.module.ts (no @Module decorator with an object argument was found). Add by hand:
+     import { AssetsModule } from './features/assets/assets.module';
+     imports: [ ..., AssetsModule ]
+```
+
+The command still succeeds, because the files it generated were still generated.
+
+### Turning it off, and pointing it somewhere else
+
+```bash
+domain-driver --no-auto-register make:feature assets/Asset -a
+```
+
+```json
+{
+  "domainDriver": {
+    "autoRegister": false,
+    "rootModule": "src/core/root.module.ts"
+  }
+}
+```
+
+`autoRegister: false` restores the old behaviour, where nothing but newly generated files is ever written. `rootModule` names the root module for projects where `src/app.module.ts` and `app.module.ts` are both wrong.
+
+---
+
 ## Philosophy
 
 Everything for a feature lives in one folder, and every file does one thing.
@@ -305,6 +348,18 @@ The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`)
 
 ---
 
+## Upgrading from 0.4.x
+
+On NestJS, scaffolding now **edits two files it did not create**: your root module and each feature's module. Every earlier version only ever created files. The edit is surgical and verified — see [Nest module registration](#nest-module-registration) for what it does and when it refuses — but if you want the old write-only guarantee back:
+
+```json
+{ "domainDriver": { "autoRegister": false } }
+```
+
+Nothing changes for any other stack.
+
+---
+
 ## Upgrading from 0.4.0
 
 Two changes affect existing projects.
@@ -319,7 +374,7 @@ The entity half of a `<feature>/<Entity>` target must now be PascalCase. `make:s
 
 Hooks are now one file per action — `<Action><Entity>.hook.ts` exporting `use<Action><Entity>` (`useListCat`, `useCreateCat`, ...) — instead of a single combined `use<Entity>.ts`, which is no longer generated. `make:hook` now takes `<feature>/<Entity>`, not `<feature>/use<Entity>`. `make:action` writes a matching hook alongside the service and repository on any stack that has a hook layer.
 
-domain-driver never overwrites a file that already exists, so this only changes new scaffolding: a `use<Entity>.ts` written by an older version is left alone and keeps working. New features and new actions get the per-action hooks; wire them together in the container, since they no longer share state:
+domain-driver never overwrites a generated file that already exists, so this only changes new scaffolding: a `use<Entity>.ts` written by an older version is left alone and keeps working. New features and new actions get the per-action hooks; wire them together in the container, since they no longer share state:
 
 ```tsx
 const { data, loading, error, refetch } = useListCat();

@@ -11,6 +11,7 @@ import { makeContainer } from './container';
 import { makeController } from './controller';
 import { makeHook } from './hook';
 import { makeRepository } from './repository';
+import { registerFeatureModule } from './register';
 import { resolveFeature } from './resolve';
 import { makeSchema } from './schema';
 import { makeService } from './service';
@@ -29,6 +30,7 @@ export async function makeFeature(name: string, all: boolean = false, entityName
 
     if (all) scaffoldLayers(ctx, entity);
     writeEntryFile(ctx, entity, all);
+    registerFeatureModule(ctx, entity);
 
     if (all) console.log(`✅ All files scaffolded for "${name}"`);
 }
