@@ -8,7 +8,7 @@ import { FetchLike } from '../update/registry';
 import { createTempProject, mkdir, projectFileExists, writePackageJson, TempProject } from './helpers/project';
 
 const NOTICE = 'ℹ️  domain-driver 9.9.9 is available (you have 0.3.0). Run: domain-driver update';
-const STACK_LINE = 'Stack: node (detected), http: express';
+const STACK_LINE = 'Stack: node (detected), http: express, root: src/features';
 
 let project: TempProject;
 let cacheDir: string;
