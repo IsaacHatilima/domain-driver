@@ -6,11 +6,15 @@ export type HttpFramework = (typeof HTTP_FRAMEWORKS)[number];
 
 export type StackSource = 'detected' | 'override';
 
+/** Where the feature root came from, in precedence order: flag, config, then convention. */
+export type RootSource = 'flag' | 'config' | 'detected';
+
 export interface DetectedStack {
     readonly stack: StackName;
     readonly source: StackSource;
     readonly httpFramework: HttpFramework | null;
     readonly featureRoot: string;
+    readonly featureRootSource: RootSource;
     readonly hasNestjsZod: boolean;
 }
 

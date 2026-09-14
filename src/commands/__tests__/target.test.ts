@@ -4,7 +4,7 @@ import { parseFeatureTarget, parseTarget } from '../target';
 describe('parseTarget', () => {
     it('splits feature and name', () => {
         expect(parseTarget('users/User')).toEqual({ feature: 'users', name: 'User' });
-        expect(parseTarget('coffee-type/useCoffeeType')).toEqual({ feature: 'coffee-type', name: 'useCoffeeType' });
+        expect(parseTarget('coffee-type/CoffeeType')).toEqual({ feature: 'coffee-type', name: 'CoffeeType' });
     });
 
     it.each(['users', 'users/User/extra', 'a/b/c'])('rejects %s', (value) => {
@@ -17,7 +17,7 @@ describe('parseTarget', () => {
 
     it.each(['users/', 'users/user-card', 'users/1User', 'users/User Card'])('rejects a bad name part in %s', (value) => {
         const name = value.slice(value.indexOf('/') + 1);
-        expect(() => parseTarget(value)).toThrow(`Name "${name}" must be letters and digits only, for example User.`);
+        expect(() => parseTarget(value)).toThrow(`Name "${name}" must be PascalCase, for example User.`);
     });
 });
 
@@ -38,7 +38,25 @@ describe('parseFeatureTarget', () => {
 
     it('validates both parts', () => {
         expect(() => parseFeatureTarget('Users')).toThrow('must be kebab-case');
-        expect(() => parseFeatureTarget('users/user')).not.toThrow();
-        expect(() => parseFeatureTarget('users/')).toThrow('Name "" must be letters and digits only, for example User.');
+        expect(() => parseFeatureTarget('users/User')).not.toThrow();
+        expect(() => parseFeatureTarget('users/')).toThrow('Name "" must be PascalCase, for example User.');
+    });
+});
+
+describe('entity casing', () => {
+    it('rejects a lowercase entity in parseTarget', () => {
+        expect(() => parseTarget('features/assets')).toThrow(/PascalCase/);
+    });
+
+    it('rejects a lowercase entity in parseFeatureTarget', () => {
+        expect(() => parseFeatureTarget('assets/asset')).toThrow(/PascalCase/);
+    });
+
+    it('points a hook-shaped name at the entity instead', () => {
+        expect(() => parseTarget('users/useUser')).toThrow(/Pass the entity instead, for example User/);
+    });
+
+    it('still accepts a PascalCase entity', () => {
+        expect(parseTarget('assets/Asset')).toEqual({ feature: 'assets', name: 'Asset' });
     });
 });

@@ -10,12 +10,17 @@ export interface FeatureTarget {
     readonly entity: string | null;
 }
 
-const NAME_PATTERN = /^[A-Za-z][A-Za-z0-9]*$/;
+const NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
+const HOOK_NAME_PATTERN = /^use[A-Z]/;
 
 function validateName(name: string): void {
-    if (!NAME_PATTERN.test(name)) {
-        throw new Error(`Name "${name}" must be letters and digits only, for example User.`);
+    if (NAME_PATTERN.test(name)) return;
+    if (HOOK_NAME_PATTERN.test(name)) {
+        throw new Error(
+            `Name "${name}" is a hook name. Pass the entity instead, for example ${name.slice(3)}.`
+        );
     }
+    throw new Error(`Name "${name}" must be PascalCase, for example User.`);
 }
 
 export function parseTarget(value: string): Target {

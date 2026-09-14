@@ -33,10 +33,11 @@ export function createTempProject(prefix: string): TempProject {
 
 export function writePackageJson(
     dependencies: Record<string, string>,
-    devDependencies: Record<string, string> = {}
+    devDependencies: Record<string, string> = {},
+    extra: Record<string, unknown> = {}
 ): void {
     const content = JSON.stringify(
-        { name: 'fixture', version: '0.0.0', dependencies, devDependencies },
+        { name: 'fixture', version: '0.0.0', dependencies, devDependencies, ...extra },
         null,
         2
     );

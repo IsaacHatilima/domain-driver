@@ -23,12 +23,12 @@ npx domain-driver make:feature <feature>[/<Entity>]
 Every command reads your `package.json` once and prints the stack it found before writing anything:
 
 ```
-Stack: next-fullstack (detected)
+Stack: next-fullstack (detected), root: src/app
 ```
 
 | Stack | Detected when | Features live in |
 |---|---|---|
-| `nest` | `@nestjs/core` is a dependency | `src/<feature>` |
+| `nest` | `@nestjs/core` is a dependency | `src/features/<feature>` if `src/features` exists, otherwise `src/<feature>` |
 | `tanstack-start` | `@tanstack/react-start` is a dependency | `src/routes/<feature>` or `routes/<feature>` |
 | `next-fullstack` | `next` is a dependency and `app/api`, `src/app/api`, `pages/api`, or `src/pages/api` exists | `app/<feature>` or `src/app/<feature>` |
 | `next-frontend` | `next` is a dependency, no api directory | `app/<feature>` or `src/app/<feature>` |
@@ -42,6 +42,34 @@ Override detection with `--stack`:
 ```bash
 domain-driver --stack nest make:feature cat -a
 ```
+
+### Choosing where features live
+
+The "Features live in" column is a convention, not a rule. Two overrides take precedence over it, in this order.
+
+`--root` wins over everything, and suits one-off scaffolding:
+
+```bash
+domain-driver --root src/modules make:feature billing/Billing -a
+```
+
+For a project you work in daily, set it once in `package.json` instead of retyping the flag on every command:
+
+```json
+{
+  "domainDriver": {
+    "featureRoot": "src/modules"
+  }
+}
+```
+
+Either way the stack line tells you which one won, so you can see where files will land before they land:
+
+```
+Stack: nest (detected), root: src/modules (package.json)
+```
+
+The root must be a relative path inside the project. An absolute path or one containing `..` is rejected rather than quietly normalised.
 
 ---
 
@@ -274,6 +302,16 @@ Local installs use the package manager the project uses (npm, pnpm, yarn, or bun
 The check is skipped in CI (any `CI` value other than empty, `0`, or `false`), when output is not a terminal, when `DOMAIN_DRIVER_NO_UPDATE_CHECK` is set (same value rule), or when `NO_UPDATE_NOTIFIER` is set to anything.
 
 The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`); `DOMAIN_DRIVER_CACHE_DIR` overrides it.
+
+---
+
+## Upgrading from 0.4.0
+
+Two changes affect existing projects.
+
+On NestJS, a project that already has a `src/features` directory now scaffolds into it instead of directly into `src`. If you keep features in `src` you are unaffected, since the behaviour is opt-in by that directory existing. To pin either choice explicitly, set `domainDriver.featureRoot` in `package.json`.
+
+The entity half of a `<feature>/<Entity>` target must now be PascalCase. `make:schema users/user` previously produced `Listuser.service.ts` exporting `ListuserService`; it now fails with a message telling you to pass `User`.
 
 ---
 

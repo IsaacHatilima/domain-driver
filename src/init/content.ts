@@ -34,7 +34,8 @@ const SKILL_LINES: readonly string[] = [
     '',
     '## Detect the stack',
     '',
-    'The tool reads `package.json` and prints `Stack: <stack> (detected)` before every command. Stacks: `next-fullstack`, `next-frontend`, `react`, `node` (Express, Fastify, Hono, or none), `nest`, `tanstack-start`. Override with `--stack <name>` if detection is wrong.',
+    'The tool reads `package.json` and prints `Stack: <stack> (detected), root: <dir>` before every command. Stacks: `next-fullstack`, `next-frontend`, `react`, `node` (Express, Fastify, Hono, or none), `nest`, `tanstack-start`. Override with `--stack <name>` if detection is wrong.',
+    'Where features are written can be overridden too: `--root <dir>` for one command, or a `domainDriver.featureRoot` key in `package.json` for the project. Read the root off the stack line rather than assuming the convention.',
     '',
     '## Commands',
     '',
@@ -69,7 +70,7 @@ const SKILL_LINES: readonly string[] = [
     '',
     '- Next.js: `app/<feature>` or `src/app/<feature>`; route handlers under `app/api/<feature>`.',
     '- React and Node: `src/features/<feature>` or `features/<feature>`.',
-    '- Nest: `src/<feature>` with a `<feature>.module.ts`.',
+    '- Nest: `src/features/<feature>` when `src/features` exists, otherwise `src/<feature>`, with a `<feature>.module.ts`.',
     '- TanStack Start: `src/routes/<feature>` or `routes/<feature>`; every layer folder is prefixed with `-` so the router ignores it, and the entry file is `index.tsx`, not `page.tsx`.',
 ];
 

@@ -56,7 +56,8 @@ export function createProgram(deps: CliDeps): Command {
         .name('domain-driver')
         .description('CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, and NestJS projects')
         .version(deps.current)
-        .option('--stack <name>', `Override stack detection (${STACK_NAMES.join(', ')})`);
+        .option('--stack <name>', `Override stack detection (${STACK_NAMES.join(', ')})`)
+        .option('--root <dir>', 'Override where feature folders are created, for example src/features');
 
     let pendingNotice: Promise<string | null> = Promise.resolve(null);
 
@@ -72,8 +73,8 @@ export function createProgram(deps: CliDeps): Command {
             });
         }
         if (SKIP_DETECTION.has(name)) return;
-        const { stack } = program.opts<{ stack?: string }>();
-        deps.log(describeStack(detectStack(stack)));
+        const { stack, root } = program.opts<{ stack?: string; root?: string }>();
+        deps.log(describeStack(detectStack(stack, root)));
     });
 
     program.hook('postAction', async () => {

@@ -21,6 +21,7 @@ export function contextFor(
         source: 'detected',
         httpFramework: null,
         featureRoot: DEFAULT_ROOTS[stack],
+        featureRootSource: 'detected',
         hasNestjsZod: false,
         ...extra,
     });

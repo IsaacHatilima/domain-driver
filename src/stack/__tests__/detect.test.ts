@@ -192,15 +192,95 @@ describe('cache', () => {
 describe('describeStack', () => {
     it('describes a non-node stack', () => {
         writePackageJson({ next: '1' });
-        expect(describeStack(detectStack())).toBe('Stack: next-frontend (detected)');
+        expect(describeStack(detectStack())).toBe('Stack: next-frontend (detected), root: app');
     });
 
     it('describes node with its framework', () => {
         writePackageJson({ fastify: '1' });
-        expect(describeStack(detectStack())).toBe('Stack: node (detected), http: fastify');
+        expect(describeStack(detectStack())).toBe('Stack: node (detected), http: fastify, root: features');
     });
 
     it('describes node without a framework under override', () => {
-        expect(describeStack(detectStack('node'))).toBe('Stack: node (override), http: none');
+        expect(describeStack(detectStack('node'))).toBe('Stack: node (override), http: none, root: features');
+    });
+});
+
+describe('feature root resolution', () => {
+    it('roots a nest feature at src/features when that directory exists', () => {
+        writePackageJson({ '@nestjs/core': '1' });
+        mkdir('src/features');
+        expect(detectStack().featureRoot).toBe('src/features');
+    });
+
+    it('leaves a nest feature at src when there is no features directory', () => {
+        writePackageJson({ '@nestjs/core': '1' });
+        mkdir('src');
+        expect(detectStack().featureRoot).toBe('src');
+    });
+
+    it('lets --root win over detection on any stack', () => {
+        writePackageJson({ '@nestjs/core': '1' });
+        mkdir('src/features');
+        const detected = detectStack(undefined, 'src/modules');
+        expect(detected.featureRoot).toBe('src/modules');
+        expect(detected.featureRootSource).toBe('flag');
+    });
+
+    it('reads featureRoot from the package.json domainDriver key', () => {
+        writePackageJson({ '@nestjs/core': '1' }, {}, { domainDriver: { featureRoot: 'src/modules' } });
+        const detected = detectStack();
+        expect(detected.featureRoot).toBe('src/modules');
+        expect(detected.featureRootSource).toBe('config');
+    });
+
+    it('lets --root win over the package.json key', () => {
+        writePackageJson({ '@nestjs/core': '1' }, {}, { domainDriver: { featureRoot: 'src/modules' } });
+        expect(detectStack(undefined, 'src/elsewhere').featureRoot).toBe('src/elsewhere');
+    });
+
+    it('reports a detected root as detected', () => {
+        writePackageJson({ react: '1' });
+        mkdir('src');
+        expect(detectStack().featureRootSource).toBe('detected');
+    });
+
+    it.each(['/etc/passwd', '../escape', 'src/../../escape'])('rejects the unsafe root %s', (root) => {
+        writePackageJson({ '@nestjs/core': '1' });
+        expect(() => detectStack(undefined, root)).toThrow(/must be a relative path inside the project/);
+    });
+
+    it('rejects a non-string featureRoot in package.json', () => {
+        writePackageJson({ '@nestjs/core': '1' }, {}, { domainDriver: { featureRoot: 42 } });
+        expect(() => detectStack()).toThrow(/featureRoot/);
+    });
+});
+
+describe('describeStack root reporting', () => {
+    it('names the root it detected', () => {
+        writePackageJson({ '@nestjs/core': '1' });
+        mkdir('src/features');
+        expect(describeStack(detectStack())).toBe('Stack: nest (detected), root: src/features');
+    });
+
+    it('marks a flag override', () => {
+        writePackageJson({ '@nestjs/core': '1' });
+        expect(describeStack(detectStack(undefined, 'src/modules'))).toBe(
+            'Stack: nest (detected), root: src/modules (--root)'
+        );
+    });
+
+    it('marks a package.json override', () => {
+        writePackageJson({ '@nestjs/core': '1' }, {}, { domainDriver: { featureRoot: 'src/modules' } });
+        expect(describeStack(detectStack())).toBe(
+            'Stack: nest (detected), root: src/modules (package.json)'
+        );
+    });
+
+    it('still reports the http framework for node', () => {
+        writePackageJson({ express: '1' });
+        mkdir('src');
+        expect(describeStack(detectStack())).toBe(
+            'Stack: node (detected), http: express, root: src/features'
+        );
     });
 });
