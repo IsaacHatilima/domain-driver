@@ -103,7 +103,7 @@ describe('registerInModule', () => {
         }
     });
 
-    it('fills an empty array', () => {
+    it('expands an empty array onto its own lines, matching the generated module style', () => {
         const source = `import { Module } from '@nestjs/common';
 
 @Module({
@@ -111,7 +111,33 @@ describe('registerInModule', () => {
 })
 export class AppModule {}
 `;
-        expect(edited(source)).toContain('imports: [AssetsModule],');
+        expect(edited(source)).toContain('  imports: [\n    AssetsModule,\n  ],');
+    });
+
+    it('does not add a second import for an identifier already bound', () => {
+        const source = `import { Module } from '@nestjs/common';
+import { AssetsModule } from './features/assets/assets.module';
+
+@Module({
+  imports: [AuthModule],
+})
+export class AppModule {}
+`;
+        const out = edited(source);
+        expect(out.match(/import \{ AssetsModule \}/g)).toHaveLength(1);
+        expect(out).toContain('imports: [AuthModule, AssetsModule]');
+    });
+
+    it('bails when the file did not parse to begin with', () => {
+        const result = register('@Module({ imports: [ } export class Broken\n');
+        expect(result.status).toBe('bailed');
+        if (result.status === 'bailed') expect(result.reason).toMatch(/does not parse/);
+    });
+
+    it('keeps CRLF line endings out of inserted lines when the file uses them', () => {
+        const source = REALISTIC.replace(/\n/g, '\r\n');
+        const out = edited(source);
+        expect(out).not.toMatch(/[^\r]\n/);
     });
 
     it('reports an identifier that is already registered', () => {

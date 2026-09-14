@@ -27,11 +27,13 @@ function featureModule(ctx: RenderContext): string {
 
 function entriesFor(ctx: RenderContext, kind: Kind, names: readonly string[]): Entry[] {
     const dir = path.join(ctx.featureDir, layerDir(ctx.profile, kind.layer));
-    return names.map((name) => ({
-        identifier: `${name}${kind.suffix}`,
-        definedIn: path.join(dir, `${name}.${kind.fileSuffix}.ts`),
-        property: kind.property,
-    }));
+    return names
+        .map((name) => ({
+            identifier: `${name}${kind.suffix}`,
+            definedIn: path.join(dir, `${name}.${kind.fileSuffix}.ts`),
+            property: kind.property,
+        }))
+        .filter((entry) => fileExists(entry.definedIn));
 }
 
 /** Registers generated classes in the feature's own module. Nest is the only stack with one. */
@@ -41,9 +43,7 @@ export function registerClasses(
     actionNames: readonly string[]
 ): void {
     if (ctx.profile.name !== 'nest') return;
-    const moduleFile = featureModule(ctx);
-    if (!fileExists(moduleFile)) return;
-    applyRegistrations(moduleFile, entriesFor(ctx, KINDS[kind], actionNames), ctx.stack.autoRegister);
+    applyRegistrations(featureModule(ctx), entriesFor(ctx, KINDS[kind], actionNames), ctx.stack.autoRegister);
 }
 
 export function standardActionNames(entity: string): readonly string[] {
@@ -56,15 +56,12 @@ export function standardActionNames(entity: string): readonly string[] {
  */
 export function registerCustomAction(ctx: RenderContext, action: string, entity: string): void {
     if (ctx.profile.name !== 'nest') return;
-    const moduleFile = featureModule(ctx);
-    if (!fileExists(moduleFile)) return;
-
     const entries: Entry[] = [
         { ...entriesFor(ctx, KINDS.controller, [action])[0], before: `Show${entity}Controller` },
         entriesFor(ctx, KINDS.service, [action])[0],
         entriesFor(ctx, KINDS.repository, [action])[0],
     ];
-    applyRegistrations(moduleFile, entries, ctx.stack.autoRegister);
+    applyRegistrations(featureModule(ctx), entries, ctx.stack.autoRegister);
 }
 
 /** Registers the feature's module in the application's root module. */
@@ -75,8 +72,9 @@ export function registerFeatureModule(ctx: RenderContext, entity: string): void 
 
     const rootModule = findRootModule(process.cwd(), ctx.stack.featureRoot, ctx.stack.rootModule);
     if (rootModule === null) {
+        if (!ctx.stack.autoRegister) return;
         console.log(
-            `ℹ️  No root module found. Add ${entity}Module to it by hand, or set "domainDriver": { "rootModule": "..." } in package.json.`
+            `ℹ️  No root module found, so ${entity}Module was not registered. Add it by hand, or name the file with "domainDriver": { "rootModule": "..." } in package.json.`
         );
         return;
     }

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { makeAction } from '../action';
+import { makeController } from '../controller';
 import { makeFeature } from '../feature';
 import { registerClasses, registerCustomAction, registerFeatureModule, standardActionNames } from '../register';
 import { requireFeature } from '../resolve';
@@ -52,12 +54,13 @@ describe('nest registration commands', () => {
 
         const root = read('src/app.module.ts');
         expect(root).toContain("import { AssetModule } from './assets/assets.module';");
-        expect(root).toContain('imports: [AssetModule]');
+        expect(root).toContain('imports: [\n    AssetModule,\n  ],');
     });
 
     it('registers generated controllers in the feature module', async () => {
         await nestProject();
         await makeFeature('assets', false, 'Asset');
+        makeController('assets', 'Asset');
         registerClasses(requireFeature('assets'), 'controller', standardActionNames('Asset'));
 
         const feature = read('src/assets/assets.module.ts');
@@ -68,6 +71,7 @@ describe('nest registration commands', () => {
     it('places a bespoke action controller ahead of the show controller', async () => {
         await nestProject();
         await makeFeature('assets', true, 'Asset');
+        makeAction('assets', 'Asset', 'findActiveAssets', { withInput: false, returns: 'list' });
         registerCustomAction(requireFeature('assets'), 'FindActiveAssets', 'Asset');
 
         const feature = read('src/assets/assets.module.ts');
@@ -75,6 +79,20 @@ describe('nest registration commands', () => {
         const show = feature.indexOf('ShowAssetController,');
         expect(custom).toBeGreaterThan(-1);
         expect(custom).toBeLessThan(show);
+    });
+
+    it('says so rather than going silent when the feature module is missing', async () => {
+        await nestProject();
+        await makeFeature('assets', false, 'Asset');
+        makeController('assets', 'Asset');
+        fs.rmSync(path.join(process.cwd(), 'src', 'assets', 'assets.module.ts'));
+
+        const logged: string[] = [];
+        vi.mocked(console.log).mockImplementation((line: unknown) => {
+            logged.push(String(line));
+        });
+        registerClasses(requireFeature('assets'), 'controller', standardActionNames('Asset'));
+        expect(logged.join('\n')).toContain('the module file does not exist');
     });
 
     it('does nothing on a stack that has no modules', async () => {

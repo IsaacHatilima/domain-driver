@@ -30,6 +30,7 @@ function isTypeScript(candidate: unknown): candidate is Ts {
     return (
         typeof api.createSourceFile === 'function' &&
         typeof api.transpileModule === 'function' &&
-        typeof api.getDecorators === 'function'
+        typeof api.getDecorators === 'function' &&
+        typeof api.canHaveDecorators === 'function'
     );
 }

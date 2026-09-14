@@ -63,16 +63,33 @@ function contains(ts: Ts, array: TsModule.ArrayLiteralExpression, identifier: st
     return array.elements.some((element) => ts.isIdentifier(element) && element.text === identifier);
 }
 
+function newlineOf(source: string): string {
+    return source.includes('\r\n') ? '\r\n' : '\n';
+}
+
+function alreadyImported(ts: Ts, file: TsModule.SourceFile, identifier: string): boolean {
+    return file.statements.filter(ts.isImportDeclaration).some((declaration) => {
+        const bindings = declaration.importClause?.namedBindings;
+        if (bindings === undefined || !ts.isNamedImports(bindings)) return false;
+        return bindings.elements.some((element) => element.name.text === identifier);
+    });
+}
+
 function indentAt(source: string, position: number): string {
     const lineStart = source.lastIndexOf('\n', position - 1) + 1;
     return /^[ \t]*/.exec(source.slice(lineStart, position))?.[0] ?? '';
 }
 
-function importEdit(ts: Ts, file: TsModule.SourceFile, request: RegisterRequest): Edit {
+function importEdit(ts: Ts, source: string, file: TsModule.SourceFile, request: RegisterRequest): Edit | null {
+    // A second `import { X }` for an identifier already bound is a duplicate declaration, which
+    // is a type error rather than a syntax error, so nothing downstream would catch it.
+    if (alreadyImported(ts, file, request.identifier)) return null;
+
+    const eol = newlineOf(source);
     const line = `import { ${request.identifier} } from '${request.importPath}';`;
     const imports = file.statements.filter(ts.isImportDeclaration);
-    if (imports.length === 0) return { at: 0, text: `${line}\n` };
-    return { at: imports[imports.length - 1].end, text: `\n${line}` };
+    if (imports.length === 0) return { at: 0, text: `${line}${eol}` };
+    return { at: imports[imports.length - 1].end, text: `${eol}${line}` };
 }
 
 function elementEdit(
@@ -83,8 +100,11 @@ function elementEdit(
     request: RegisterRequest
 ): Edit {
     const identifier = request.identifier;
+    const eol = newlineOf(source);
+
     if (array.elements.length === 0) {
-        return { at: array.end - 1, text: identifier };
+        const outer = indentAt(source, array.getStart(file));
+        return { at: array.end - 1, text: `${eol}${outer}  ${identifier},${eol}${outer}` };
     }
 
     const anchor =
@@ -97,9 +117,9 @@ function elementEdit(
 
     if (anchor !== undefined) {
         const at = anchor.getStart(file);
-        return { at, text: singleLine ? `${identifier}, ` : `${identifier},\n${indentAt(source, at)}` };
+        return { at, text: singleLine ? `${identifier}, ` : `${identifier},${eol}${indentAt(source, at)}` };
     }
-    const text = singleLine ? `, ${identifier}` : `,\n${indentAt(source, last.getStart(file))}${identifier}`;
+    const text = singleLine ? `, ${identifier}` : `,${eol}${indentAt(source, last.getStart(file))}${identifier}`;
     return { at: last.end, text };
 }
 
@@ -113,12 +133,16 @@ function apply(source: string, edits: readonly Edit[]): string {
  * The edit is only returned if the result both parses cleanly and reads back as registered.
  * A wrong offset produces a file that fails one of those, and the caller keeps the original.
  */
-function verify(ts: Ts, source: string, request: RegisterRequest): boolean {
-    const syntaxErrors = ts.transpileModule(source, {
+function parses(ts: Ts, source: string): boolean {
+    const diagnostics = ts.transpileModule(source, {
         reportDiagnostics: true,
         compilerOptions: { target: ts.ScriptTarget.Latest },
     }).diagnostics;
-    if ((syntaxErrors ?? []).length > 0) return false;
+    return (diagnostics ?? []).length === 0;
+}
+
+function verify(ts: Ts, source: string, request: RegisterRequest): boolean {
+    if (!parses(ts, source)) return false;
 
     const file = parse(ts, source);
     const object = moduleArgument(ts, file);
@@ -129,6 +153,7 @@ function verify(ts: Ts, source: string, request: RegisterRequest): boolean {
 }
 
 export function registerInModule(ts: Ts, source: string, request: RegisterRequest): RegisterResult {
+    if (!parses(ts, source)) return bail('the file does not parse');
     const file = parse(ts, source);
 
     const object = moduleArgument(ts, file);
@@ -140,10 +165,8 @@ export function registerInModule(ts: Ts, source: string, request: RegisterReques
 
     if (contains(ts, array, request.identifier)) return { status: 'already-registered' };
 
-    const edited = apply(source, [
-        importEdit(ts, file, request),
-        elementEdit(ts, source, file, array, request),
-    ]);
+    const edits = [importEdit(ts, source, file, request), elementEdit(ts, source, file, array, request)];
+    const edited = apply(source, edits.filter((edit): edit is Edit => edit !== null));
 
     if (!verify(ts, edited, request)) return bail('the edited file did not read back as valid');
     return { status: 'edited', source: edited };

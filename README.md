@@ -348,6 +348,18 @@ The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`)
 
 ---
 
+## Upgrading from 0.4.x
+
+On NestJS, scaffolding now **edits two files it did not create**: your root module and each feature's module. Every earlier version only ever created files. The edit is surgical and verified — see [Nest module registration](#nest-module-registration) for what it does and when it refuses — but if you want the old write-only guarantee back:
+
+```json
+{ "domainDriver": { "autoRegister": false } }
+```
+
+Nothing changes for any other stack.
+
+---
+
 ## Upgrading from 0.4.0
 
 Two changes affect existing projects.
@@ -362,7 +374,7 @@ The entity half of a `<feature>/<Entity>` target must now be PascalCase. `make:s
 
 Hooks are now one file per action — `<Action><Entity>.hook.ts` exporting `use<Action><Entity>` (`useListCat`, `useCreateCat`, ...) — instead of a single combined `use<Entity>.ts`, which is no longer generated. `make:hook` now takes `<feature>/<Entity>`, not `<feature>/use<Entity>`. `make:action` writes a matching hook alongside the service and repository on any stack that has a hook layer.
 
-domain-driver never overwrites a file that already exists, so this only changes new scaffolding: a `use<Entity>.ts` written by an older version is left alone and keeps working. New features and new actions get the per-action hooks; wire them together in the container, since they no longer share state:
+domain-driver never overwrites a generated file that already exists, so this only changes new scaffolding: a `use<Entity>.ts` written by an older version is left alone and keeps working. New features and new actions get the per-action hooks; wire them together in the container, since they no longer share state:
 
 ```tsx
 const { data, loading, error, refetch } = useListCat();

@@ -11,7 +11,9 @@ export function findRootModule(cwd: string, featureRoot: string, configured: str
         return fileExists(target) ? target : null;
     }
 
-    const candidates = ['src/app.module.ts', 'app.module.ts', path.join(path.dirname(featureRoot), 'app.module.ts')];
+    // Most specific first: a monorepo's stray root-level src/app.module.ts must not win over
+    // the one sitting beside the feature root it actually belongs to.
+    const candidates = [path.join(path.dirname(featureRoot), 'app.module.ts'), 'src/app.module.ts', 'app.module.ts'];
     for (const candidate of candidates) {
         const target = path.join(cwd, candidate);
         if (fileExists(target)) return target;
