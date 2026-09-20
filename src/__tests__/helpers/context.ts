@@ -2,6 +2,9 @@ import { DetectedStack, StackName } from '../../stack/types';
 import { getProfile } from '../../stack/registry';
 import { createContext, RenderContext } from '../../templates/context';
 
+/** The app directory's api folder, which route handlers resolve against. */
+const DEFAULT_API_ROOT = 'app/api';
+
 const DEFAULT_ROOTS: Readonly<Record<StackName, string>> = Object.freeze({
     'next-fullstack': 'app',
     'next-frontend': 'app',
@@ -22,6 +25,7 @@ export function contextFor(
         httpFramework: null,
         featureRoot: DEFAULT_ROOTS[stack],
         featureRootSource: 'detected',
+        apiRoot: DEFAULT_API_ROOT,
         hasNestjsZod: false,
         rootModule: null,
         autoRegister: true,

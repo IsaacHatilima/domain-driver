@@ -58,6 +58,7 @@ export function detectStack(options: DetectOptions = {}): DetectedStack {
         httpFramework: stack === 'node' ? detectHttpFramework(deps) : null,
         featureRoot: root.featureRoot,
         featureRootSource: root.source,
+        apiRoot: apiRoot(cwd),
         hasNestjsZod: deps.has('nestjs-zod'),
         rootModule: configuredRootModule(pkg),
         autoRegister: options.autoRegister ?? configuredAutoRegister(pkg),
@@ -113,6 +114,14 @@ function inferStack(cwd: string, deps: ReadonlySet<string>): StackName {
     if (deps.has('next')) return hasApiDir(cwd) ? 'next-fullstack' : 'next-frontend';
     if (deps.has('react')) return 'react';
     return 'node';
+}
+
+/**
+ * The app directory's own `api` folder. Route handlers live here whatever the
+ * feature root is, because Next derives their URL from this path.
+ */
+function apiRoot(cwd: string): string {
+    return isDirectory(path.join(cwd, 'src', 'app')) ? 'src/app/api' : 'app/api';
 }
 
 function hasApiDir(cwd: string): boolean {

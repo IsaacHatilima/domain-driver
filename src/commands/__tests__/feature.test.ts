@@ -22,6 +22,39 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
+describe('make:feature with a relocated feature root', () => {
+    beforeEach(() => {
+        // next-fullstack: an app/api directory is what selects that profile.
+        writePackageJson({ next: '1' }, {}, { domainDriver: { featureRoot: 'app/auth' } });
+        mkdir('app/api');
+    });
+
+    it('moves the feature but leaves its route handlers under app/api', async () => {
+        await makeFeature('billing', true);
+
+        // The feature follows the configured root.
+        expect(projectFileExists('app/auth/billing/page.tsx')).toBe(true);
+        expect(projectFileExists('app/auth/billing/server/services/ListBilling.service.ts')).toBe(true);
+
+        // Regression guard: the handlers used to follow it too, landing at
+        // app/auth/api/billing. Next serves anything under app/ by its path, so those
+        // answered /auth/api/billing while the generated hook fetched /api/billing.
+        expect(projectFileExists('app/api/billing/route.ts')).toBe(true);
+        expect(projectFileExists('app/api/billing/[id]/route.ts')).toBe(true);
+        expect(projectFileExists('app/auth/api')).toBe(false);
+        expect(projectFileExists('app/auth/billing/api')).toBe(false);
+    });
+
+    it('generates a hook whose url matches where the handler was written', async () => {
+        await makeFeature('billing', true);
+
+        expect(readProjectFile('app/auth/billing/hooks/ListBilling.hook.ts')).toContain(
+            "fetch('/api/billing')"
+        );
+        expect(projectFileExists('app/api/billing/route.ts')).toBe(true);
+    });
+});
+
 describe('make:feature on next-frontend', () => {
     beforeEach(() => writePackageJson({ next: '1' }));
 

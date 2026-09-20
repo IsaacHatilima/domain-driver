@@ -15,6 +15,14 @@ export interface DetectedStack {
     readonly httpFramework: HttpFramework | null;
     readonly featureRoot: string;
     readonly featureRootSource: RootSource;
+    /**
+     * Where Next route handlers go, relative to the project: `app/api` or
+     * `src/app/api`. Deliberately NOT derived from `featureRoot`. A feature can be
+     * moved anywhere with --root, but the URL of a route handler is its path under
+     * the app directory, so the handlers must stay there or they stop answering the
+     * URL the generated hook fetches.
+     */
+    readonly apiRoot: string;
     readonly hasNestjsZod: boolean;
     /** Explicit path to the Nest root module, when the conventional probe would miss it. */
     readonly rootModule: string | null;
