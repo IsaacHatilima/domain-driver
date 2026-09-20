@@ -80,8 +80,7 @@ The root must be a relative path inside the project. An absolute path or one con
 | entry file (`page.tsx`; `index.tsx` on tanstack-start) | yes | yes | | | | yes |
 | components | client + server | client + server | flat | | | flat |
 | containers, hooks | yes | yes | yes | | | yes (Query hooks) |
-| client services + repositories | `client/` (fetch) | top level (fetch) | top level (fetch) | | | `-client/` (calls server functions, no fetch) |
-| server services + repositories (database stubs) | `server/` | | | yes | yes | `-server/` |
+| services + repositories (database stubs) | `server/` | | | yes | yes | `-server/` |
 | controllers | `app/api/<feature>/` route handlers | | | five files + routes file | five files | server functions (`-server/functions/*.fn.ts`) |
 | module | | | | | yes | |
 | DTOs (`nestjs-zod`) | | | | | yes | |
@@ -124,9 +123,9 @@ Scaffolds a bespoke operation as its own files, so it never lands inside `ShowUs
 |---|---|
 | `node` | service, repository, controller for the detected framework, plus the line to add above the `/:id` routes in `<feature>.routes.ts` printed |
 | `nest` | injectable service and repository, `@Controller` class, DTO with input, plus the classes to register printed, with the controller listed before `Show<Entity>Controller` |
-| `next-fullstack` | server service and repository, client service and repository, a hook, `app/api/<feature>/<slug>/route.ts` |
-| `next-frontend`, `react` | client service and repository calling `/api/<feature>/<slug>`, and a hook |
-| `tanstack-start` | server service and repository, client service and repository, a hook, and a server function (`<Name>.fn.ts`) in place of a route handler |
+| `next-fullstack` | server service and repository, a hook that fetches the endpoint, `app/api/<feature>/<slug>/route.ts` |
+| `next-frontend`, `react` | a hook that fetches `/api/<feature>/<slug>`; the service and repository live behind that API, outside the project |
+| `tanstack-start` | server service and repository, a hook that calls the server function directly, and a server function (`<Name>.fn.ts`) in place of a route handler |
 
 ### `make:controller`
 
@@ -139,11 +138,11 @@ Node: five controllers plus `<feature>.routes.ts` for Express, Fastify, or Hono.
 ### `make:service` and `make:repository`
 
 ```bash
-domain-driver make:service users/User [--side client|server|both]
-domain-driver make:repository users/User [--side client|server|both]
+domain-driver make:service users/User
+domain-driver make:repository users/User
 ```
 
-`--side` matters on `next-fullstack` and `tanstack-start`, where both sides exist. Default is `both`.
+Both generate the server side only, because that is the only side there is. They are unavailable on `next-frontend` and `react`, whose API lives outside the project.
 
 ### `make:schema`
 
@@ -247,10 +246,7 @@ src/routes/coffee-type/
 │   └── CoffeeType.tsx
 ├── -containers/
 │   └── CoffeeTypeContainer.tsx
-├── -hooks/                      coffee-type.keys.ts, plus five hook files (one per action)
-├── -client/
-│   ├── services/                (five files)
-│   └── repositories/            (five files, call the server functions directly)
+├── -hooks/                      coffee-type.keys.ts, plus five hook files that call the server functions
 ├── -server/
 │   ├── functions/               (five *.fn.ts files, built with createServerFn)
 │   ├── services/                (five files)
@@ -262,7 +258,7 @@ src/routes/coffee-type/
     └── CoffeeType.types.ts
 ```
 
-Every layer directory carries a `-` prefix so TanStack Router excludes it from routing. The controller layer is server functions — `<Name>.fn.ts` built with `createServerFn` — and client repositories import and call them directly, so there is no `fetch` and no `Response.json`. Hooks are TanStack Query, backed by the generated `coffee-type.keys.ts`. Generating hooks on this profile prints a one-time reminder to install `@tanstack/react-query`, since TanStack Start does not bundle it.
+Every layer directory carries a `-` prefix so TanStack Router excludes it from routing. The controller layer is server functions — `<Name>.fn.ts` built with `createServerFn` — and the hooks import and call them directly, so there is no `fetch` and no `Response.json`. Hooks are TanStack Query, backed by the generated `coffee-type.keys.ts`. Generating hooks on this profile prints a one-time reminder to install `@tanstack/react-query`, since TanStack Start does not bundle it.
 
 ---
 
@@ -421,7 +417,7 @@ npm run test:coverage
 - [x] TanStack Start stack, with server functions and per-action query hooks
 - [x] Per-action hooks on every stack that has them, replacing the single combined hook
 - [ ] Config file — override stack and feature root per project
-- [ ] Configurable API base URL for client repositories
+- [ ] Configurable API base URL for the fetch in generated hooks
 - [ ] ORM-aware server repositories
 
 ---

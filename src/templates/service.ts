@@ -1,4 +1,3 @@
-import { Side } from '../stack/types';
 import { ActionSpec } from './actions';
 import { RenderContext } from './context';
 import { INJECTABLE_IMPORT } from './nest/injectable';
@@ -8,14 +7,12 @@ export function renderService(
     ctx: RenderContext,
     spec: ActionSpec,
     entity: string,
-    fromFile: string,
-    side: Side
+    fromFile: string
 ): string {
     const repositoryClass = `${spec.name}Repository`;
     const serviceClass = `${spec.name}Service`;
-    const repositoryLayer = side === 'client' ? 'clientRepository' : 'serverRepository';
-    const repositoryPath = ctx.importLayer(fromFile, repositoryLayer, `${spec.name}.repository`);
-    const injectable = side === 'server' && ctx.profile.name === 'nest';
+    const repositoryPath = ctx.importLayer(fromFile, 'serverRepository', `${spec.name}.repository`);
+    const injectable = ctx.profile.name === 'nest';
 
     const imports = [
         ...(injectable ? [INJECTABLE_IMPORT] : []),

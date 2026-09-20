@@ -19,9 +19,7 @@ const LAYER_COMMANDS: Readonly<Partial<Record<Layer, string>>> = Object.freeze({
     component: 'make:component',
     container: 'make:container',
     hook: 'make:hook',
-    clientService: 'make:service',
     serverService: 'make:service',
-    clientRepository: 'make:repository',
     serverRepository: 'make:repository',
     controller: 'make:controller',
     schema: 'make:schema',
@@ -57,12 +55,23 @@ export function availableCommands(profile: StackProfile): readonly string[] {
     return [...new Set(commands)];
 }
 
+/**
+ * Extra guidance for the two refusals people hit most, so the error explains the
+ * architecture rather than just listing what is available.
+ */
+function hintFor(profile: StackProfile, layer: Layer): string {
+    if (profile.name === 'next-frontend' && layer === 'controller') {
+        return ' Create an app/api directory or pass --stack next-fullstack to enable route handlers.';
+    }
+    if (layer === 'serverService' || layer === 'serverRepository') {
+        return ` Services and repositories live behind the API, and the ${profile.name} stack has no server side. Its hooks call the API directly.`;
+    }
+    return '';
+}
+
 export function assertLayer(profile: StackProfile, layer: Layer, command: string): void {
     if (hasLayer(profile, layer)) return;
-    const escapeHatch =
-        profile.name === 'next-frontend' && layer === 'controller'
-            ? ' Create an app/api directory or pass --stack next-fullstack to enable route handlers.'
-            : '';
+    const escapeHatch = hintFor(profile, layer);
     throw new Error(
         `${command} is not available for the ${profile.name} stack. Available: ${availableCommands(profile).join(', ')}.${escapeHatch}`
     );

@@ -2,21 +2,23 @@ import { lowerFirst } from '../../utils/naming';
 import { ActionSpec, isQueryAction } from '../actions';
 import { RenderContext } from '../context';
 import { domainImports } from '../signatures';
+import { fetchCall } from './http';
 
 function payloadType(spec: ActionSpec): string {
     return spec.returns.replace(/^Promise<(.*)>$/, '$1');
 }
 
+/**
+ * No `'use client'` directive, deliberately. The directive marks a boundary, and the
+ * component that consumes the hook is that boundary. Putting it here as well makes
+ * Next's TypeScript plugin treat the exported hook as a component and reject an
+ * `onSuccess` callback as a non-serializable prop (TS71007).
+ */
 function header(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string, hooks: string): string {
-    const directive = ctx.profile.clientDirective ? "'use client';\n\n" : '';
-    const servicePath = ctx.importLayer(fromFile, 'clientService', `${spec.name}.service`);
     const domain = domainImports(ctx, fromFile, spec, entity);
 
-    return `${directive}import { ${hooks} } from 'react';
-${domain.join('\n')}${domain.length > 0 ? '\n' : ''}import { ${spec.name}Service } from '${servicePath}';
-
-const service = new ${spec.name}Service();
-`;
+    return `import { ${hooks} } from 'react';
+${domain.join('\n')}${domain.length > 0 ? '\n' : ''}`;
 }
 
 function renderQuery(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {
@@ -36,7 +38,9 @@ export function use${spec.name}(${spec.params}) {
     setLoading(true);
     setError(null);
     try {
-      setData(await service.handle(${spec.args}));
+      const response = await fetch(${fetchCall(spec, ctx.feature, '      ')});
+      if (!response.ok) throw new Error('${spec.failure}');
+      setData((await response.json()) as ${type});
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '${spec.failure}');
     } finally {
@@ -58,11 +62,14 @@ function renderMutation(ctx: RenderContext, spec: ActionSpec, entity: string, fr
     const returnsValue = spec.usesEntityType;
     const type = payloadType(spec);
     const callbackType = returnsValue ? `(result: ${type}) => void` : '() => void';
+    const request = `      const response = await fetch(${fetchCall(spec, ctx.feature, '      ')});
+      if (!response.ok) throw new Error('${spec.failure}');`;
     const body = returnsValue
-        ? `      const result = await service.handle(${spec.args});
+        ? `${request}
+      const result = (await response.json()) as ${type};
       onSuccess?.(result);
       return result;`
-        : `      await service.handle(${spec.args});
+        : `${request}
       onSuccess?.();`;
     const failure = returnsValue
         ? `      setError(err instanceof Error ? err.message : '${spec.failure}');

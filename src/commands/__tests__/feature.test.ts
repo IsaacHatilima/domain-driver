@@ -33,14 +33,18 @@ describe('make:feature on next-frontend', () => {
             'containers/.gitkeep',
             'hooks/.gitkeep',
             'page.tsx',
-            'repositories/.gitkeep',
             'schemas/.gitkeep',
-            'services/.gitkeep',
             'types/.gitkeep',
         ]);
         const page = readProjectFile('app/test-feature/page.tsx');
         expect(page).toContain('export default function TestFeaturePage()');
         expect(page).not.toContain('import');
+    });
+
+    it('creates no service or repository folder: they live behind the API', async () => {
+        await makeFeature('test-feature');
+        expect(projectFileExists('app/test-feature/services')).toBe(false);
+        expect(projectFileExists('app/test-feature/repositories')).toBe(false);
     });
 
     it('throws if the feature already exists', async () => {
@@ -60,13 +64,45 @@ describe('make:feature on next-frontend', () => {
         expect(files).toContain('components/client/CoffeeType.tsx');
         expect(files).toContain('containers/CoffeeTypeContainer.tsx');
         expect(files).toContain('hooks/ListCoffeeType.hook.ts');
-        expect(files).toContain('services/ListCoffeeType.service.ts');
-        expect(files).toContain('repositories/DeleteCoffeeType.repository.ts');
+        expect(files).toContain('hooks/DeleteCoffeeType.hook.ts');
         expect(files).toContain('schemas/UpdateCoffeeType.schema.ts');
         expect(files).toContain('types/CoffeeType.types.ts');
         expect(readProjectFile('app/coffee-type/page.tsx')).toContain(
             "import CoffeeTypeContainer from './containers/CoffeeTypeContainer';"
         );
+    });
+
+    it('scaffolds no service or repository file with -a', async () => {
+        await makeFeature('coffee-type', true);
+        const files = listFiles('app/coffee-type');
+        expect(files.some((file) => file.includes('.service.') || file.includes('.repository.'))).toBe(
+            false
+        );
+        expect(
+            files.some((file) => file.startsWith('services/') || file.startsWith('repositories/'))
+        ).toBe(false);
+    });
+
+    it('gives the hook the fetch that the client service used to make', async () => {
+        await makeFeature('coffee-type', true);
+        const hook = readProjectFile('app/coffee-type/hooks/ListCoffeeType.hook.ts');
+        expect(hook).toContain("const response = await fetch('/api/coffee-type');");
+        expect(hook).toContain("if (!response.ok) throw new Error('Failed to fetch CoffeeType list');");
+        expect(hook).toContain('setData((await response.json()) as CoffeeType[]);');
+        expect(hook).not.toContain('Service');
+        expect(hook).not.toContain("'use client'");
+    });
+
+    it('gives the mutation hook the POST that the client repository used to make', async () => {
+        await makeFeature('coffee-type', true);
+        const hook = readProjectFile('app/coffee-type/hooks/CreateCoffeeType.hook.ts');
+        expect(hook).toContain("const response = await fetch('/api/coffee-type', {");
+        expect(hook).toContain("method: 'POST',");
+        expect(hook).toContain("headers: { 'Content-Type': 'application/json' },");
+        expect(hook).toContain('body: JSON.stringify(data),');
+        expect(hook).toContain('const result = (await response.json()) as CoffeeType;');
+        expect(hook).toContain('onSuccess?.(result);');
+        expect(hook).not.toContain('Service');
     });
 
     it('uses src/app when present', async () => {
@@ -85,11 +121,25 @@ describe('make:feature on react', () => {
             'components/.gitkeep',
             'containers/.gitkeep',
             'hooks/.gitkeep',
-            'repositories/.gitkeep',
             'schemas/.gitkeep',
-            'services/.gitkeep',
             'types/.gitkeep',
         ]);
+        expect(projectFileExists('src/features/cat/services')).toBe(false);
+        expect(projectFileExists('src/features/cat/repositories')).toBe(false);
+    });
+
+    it('scaffolds hooks that fetch the API and no service or repository with -a', async () => {
+        writePackageJson({ react: '1' });
+        mkdir('src');
+        await makeFeature('cat', true, 'Cat');
+        const files = listFiles('src/features/cat');
+        expect(files).toContain('hooks/ListCat.hook.ts');
+        expect(files.some((file) => file.includes('.service.') || file.includes('.repository.'))).toBe(
+            false
+        );
+        expect(readProjectFile('src/features/cat/hooks/ListCat.hook.ts')).toContain(
+            "const response = await fetch('/api/cat');"
+        );
     });
 });
 
@@ -143,5 +193,23 @@ describe('make:feature on tanstack-start', () => {
         expect(readProjectFile('src/routes/cat/index.tsx')).toContain(
             "import CatContainer from './-containers/CatContainer';"
         );
+    });
+
+    it('keeps the server layers and creates no client ones with -a', async () => {
+        await makeFeature('cat', true, 'Cat');
+        const files = listFiles('src/routes/cat');
+        expect(files).toContain('-server/services/ListCat.service.ts');
+        expect(files).toContain('-server/repositories/ListCat.repository.ts');
+        expect(files).toContain('-server/functions/ListCat.fn.ts');
+        expect(files.some((file) => file.startsWith('-client/'))).toBe(false);
+        expect(projectFileExists('src/routes/cat/-client')).toBe(false);
+    });
+
+    it('gives the query hook the server function the client service used to wrap', async () => {
+        await makeFeature('cat', true, 'Cat');
+        const hook = readProjectFile('src/routes/cat/-hooks/ListCat.hook.ts');
+        expect(hook).toContain("import { listCat } from '../-server/functions/ListCat.fn';");
+        expect(hook).toContain('queryFn: (): Promise<Cat[]> => listCat(),');
+        expect(hook).not.toContain('Service');
     });
 });
