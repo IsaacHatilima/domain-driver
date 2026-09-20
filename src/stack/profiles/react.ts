@@ -2,14 +2,12 @@ import { StackProfile } from '../types';
 
 export const react: StackProfile = Object.freeze({
     name: 'react',
-    folders: ['components', 'containers', 'hooks', 'services', 'repositories', 'schemas', 'types'] as const,
-    layers: ['component', 'container', 'hook', 'clientService', 'clientRepository', 'schema', 'types'] as const,
+    folders: ['components', 'containers', 'hooks', 'schemas', 'types'] as const,
+    layers: ['component', 'container', 'hook', 'schema', 'types'] as const,
     layerDirs: {
         component: 'components',
         container: 'containers',
         hook: 'hooks',
-        clientService: 'services',
-        clientRepository: 'repositories',
         schema: 'schemas',
         types: 'types',
     },

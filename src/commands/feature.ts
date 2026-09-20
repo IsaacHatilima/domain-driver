@@ -47,11 +47,9 @@ function scaffoldLayers(ctx: RenderContext, entity: string): void {
     const { feature, profile } = ctx;
     if (hasLayer(profile, 'types')) makeTypes(feature, entity);
     if (hasLayer(profile, 'schema')) makeSchema(feature, entity);
-    if (hasLayer(profile, 'serverRepository')) makeRepository(feature, entity, 'server');
-    if (hasLayer(profile, 'serverService')) makeService(feature, entity, 'server');
+    if (hasLayer(profile, 'serverRepository')) makeRepository(feature, entity);
+    if (hasLayer(profile, 'serverService')) makeService(feature, entity);
     if (hasLayer(profile, 'controller')) makeController(feature, entity);
-    if (hasLayer(profile, 'clientRepository')) makeRepository(feature, entity, 'client');
-    if (hasLayer(profile, 'clientService')) makeService(feature, entity, 'client');
     if (hasLayer(profile, 'hook')) makeHook(feature, entity);
     if (hasLayer(profile, 'component')) makeComponent(feature, entity, 'client');
     if (hasLayer(profile, 'container')) makeContainer(feature, `${entity}Container`, entity);

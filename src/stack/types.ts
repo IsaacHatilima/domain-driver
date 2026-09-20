@@ -27,8 +27,6 @@ export const LAYERS = [
     'component',
     'container',
     'hook',
-    'clientService',
-    'clientRepository',
     'serverService',
     'serverRepository',
     'controller',
@@ -38,9 +36,6 @@ export const LAYERS = [
     'types',
 ] as const;
 export type Layer = (typeof LAYERS)[number];
-
-export type Side = 'client' | 'server';
-export type SideOption = Side | 'both';
 
 export interface StackProfile {
     readonly name: StackName;

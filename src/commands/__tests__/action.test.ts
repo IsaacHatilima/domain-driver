@@ -7,6 +7,7 @@ import {
     mkdir,
     readProjectFile,
     projectFileExists,
+    listFiles,
     TempProject,
 } from '../../__tests__/helpers/project';
 
@@ -113,27 +114,44 @@ describe('make:action on nest', () => {
 });
 
 describe('make:action on next-fullstack', () => {
-    it('writes both sides and a route handler at the slug', () => {
+    it('writes the server side, a route handler at the slug and a hook that fetches it', () => {
         writePackageJson({ next: '1' });
         mkdir('app/api');
         mkdir('app/users');
         makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
         expect(projectFileExists('app/users/server/services/FindActiveUsers.service.ts')).toBe(true);
         expect(projectFileExists('app/users/server/repositories/FindActiveUsers.repository.ts')).toBe(true);
-        expect(projectFileExists('app/users/client/services/FindActiveUsers.service.ts')).toBe(true);
-        expect(readProjectFile('app/users/client/repositories/FindActiveUsers.repository.ts')).toContain("fetch('/api/users/find-active-users')");
         expect(readProjectFile('app/api/users/find-active-users/route.ts')).toContain('export async function GET(): Promise<NextResponse> {');
+        expect(readProjectFile('app/users/hooks/FindActiveUsers.hook.ts')).toContain("fetch('/api/users/find-active-users')");
+        expect(projectFileExists('app/users/client')).toBe(false);
     });
 });
 
 describe('make:action on react', () => {
-    it('writes the client side only', () => {
+    it('writes a hook that calls the API and no service or repository', () => {
         writePackageJson({ react: '1' });
         mkdir('src/features/users');
         makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
-        expect(projectFileExists('src/features/users/services/FindActiveUsers.service.ts')).toBe(true);
-        expect(readProjectFile('src/features/users/repositories/FindActiveUsers.repository.ts')).toContain("fetch('/api/users/find-active-users')");
+        expect(readProjectFile('src/features/users/hooks/FindActiveUsers.hook.ts')).toContain("fetch('/api/users/find-active-users')");
+        expect(projectFileExists('src/features/users/services')).toBe(false);
+        expect(projectFileExists('src/features/users/repositories')).toBe(false);
         expect(projectFileExists('src/features/users/controllers')).toBe(false);
+        expect(listFiles('src/features/users')).toEqual(['hooks/FindActiveUsers.hook.ts']);
+    });
+
+    it('writes a schema and a posting hook with --with-input', () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/users');
+        makeAction('users', 'User', 'notifyUsers', { withInput: true, returns: 'void' });
+        const hook = readProjectFile('src/features/users/hooks/NotifyUsers.hook.ts');
+        expect(hook).toContain("fetch('/api/users/notify-users', {");
+        expect(hook).toContain("method: 'POST',");
+        expect(hook).toContain('body: JSON.stringify(data),');
+        expect(readProjectFile('src/features/users/schemas/NotifyUsers.schema.ts')).toContain('export const NotifyUsersSchema');
+        expect(listFiles('src/features/users')).toEqual([
+            'hooks/NotifyUsers.hook.ts',
+            'schemas/NotifyUsers.schema.ts',
+        ]);
     });
 });
 
@@ -153,6 +171,8 @@ describe('make:action writes a hook', () => {
         makeAction('users', 'User', 'notifyUsers', { withInput: true, returns: 'void' });
         const content = readProjectFile('src/routes/users/-hooks/NotifyUsers.hook.ts');
         expect(content).toContain('useMutation');
+        expect(content).toContain("import { notifyUsers } from '../-server/functions/NotifyUsers.fn';");
+        expect(content).not.toContain('new NotifyUsersService()');
     });
 
     it('writes no hook on a stack without the layer', () => {

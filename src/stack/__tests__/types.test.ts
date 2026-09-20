@@ -18,9 +18,26 @@ describe('stack types', () => {
     });
 
     it('lists every layer', () => {
-        expect(LAYERS).toHaveLength(13);
-        expect(LAYERS).toContain('clientRepository');
+        expect(LAYERS).toEqual([
+            'page',
+            'component',
+            'container',
+            'hook',
+            'serverService',
+            'serverRepository',
+            'controller',
+            'module',
+            'dto',
+            'schema',
+            'types',
+        ]);
+        expect(LAYERS).toHaveLength(11);
         expect(LAYERS).toContain('module');
+    });
+
+    it('has no client service or client repository layer', () => {
+        expect(LAYERS).not.toContain('clientService');
+        expect(LAYERS).not.toContain('clientRepository');
     });
 
     it('isStackName guards unknown values', () => {

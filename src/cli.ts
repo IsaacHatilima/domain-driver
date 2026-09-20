@@ -12,7 +12,6 @@ import { makeHook } from './commands/hook';
 import { makeRepository } from './commands/repository';
 import { makeSchema } from './commands/schema';
 import { makeService } from './commands/service';
-import { parseSide } from './commands/sides';
 import { parseFeatureTarget, parseTarget } from './commands/target';
 import { makeTypes } from './commands/types';
 import { runUpdate, defaultUpdateDeps, UpdateDeps } from './commands/update';
@@ -125,20 +124,18 @@ export function createProgram(deps: CliDeps): Command {
     program
         .command('make:service <target>')
         .description('Scaffold single-responsibility service files inside an existing feature (<feature>/<Entity>)')
-        .option('--side <side>', 'client, server, or both', 'both')
-        .action((target: string, options: { side: string }) => {
+        .action((target: string) => {
             const { feature, name } = parseTarget(target);
-            const wrote = makeService(feature, name, parseSide(options.side));
+            const wrote = makeService(feature, name);
             if (wrote) registerClasses(requireFeature(feature), 'service', standardActionNames(name));
         });
 
     program
         .command('make:repository <target>')
         .description('Scaffold single-responsibility repository files inside an existing feature (<feature>/<Entity>)')
-        .option('--side <side>', 'client, server, or both', 'both')
-        .action((target: string, options: { side: string }) => {
+        .action((target: string) => {
             const { feature, name } = parseTarget(target);
-            const wrote = makeRepository(feature, name, parseSide(options.side));
+            const wrote = makeRepository(feature, name);
             if (wrote) registerClasses(requireFeature(feature), 'repository', standardActionNames(name));
         });
 

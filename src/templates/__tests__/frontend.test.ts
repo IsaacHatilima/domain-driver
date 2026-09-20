@@ -102,15 +102,18 @@ describe('renderContainer', () => {
 });
 
 describe('renderHook', () => {
-    it('renders a list query hook that fetches on mount', () => {
+    it('renders a list query hook that fetches the feature API on mount', () => {
         const ctx = contextFor('react', 'cat');
         const spec = standardAction('List', 'Cat');
         const file = path.join(ctx.featureDir, 'hooks/ListCat.hook.ts');
         const content = renderHook(ctx, spec, 'Cat', file);
 
         expect(content).toContain('export function useListCat()');
+        expect(content).toContain("import { Cat } from '../types/Cat.types';");
         expect(content).toContain('const [data, setData] = useState<Cat[]>([]);');
-        expect(content).toContain('setData(await service.handle());');
+        expect(content).toContain("const response = await fetch('/api/cat');");
+        expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat list');");
+        expect(content).toContain('setData((await response.json()) as Cat[]);');
         expect(content).toContain('}, []);');
         expect(content).toContain('void refetch();');
         expect(content).toContain('return { data, loading, error, refetch };');
@@ -122,7 +125,9 @@ describe('renderHook', () => {
 
         expect(content).toContain('export function useShowCat(id: string)');
         expect(content).toContain('const [data, setData] = useState<Cat | null>(null);');
-        expect(content).toContain('setData(await service.handle(id));');
+        expect(content).toContain('const response = await fetch(`/api/cat/${id}`);');
+        expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat');");
+        expect(content).toContain('setData((await response.json()) as Cat);');
         expect(content).toContain('}, [id]);');
     });
 
@@ -133,7 +138,14 @@ describe('renderHook', () => {
         expect(content).toContain('export function useUpdateCat(options: { onSuccess?: (result: Cat) => void } = {})');
         expect(content).toContain('const { onSuccess } = options;');
         expect(content).toContain('const updateCat = useCallback(async (id: string, data: UpdateCat) => {');
-        expect(content).toContain('const result = await service.handle(id, data);');
+        expect(content).toContain("import { UpdateCat } from '../schemas/UpdateCat.schema';");
+        expect(content).toContain(`      const response = await fetch(\`/api/cat/\${id}\`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });`);
+        expect(content).toContain("if (!response.ok) throw new Error('Failed to update Cat');");
+        expect(content).toContain('const result = (await response.json()) as Cat;');
         expect(content).toContain('onSuccess?.(result);');
         expect(content).toContain('}, [onSuccess]);');
         expect(content).toContain('return { updateCat, loading, error };');
@@ -145,7 +157,12 @@ describe('renderHook', () => {
         const content = renderHook(ctx, standardAction('Delete', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/DeleteCat.hook.ts'));
 
         expect(content).toContain('options: { onSuccess?: () => void } = {}');
+        expect(content).toContain(`      const response = await fetch(\`/api/cat/\${id}\`, {
+        method: 'DELETE',
+      });`);
+        expect(content).toContain("if (!response.ok) throw new Error('Failed to delete Cat');");
         expect(content).toContain('onSuccess?.();');
+        expect(content).not.toContain('JSON.stringify');
         expect(content).not.toContain('const result =');
     });
 
@@ -156,22 +173,33 @@ describe('renderHook', () => {
 
         expect(content).toContain('export function usePurgeCats(options: { onSuccess?: () => void } = {})');
         expect(content).toContain('const purgeCats = useCallback(async () => {');
-        expect(content).toContain('await service.handle();');
+        expect(content).toContain("const response = await fetch('/api/cat/purge-cats');");
         expect(content).toContain('onSuccess?.();');
         expect(content).not.toContain('useEffect');
         expect(content).not.toContain('useState<void');
     });
 
-    it('adds the client directive on Next', () => {
+    it('omits the client directive on Next, so the TS plugin does not read the hook as a component', () => {
         const ctx = contextFor('next-frontend', 'cat');
         const content = renderHook(ctx, standardAction('List', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/ListCat.hook.ts'));
-        expect(content.startsWith("'use client';")).toBe(true);
+        expect(content).not.toContain("'use client'");
+        expect(content.startsWith("import { useState, useEffect, useCallback } from 'react';")).toBe(true);
     });
 
-    it('imports the client service, not the server one, on next-fullstack', () => {
+    it('calls the feature API itself instead of a service on next-fullstack', () => {
         const ctx = contextFor('next-fullstack', 'cat');
         const content = renderHook(ctx, standardAction('Create', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/CreateCat.hook.ts'));
-        expect(content).toContain("from '../client/services/CreateCat.service';");
-        expect(content).not.toContain('server/services');
+
+        expect(content).toContain(`      const response = await fetch('/api/cat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });`);
+        expect(content).toContain('const result = (await response.json()) as Cat;');
+        expect(content).toContain("import { Cat } from '../types/Cat.types';");
+        expect(content).toContain("import { CreateCat } from '../schemas/CreateCat.schema';");
+        expect(content).not.toContain('service');
+        expect(content).not.toContain('Service');
+        expect(content).not.toContain('repositories');
     });
 });

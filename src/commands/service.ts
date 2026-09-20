@@ -1,23 +1,22 @@
-import { SideOption } from '../stack/types';
 import { standardActions } from '../templates/actions';
 import { renderService } from '../templates/service';
+import { assertLayer } from '../stack/registry';
 import { ensureLayerDir, requireFeature } from './resolve';
-import { resolveSides, SERVICE_SIDES } from './sides';
 import { writeSpecFiles } from './write';
 
-export function makeService(feature: string, name: string, side: SideOption = 'both'): boolean {
+/**
+ * Services exist only behind the API. The browser reaches them through the hook,
+ * which calls the endpoint directly, so there is no client-side counterpart.
+ */
+export function makeService(feature: string, name: string): boolean {
     const ctx = requireFeature(feature);
-    let wroteAny = false;
+    assertLayer(ctx.profile, 'serverService', 'make:service');
+    const dir = ensureLayerDir(ctx, 'serverService');
+    const written = writeSpecFiles(dir, standardActions(name), 'service', (spec, filePath) =>
+        renderService(ctx, spec, name, filePath)
+    );
 
-    for (const current of resolveSides(ctx.profile, side, SERVICE_SIDES)) {
-        const dir = ensureLayerDir(ctx, SERVICE_SIDES[current]);
-        const written = writeSpecFiles(dir, standardActions(name), 'service', (spec, filePath) =>
-            renderService(ctx, spec, name, filePath, current)
-        );
-        if (written > 0) {
-            console.log(`✅ Services (${current}) for "${name}" created at ${dir}`);
-            wroteAny = true;
-        }
-    }
-    return wroteAny;
+    if (written === 0) return false;
+    console.log(`✅ Services for "${name}" created at ${dir}`);
+    return true;
 }

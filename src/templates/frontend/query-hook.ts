@@ -1,18 +1,23 @@
+import { lowerFirst } from '../../utils/naming';
 import { ActionSpec, isQueryAction } from '../actions';
 import { RenderContext } from '../context';
+import { serverFnCall } from './http';
 import { domainImports } from '../signatures';
 import { keysConstant } from './query-keys';
 
+/**
+ * The hook calls the server function directly. There is no client-side service or
+ * repository in between: the service and the repository sit behind that function,
+ * on the server, where the database is.
+ */
 function preamble(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string, imported: string): string {
-    const servicePath = ctx.importLayer(fromFile, 'clientService', `${spec.name}.service`);
+    const fnPath = ctx.importLayer(fromFile, 'controller', `${spec.name}.fn`);
     const keysPath = ctx.importLayer(fromFile, 'hook', `${ctx.feature}.keys`);
     const domain = domainImports(ctx, fromFile, spec, entity);
 
     return `import { ${imported} } from '@tanstack/react-query';
-${domain.join('\n')}${domain.length > 0 ? '\n' : ''}import { ${spec.name}Service } from '${servicePath}';
+${domain.join('\n')}${domain.length > 0 ? '\n' : ''}import { ${lowerFirst(spec.name)} } from '${fnPath}';
 import { ${keysConstant(ctx.feature)} } from '${keysPath}';
-
-const service = new ${spec.name}Service();
 `;
 }
 
@@ -37,7 +42,7 @@ function renderQuery(ctx: RenderContext, spec: ActionSpec, entity: string, fromF
 export function use${spec.name}(${spec.params}) {
   return useQuery({
     queryKey: ${queryKey(ctx, spec)},
-    queryFn: (): ${spec.returns} => service.handle(${spec.args}),
+    queryFn: (): ${spec.returns} => ${lowerFirst(spec.name)}${serverFnCall(spec)},
   });
 }
 `;
@@ -70,7 +75,7 @@ export function use${spec.name}() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ${signature}: ${spec.returns} => service.handle(${call}),
+    mutationFn: ${signature}: ${spec.returns} => ${lowerFirst(spec.name)}${serverFnCall(spec)},
     onSuccess: ${args} => {
       void queryClient.invalidateQueries({ queryKey: ${keys}.all });${detail}
     },

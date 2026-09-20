@@ -1,6 +1,5 @@
 import * as path from 'path';
 import { hasLayer, layerDir } from '../stack/registry';
-import { Side } from '../stack/types';
 import { ActionSpec, customAction, CustomActionOptions, RETURN_KINDS, ReturnKind } from '../templates/actions';
 import { renderServerRepository } from '../templates/backend/server-repository';
 import { RenderContext } from '../templates/context';
@@ -15,7 +14,6 @@ import { apiRouteDir } from '../utils/paths';
 import { controllerRenderer, controllerSuffix } from './controller-renderer';
 import { hintNestjsZod, hintReactQuery } from './hints';
 import { ensureQueryKeys, hookRenderer } from './hook-renderer';
-import { clientRenderer } from './repository';
 import { ensureLayerDir, requireFeature } from './resolve';
 import { writeIfAbsent } from './write';
 
@@ -36,9 +34,8 @@ export function makeAction(
     hintMissingTypes(ctx, entity);
     let wroteAny = false;
     if (spec.schema !== null) wroteAny = writeInput(ctx, spec) || wroteAny;
-    if (hasLayer(ctx.profile, 'serverRepository')) wroteAny = writeSide(ctx, spec, entity, 'server') || wroteAny;
+    if (hasLayer(ctx.profile, 'serverRepository')) wroteAny = writeServerSide(ctx, spec, entity) || wroteAny;
     if (hasLayer(ctx.profile, 'controller')) wroteAny = writeController(ctx, spec, entity) || wroteAny;
-    if (hasLayer(ctx.profile, 'clientRepository')) wroteAny = writeSide(ctx, spec, entity, 'client') || wroteAny;
     if (hasLayer(ctx.profile, 'hook')) wroteAny = writeHook(ctx, spec, entity) || wroteAny;
 
     if (wroteAny) console.log(`✅ Action "${spec.name}" scaffolded in "${feature}"`);
@@ -62,16 +59,15 @@ function writeInput(ctx: RenderContext, spec: ActionSpec): boolean {
     return wroteSchema || wroteDto;
 }
 
-function writeSide(ctx: RenderContext, spec: ActionSpec, entity: string, side: Side): boolean {
-    const repositoryLayer = side === 'client' ? 'clientRepository' : 'serverRepository';
-    const serviceLayer = side === 'client' ? 'clientService' : 'serverService';
-    const renderRepository = side === 'client' ? clientRenderer(ctx) : renderServerRepository;
+/** The service and repository pair behind the API. There is no client-side pair. */
+function writeServerSide(ctx: RenderContext, spec: ActionSpec, entity: string): boolean {
+    const repositoryFile = path.join(ensureLayerDir(ctx, 'serverRepository'), `${spec.name}.repository.ts`);
+    const wroteRepository = writeIfAbsent(repositoryFile, () =>
+        renderServerRepository(ctx, spec, entity, repositoryFile)
+    );
 
-    const repositoryFile = path.join(ensureLayerDir(ctx, repositoryLayer), `${spec.name}.repository.ts`);
-    const wroteRepository = writeIfAbsent(repositoryFile, () => renderRepository(ctx, spec, entity, repositoryFile));
-
-    const serviceFile = path.join(ensureLayerDir(ctx, serviceLayer), `${spec.name}.service.ts`);
-    const wroteService = writeIfAbsent(serviceFile, () => renderService(ctx, spec, entity, serviceFile, side));
+    const serviceFile = path.join(ensureLayerDir(ctx, 'serverService'), `${spec.name}.service.ts`);
+    const wroteService = writeIfAbsent(serviceFile, () => renderService(ctx, spec, entity, serviceFile));
 
     return wroteRepository || wroteService;
 }

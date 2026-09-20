@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import { renderService } from '../service';
-import { renderClientRepository } from '../frontend/client-repository';
-import { renderServerFnRepository } from '../frontend/server-fn-repository';
+import { renderHook } from '../frontend/hook';
+import { renderQueryHook } from '../frontend/query-hook';
+import { serverFnCall } from '../frontend/http';
 import { renderServerRepository } from '../backend/server-repository';
 import { customAction, standardAction } from '../actions';
 import { contextFor } from '../../__tests__/helpers/context';
@@ -17,10 +18,10 @@ beforeEach(() => {
 afterEach(() => project.cleanup());
 
 describe('renderService', () => {
-    it('renders a client service on next-frontend', () => {
-        const ctx = contextFor('next-frontend', 'cat');
+    it('renders a plain service wired to the server repository', () => {
+        const ctx = contextFor('node', 'cat');
         const fromFile = path.join(ctx.featureDir, 'services', 'CreateCat.service.ts');
-        const content = renderService(ctx, standardAction('Create', 'Cat'), 'Cat', fromFile, 'client');
+        const content = renderService(ctx, standardAction('Create', 'Cat'), 'Cat', fromFile);
         expect(content).toContain("import { Cat } from '../types/Cat.types';");
         expect(content).toContain("import { CreateCat } from '../schemas/CreateCat.schema';");
         expect(content).toContain("import { CreateCatRepository } from '../repositories/CreateCat.repository';");
@@ -30,18 +31,29 @@ describe('renderService', () => {
         expect(content).toContain('return repository.handle(data);');
     });
 
-    it('points fullstack client services at client repositories', () => {
-        const ctx = contextFor('next-fullstack', 'cat');
-        const fromFile = path.join(ctx.featureDir, 'client', 'services', 'ListCat.service.ts');
-        const content = renderService(ctx, standardAction('List', 'Cat'), 'Cat', fromFile, 'client');
-        expect(content).toContain("from '../repositories/ListCat.repository';");
-        expect(content).toContain("from '../../types/Cat.types';");
+    it('has no repository to point at on the frontend-only stacks', () => {
+        for (const stack of ['next-frontend', 'react'] as const) {
+            const ctx = contextFor(stack, 'cat');
+            const fromFile = path.join(ctx.featureDir, 'services', 'CreateCat.service.ts');
+            expect(() => renderService(ctx, standardAction('Create', 'Cat'), 'Cat', fromFile)).toThrow(
+                `Layer "serverRepository" has no directory in the ${stack} profile.`
+            );
+        }
     });
 
-    it('points fullstack server services at server repositories', () => {
+    it('points fullstack services at the server repository and the shared types', () => {
+        const ctx = contextFor('next-fullstack', 'cat');
+        const fromFile = path.join(ctx.featureDir, 'server', 'services', 'ListCat.service.ts');
+        const content = renderService(ctx, standardAction('List', 'Cat'), 'Cat', fromFile);
+        expect(content).toContain("from '../repositories/ListCat.repository';");
+        expect(content).toContain("from '../../types/Cat.types';");
+        expect(content).not.toContain('client/');
+    });
+
+    it('renders the fullstack service without the nest decorator', () => {
         const ctx = contextFor('next-fullstack', 'cat');
         const fromFile = path.join(ctx.featureDir, 'server', 'services', 'ShowCat.service.ts');
-        const content = renderService(ctx, standardAction('Show', 'Cat'), 'Cat', fromFile, 'server');
+        const content = renderService(ctx, standardAction('Show', 'Cat'), 'Cat', fromFile);
         expect(content).toContain("from '../repositories/ShowCat.repository';");
         expect(content).not.toContain('@Injectable');
     });
@@ -49,7 +61,7 @@ describe('renderService', () => {
     it('renders an injectable service with constructor injection on nest', () => {
         const ctx = contextFor('nest', 'cat');
         const fromFile = path.join(ctx.featureDir, 'services', 'UpdateCat.service.ts');
-        const content = renderService(ctx, standardAction('Update', 'Cat'), 'Cat', fromFile, 'server');
+        const content = renderService(ctx, standardAction('Update', 'Cat'), 'Cat', fromFile);
         expect(content).toContain("import { Injectable } from '@nestjs/common';");
         expect(content).toContain('@Injectable()\nexport class UpdateCatService {');
         expect(content).toContain('constructor(private readonly repository: UpdateCatRepository) {}');
@@ -60,35 +72,44 @@ describe('renderService', () => {
     it('Delete imports only the repository', () => {
         const ctx = contextFor('node', 'cat');
         const fromFile = path.join(ctx.featureDir, 'services', 'DeleteCat.service.ts');
-        const content = renderService(ctx, standardAction('Delete', 'Cat'), 'Cat', fromFile, 'server');
+        const content = renderService(ctx, standardAction('Delete', 'Cat'), 'Cat', fromFile);
         expect(content).not.toContain('types/Cat.types');
         expect(content).toContain('async handle(id: string): Promise<void> {');
     });
 });
 
-describe('renderClientRepository', () => {
+/**
+ * The hook is what used to be the client repository: it owns the request to the API,
+ * because the service and the repository now live behind that API, on the server.
+ */
+describe('renderHook requests the API', () => {
     it('fetches the feature api path', () => {
         const ctx = contextFor('next-frontend', 'coffee-type');
-        const fromFile = path.join(ctx.featureDir, 'repositories', 'CreateCoffeeType.repository.ts');
-        const content = renderClientRepository(ctx, standardAction('Create', 'CoffeeType'), 'CoffeeType', fromFile);
+        const fromFile = path.join(ctx.featureDir, 'hooks', 'CreateCoffeeType.hook.ts');
+        const content = renderHook(ctx, standardAction('Create', 'CoffeeType'), 'CoffeeType', fromFile);
         expect(content).toContain("fetch('/api/coffee-type'");
         expect(content).toContain("method: 'POST'");
         expect(content).toContain("'Content-Type': 'application/json'");
+        expect(content).toContain('body: JSON.stringify(data),');
         expect(content).toContain("import { CreateCoffeeType } from '../schemas/CreateCoffeeType.schema';");
+        expect(content).not.toContain('Service');
     });
 
-    it('Delete has no imports', () => {
+    it('Delete has no domain imports and sends no body', () => {
         const ctx = contextFor('react', 'cat');
-        const fromFile = path.join(ctx.featureDir, 'repositories', 'DeleteCat.repository.ts');
-        const content = renderClientRepository(ctx, standardAction('Delete', 'Cat'), 'Cat', fromFile);
-        expect(content).not.toContain('import');
-        expect(content).toContain("method: 'DELETE'");
+        const fromFile = path.join(ctx.featureDir, 'hooks', 'DeleteCat.hook.ts');
+        const content = renderHook(ctx, standardAction('Delete', 'Cat'), 'Cat', fromFile);
+        expect(content).not.toContain("from '../types");
+        expect(content).not.toContain("from '../schemas");
+        expect(content).toContain("method: 'DELETE',");
+        expect(content).not.toContain('body: JSON.stringify');
     });
 
     it('Show interpolates the id', () => {
         const ctx = contextFor('react', 'cat');
-        const fromFile = path.join(ctx.featureDir, 'repositories', 'ShowCat.repository.ts');
-        expect(renderClientRepository(ctx, standardAction('Show', 'Cat'), 'Cat', fromFile)).toContain('fetch(`/api/cat/${id}`)');
+        const fromFile = path.join(ctx.featureDir, 'hooks', 'ShowCat.hook.ts');
+        const content = renderHook(ctx, standardAction('Show', 'Cat'), 'Cat', fromFile);
+        expect(content).toContain('await fetch(`/api/cat/${id}`);');
     });
 });
 
@@ -121,30 +142,31 @@ describe('renderServerRepository', () => {
 });
 
 describe('custom action specs through the data templates', () => {
-    it('client repository GETs the slug path and returns json', () => {
+    it('the hook GETs the slug path and reads json into state', () => {
         const ctx = contextFor('react', 'users');
         const spec = customAction('User', 'findActiveUsers', { withInput: false, returns: 'list' });
-        const fromFile = path.join(ctx.featureDir, 'repositories', 'FindActiveUsers.repository.ts');
-        const content = renderClientRepository(ctx, spec, 'User', fromFile);
+        const fromFile = path.join(ctx.featureDir, 'hooks', 'FindActiveUsers.hook.ts');
+        const content = renderHook(ctx, spec, 'User', fromFile);
         expect(content).toContain("import { User } from '../types/User.types';");
-        expect(content).toContain('export class FindActiveUsersRepository {');
-        expect(content).toContain('async handle(): Promise<User[]> {');
+        expect(content).toContain('export function useFindActiveUsers() {');
+        expect(content).toContain('const [data, setData] = useState<User[]>([]);');
         expect(content).toContain("const response = await fetch('/api/users/find-active-users');");
-        expect(content).toContain("throw new Error('Failed to findActiveUsers User');");
-        expect(content).toContain('return response.json();');
+        expect(content).toContain("if (!response.ok) throw new Error('Failed to findActiveUsers User');");
+        expect(content).toContain('setData((await response.json()) as User[]);');
     });
 
-    it('client repository POSTs a body and returns nothing for void', () => {
+    it('the hook POSTs a body and reads nothing back for void', () => {
         const ctx = contextFor('react', 'users');
         const spec = customAction('User', 'notifyUsers', { withInput: true, returns: 'void' });
-        const fromFile = path.join(ctx.featureDir, 'repositories', 'NotifyUsers.repository.ts');
-        const content = renderClientRepository(ctx, spec, 'User', fromFile);
+        const fromFile = path.join(ctx.featureDir, 'hooks', 'NotifyUsers.hook.ts');
+        const content = renderHook(ctx, spec, 'User', fromFile);
         expect(content).toContain("import { NotifyUsers } from '../schemas/NotifyUsers.schema';");
         expect(content).not.toContain('types/User.types');
         expect(content).toContain("const response = await fetch('/api/users/notify-users', {");
         expect(content).toContain("method: 'POST',");
         expect(content).toContain('body: JSON.stringify(data),');
-        expect(content).not.toContain('return response.json()');
+        expect(content).toContain('onSuccess?.();');
+        expect(content).not.toContain('response.json()');
     });
 
     it('server repository and service use the action name without the entity', () => {
@@ -153,35 +175,42 @@ describe('custom action specs through the data templates', () => {
         const repo = renderServerRepository(ctx, spec, 'User', path.join(ctx.featureDir, 'repositories', 'ArchiveUser.repository.ts'));
         expect(repo).toContain('@Injectable()\nexport class ArchiveUserRepository {');
         expect(repo).toContain('async handle(data: ArchiveUser): Promise<User> {');
-        const service = renderService(ctx, spec, 'User', path.join(ctx.featureDir, 'services', 'ArchiveUser.service.ts'), 'server');
+        const service = renderService(ctx, spec, 'User', path.join(ctx.featureDir, 'services', 'ArchiveUser.service.ts'));
         expect(service).toContain("import { ArchiveUserRepository } from '../repositories/ArchiveUser.repository';");
         expect(service).toContain('constructor(private readonly repository: ArchiveUserRepository) {}');
     });
 });
 
-describe('renderServerFnRepository', () => {
+/**
+ * On tanstack-start the server function stands in for the API route, so the hook imports
+ * and calls it directly. `serverFnCall` shapes the single `data` argument it is called with.
+ */
+describe('serverFnCall', () => {
     const ctx = contextFor('tanstack-start', 'cat');
-    const file = (name: string) => path.join(ctx.featureDir, `-client/repositories/${name}.repository.ts`);
+    const file = (name: string) => path.join(ctx.featureDir, `-hooks/${name}.hook.ts`);
+
+    it('is called from the hook, with no repository and no fetch in between', () => {
+        const content = renderQueryHook(ctx, standardAction('List', 'Cat'), 'Cat', file('ListCat'));
+        expect(content).toContain("import { listCat } from '../-server/functions/ListCat.fn';");
+        expect(content).toContain('=> listCat(),');
+        expect(content).not.toContain('fetch(');
+        expect(content).not.toContain('Service');
+        expect(content).not.toContain('Repository');
+    });
 
     it('calls a no-argument server function', () => {
-        const content = renderServerFnRepository(ctx, standardAction('List', 'Cat'), 'Cat', file('ListCat'));
-        expect(content).toContain("import { listCat } from '../../-server/functions/ListCat.fn';");
-        expect(content).toContain('return listCat();');
-        expect(content).not.toContain('fetch(');
+        expect(serverFnCall(standardAction('List', 'Cat'))).toBe('()');
     });
 
     it('passes a bare id as data', () => {
-        const content = renderServerFnRepository(ctx, standardAction('Show', 'Cat'), 'Cat', file('ShowCat'));
-        expect(content).toContain('return showCat({ data: id });');
+        expect(serverFnCall(standardAction('Show', 'Cat'))).toBe('({ data: id })');
     });
 
     it('passes a payload as data', () => {
-        const content = renderServerFnRepository(ctx, standardAction('Create', 'Cat'), 'Cat', file('CreateCat'));
-        expect(content).toContain('return createCat({ data });');
+        expect(serverFnCall(standardAction('Create', 'Cat'))).toBe('({ data })');
     });
 
     it('wraps id and payload together', () => {
-        const content = renderServerFnRepository(ctx, standardAction('Update', 'Cat'), 'Cat', file('UpdateCat'));
-        expect(content).toContain('return updateCat({ data: { id, data } });');
+        expect(serverFnCall(standardAction('Update', 'Cat'))).toBe('({ data: { id, data } })');
     });
 });
