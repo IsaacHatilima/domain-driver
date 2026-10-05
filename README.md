@@ -1,3 +1,15 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/IsaacHatilima/domain-driver/master/docs/assets/logo.png" alt="domain-driver logo" width="160">
+</p>
+
+<p align="center">
+  <a href="https://github.com/IsaacHatilima/domain-driver/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/IsaacHatilima/domain-driver/tests.yml?branch=master&label=Tests&logo=github" alt="Tests"></a>
+  <a href="https://www.npmjs.com/package/domain-driver"><img src="https://img.shields.io/npm/v/domain-driver?label=stable&color=e8692c" alt="Stable version"></a>
+  <a href="https://www.npmjs.com/package/domain-driver"><img src="https://img.shields.io/npm/d18m/domain-driver?label=downloads&color=dfb317" alt="Downloads"></a>
+  <a href="https://github.com/IsaacHatilima/domain-driver/blob/master/package.json"><img src="https://img.shields.io/npm/l/domain-driver?label=license&color=97ca00" alt="License"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/domain-driver?label=node&color=007ec6" alt="Node version"></a>
+</p>
+
 # domain-driver 🚀
 
 A CLI scaffolding tool for domain-driven feature folders. Like Laravel's `php artisan make`, but for Next.js, React, Node, NestJS, and TanStack Start projects. It detects your stack and generates only the layers that stack needs, one file per action.
