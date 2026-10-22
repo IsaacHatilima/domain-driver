@@ -419,6 +419,14 @@ npm run test:coverage
 
 ---
 
+## domain-factory (preview)
+
+domain-factory turns a one-sentence feature request into a finished feature using a team of agents, in Claude Code (`/domain-factory`) or Codex (`$domain-factory`). A spec writer maps the project and writes the spec. A builder scaffolds the feature with domain-driver and builds it on its own branch, and four reviewers check security, code, UX and UI in parallel. A documenter then records the feature in `Documentation/`, and an approver either merges the branch or hands it to you. Anything that changes who may do what always goes to a person.
+
+It isn't usable yet: `init` doesn't install it, and it isn't in the published package. The sources and the full design are in [`factory/`](https://github.com/IsaacHatilima/domain-driver/tree/master/factory).
+
+---
+
 ## Roadmap
 
 - [x] Stack detection for Next.js, React, Node, and NestJS
@@ -428,6 +436,7 @@ npm run test:coverage
 - [x] Agent guidance with init and a guarded postinstall
 - [x] TanStack Start stack, with server functions and per-action query hooks
 - [x] Per-action hooks on every stack that has them, replacing the single combined hook
+- [ ] Install `/domain-factory` with `init`, for Claude Code and Codex
 - [ ] Config file — override stack and feature root per project
 - [ ] Configurable API base URL for the fetch in generated hooks
 - [ ] ORM-aware server repositories
