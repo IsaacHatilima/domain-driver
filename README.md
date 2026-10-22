@@ -428,6 +428,7 @@ npm run test:coverage
 - [x] Agent guidance with init and a guarded postinstall
 - [x] TanStack Start stack, with server functions and per-action query hooks
 - [x] Per-action hooks on every stack that has them, replacing the single combined hook
+- [ ] `/domain-factory`: agents that spec, build, review, document and approve a feature, in Claude Code and Codex (sources in `factory/`, not yet installed by `init`)
 - [ ] Config file — override stack and feature root per project
 - [ ] Configurable API base URL for the fetch in generated hooks
 - [ ] ORM-aware server repositories
