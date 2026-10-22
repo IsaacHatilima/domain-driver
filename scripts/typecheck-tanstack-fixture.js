@@ -23,14 +23,11 @@
 // argument is checked against) is empty until something augments it, and a
 // real project gets that augmentation from `routeTree.gen.ts`, which the
 // framework's own Vite plugin regenerates on every dev/build run. domain-driver
-// scaffolds a feature, not the app shell (see the design doc's Scope
-// section), so it never produces a root route or a route tree - the same way
-// it does not produce the project's `vite.config.ts`. This script supplies
-// both, the way `create-tsrouter-app` or a first `vite dev` would, so the
-// fixture is a project the router can actually resolve.
-//
-// See docs/superpowers/specs/2026-09-09-tanstack-start-and-per-action-hooks-design.md
-// for the design this fixture is verifying.
+// scaffolds a feature, not the app shell, so it never produces a root route or
+// a route tree - the same way it does not produce the project's
+// `vite.config.ts`. This script supplies both, the way `create-tsrouter-app` or
+// a first `vite dev` would, so the fixture is a project the router can actually
+// resolve.
 
 const { execFileSync } = require('child_process');
 const fs = require('fs');
