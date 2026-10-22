@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { FACTORY_LABEL } from '../init/init';
 import { readPackageName, run, shouldRunPostinstall } from '../postinstall';
 import { createTempProject, writePackageJson } from './helpers/project';
 
@@ -69,6 +70,15 @@ describe('run', () => {
         run(init, { INIT_CWD: '/consumer' }, () => 'my-app');
         expect(init).toHaveBeenCalledWith('/consumer');
         expect(log).toHaveBeenCalledWith('domain-driver: AGENTS.md created');
+    });
+
+    it('tells the user when the install adds the factory', () => {
+        const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+        const init = vi.fn(() => [{ file: FACTORY_LABEL, status: 'created' as const }]);
+        run(init, { INIT_CWD: '/consumer' }, () => 'my-app');
+        const printed = log.mock.calls.map(([line]) => String(line));
+        expect(printed).toContain(`domain-driver: ${FACTORY_LABEL} created`);
+        expect(printed.some((line) => line.includes('Added the /domain-factory skill'))).toBe(true);
     });
 
     it('does nothing when skipped', () => {

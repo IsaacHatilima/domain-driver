@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { InitResult, runInit } from './init/init';
+import { factoryNotice, InitResult, runInit } from './init/init';
 
 export type SkipReason = 'ci' | 'global' | 'no-init-cwd' | 'no-consumer-package' | 'self-install';
 
@@ -45,8 +45,12 @@ export function run(
     try {
         const decision = shouldRunPostinstall(env, readName);
         if (!decision.run) return;
-        for (const result of init(decision.root)) {
+        const results = init(decision.root);
+        for (const result of results) {
             console.log(`domain-driver: ${result.file} ${result.status}`);
+        }
+        for (const line of factoryNotice(results)) {
+            console.log(`domain-driver: ${line}`);
         }
     } catch {
         // A postinstall must never fail an install.

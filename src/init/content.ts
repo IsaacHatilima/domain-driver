@@ -9,6 +9,7 @@ const AGENTS_LINES: readonly string[] = [
     '- New feature: `npx domain-driver make:feature <feature>/<Entity> -a`',
     '- One layer in an existing feature: `npx domain-driver make:<layer> <feature>/<Entity>` where layer is types, schema, repository, service, controller, component, container, or hook',
     '- Any operation that is not List, Show, Create, Update, or Delete: `npx domain-driver make:action <feature>/<Entity> <actionName>`. Add `--with-input` when it takes a request body and `--returns one|void` when it does not return a list.',
+    '- A whole feature from one request: `/domain-factory <request>` in Claude Code or `$domain-factory <request>` in Codex runs spec, build, review, documentation and approval with separate agents. Only start it when the user asks for it.',
     '',
     'Rules the generated code follows, and that new code must keep:',
     '',

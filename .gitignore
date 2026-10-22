@@ -3,6 +3,8 @@ app
 dist
 node_modules
 .claude
+.agents
+.codex
 .superpowers
 docs/superpowers
 coverage

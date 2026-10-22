@@ -201,6 +201,7 @@ Writes agent guidance into the current project so coding agents scaffold with do
 
 - `AGENTS.md` and `CLAUDE.md` get a section between `<!-- domain-driver:start -->` and `<!-- domain-driver:end -->`. Existing content outside the markers is never touched; the section is created, refreshed in place, or left alone.
 - `.claude/skills/domain-driver/SKILL.md` is a Claude Code skill owned by the tool.
+- The [domain-factory](#domain-factory-preview) skill and its agents, for Claude Code and Codex: the skill in `.claude/skills/domain-factory/` and `.agents/skills/domain-factory/`, and one file per agent in `.claude/agents/` and `.codex/agents/`. The tool owns these files and rewrites them when they change; other agents in those folders are left alone. The first time `init` adds them, it says so and links to what the factory needs.
 
 Running `init` twice reports `unchanged`. Re-run it after upgrading domain-driver.
 
@@ -356,6 +357,17 @@ The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`)
 
 ---
 
+## Upgrading from 0.7.x
+
+`init` now adds the [domain-factory](#domain-factory-preview) skill and its agents to your project, for Claude Code and Codex. Because a local install and `domain-driver update` both run `init`, upgrading writes these new files:
+
+- `.claude/skills/domain-factory/SKILL.md` and `.agents/skills/domain-factory/` (the skill, plus Codex metadata that stops Codex starting it on its own)
+- one file per agent in `.claude/agents/` and `.codex/agents/`
+
+Nothing runs until you start `/domain-factory`, and Claude Code and Codex are both told never to start it on their own. The `AGENTS.md` and `CLAUDE.md` section also gains one line saying the factory exists. The first time `init` adds the factory it prints what it added; npm hides output from install scripts, so after `npm install` you will see the files in `git status` instead.
+
+---
+
 ## Upgrading from 0.4.x
 
 On NestJS, scaffolding now **edits two files it did not create**: your root module and each feature's module. Every earlier version only ever created files. The edit is surgical and verified — see [Nest module registration](#nest-module-registration) for what it does and when it refuses — but if you want the old write-only guarantee back:
@@ -423,7 +435,19 @@ npm run test:coverage
 
 domain-factory turns a one-sentence feature request into a finished feature using a team of agents, in Claude Code (`/domain-factory`) or Codex (`$domain-factory`). A spec writer maps the project and writes the spec. A builder scaffolds the feature with domain-driver and builds it on its own branch, and four reviewers check security, code, UX and UI in parallel. A documenter then records the feature in `Documentation/`, and an approver either merges the branch or hands it to you. Anything that changes who may do what always goes to a person.
 
-It isn't usable yet: `init` doesn't install it, and it isn't in the published package. The sources and the full design are in [`factory/`](https://github.com/IsaacHatilima/domain-driver/tree/master/factory).
+`init` adds it to your project, and it only runs when you start it:
+
+```
+/domain-factory add post comments; the author and the post's owner can delete or archive a comment, everyone else can like and reply
+```
+
+Before the first job, check what it needs:
+
+- **Commands in `AGENTS.md`** (or `CLAUDE.md`): how to set up a fresh checkout, start the dev server on a given port, and run tests, type-check, build and lint. The agents read everything project-specific from there.
+- **Permission to work unattended.** Each job runs in its own git worktree beside your repository. In Claude Code, allow that folder (`/add-dir ../<repo>-factory`) plus git and your project's commands. In Codex, the default sandbox keeps `.git` read-only, so run with full access or allow git with a rule.
+- **The `agent-browser` CLI**, if your project has pages. The builder and the UX and UI reviewers use it.
+
+It is a preview: no job has run end to end yet, so treat your first ones as a trial. The full design, the agents and their models are in [`factory/`](https://github.com/IsaacHatilima/domain-driver/tree/master/factory).
 
 ---
 
@@ -436,7 +460,7 @@ It isn't usable yet: `init` doesn't install it, and it isn't in the published pa
 - [x] Agent guidance with init and a guarded postinstall
 - [x] TanStack Start stack, with server functions and per-action query hooks
 - [x] Per-action hooks on every stack that has them, replacing the single combined hook
-- [ ] Install `/domain-factory` with `init`, for Claude Code and Codex
+- [x] `/domain-factory`, installed by `init` for Claude Code and Codex
 - [ ] Config file — override stack and feature root per project
 - [ ] Configurable API base URL for the fetch in generated hooks
 - [ ] ORM-aware server repositories
