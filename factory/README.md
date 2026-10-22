@@ -8,7 +8,7 @@ A feature factory for projects that use domain-driver. You describe a feature in
 
 It runs in Claude Code and in Codex. In Codex the command is `$domain-factory`.
 
-> **Status:** these are the source files only. `init` does not install them yet, they are not in the published package, and no job has run end to end.
+> **Status:** preview. `init` installs these files since domain-driver 0.8.0, but no job has run end to end yet, so treat the first ones as a trial.
 
 ## The loop
 
@@ -56,7 +56,7 @@ factory/
   agents/<name>.md          one file per agent: frontmatter for both tools, then the instructions
 ```
 
-Each agent is written once. Once `init` installs the factory, it will render each one for each tool:
+Each agent is written once, and `init` renders it for each tool:
 
 | Source | Claude Code | Codex |
 |---|---|---|

@@ -12,6 +12,7 @@
   },
   "files": [
     "dist",
+    "factory",
     "scripts/postinstall.js"
   ],
   "scripts": {

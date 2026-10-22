@@ -15,7 +15,7 @@ import { makeService } from './commands/service';
 import { parseFeatureTarget, parseTarget } from './commands/target';
 import { makeTypes } from './commands/types';
 import { runUpdate, defaultUpdateDeps, UpdateDeps } from './commands/update';
-import { INIT_ICONS, runInit } from './init/init';
+import { factoryNotice, INIT_ICONS, runInit } from './init/init';
 import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
 import { actionCase } from './templates/actions';
@@ -181,10 +181,16 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('init')
-        .description('Write agent guidance into this project: AGENTS.md, CLAUDE.md, and .claude/skills/domain-driver/SKILL.md')
+        .description(
+            'Write agent guidance into this project: AGENTS.md, CLAUDE.md, the domain-driver skill, and the /domain-factory skill and agents'
+        )
         .action(() => {
-            for (const result of runInit(process.cwd())) {
+            const results = runInit(process.cwd());
+            for (const result of results) {
                 console.log(`${INIT_ICONS[result.status]} ${result.file} ${result.status}`);
+            }
+            for (const line of factoryNotice(results)) {
+                console.log(line);
             }
         });
 
