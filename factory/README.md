@@ -8,6 +8,8 @@ A feature factory for projects that use domain-driver. You describe a feature in
 
 It runs in Claude Code and in Codex. In Codex the command is `$domain-factory`.
 
+> **Status:** these are the source files only. `init` does not install them yet, they are not in the published package, and no job has run end to end.
+
 ## The loop
 
 ```
@@ -34,14 +36,16 @@ Commands, in Claude Code (use `$domain-factory` in Codex):
 
 | Agent | Claude Code | Codex | Writes |
 |---|---|---|---|
-| spec-writer | opus | gpt-6-astra, high | `spec.md` |
-| builder | opus | gpt-6-sol, high | commits on `factory/<job-id>`, `build.md` |
-| reviewer-security | opus | gpt-6-astra, high | `round-<N>/review-security.md` |
-| reviewer-code | sonnet | gpt-6-sol, high | `round-<N>/review-code.md` |
-| reviewer-ux | sonnet | gpt-6-luna, medium | `round-<N>/review-ux.md` |
-| reviewer-ui | sonnet | gpt-6-luna, medium | `round-<N>/review-ui.md` |
-| documenter | sonnet | gpt-6-sol, high | `Documentation/<Entity>.md`, `Documentation/index.md` |
-| approver | opus | gpt-6-astra, high | `decision.md` |
+| spec-writer | opus, high | gpt-6-astra, high | `spec.md` |
+| builder | opus, high | gpt-6-sol, high | commits on `factory/<job-id>`, `build.md` |
+| reviewer-security | opus, high | gpt-6-astra, high | `round-<N>/review-security.md` |
+| reviewer-code | sonnet, high | gpt-6-sol, high | `round-<N>/review-code.md` |
+| reviewer-ux | sonnet, medium | gpt-6-luna, medium | `round-<N>/review-ux.md` |
+| reviewer-ui | sonnet, medium | gpt-6-luna, medium | `round-<N>/review-ui.md` |
+| documenter | sonnet, high | gpt-6-sol, high | `Documentation/<Entity>.md`, `Documentation/index.md` |
+| approver | opus, high | gpt-6-astra, high | `decision.md` |
+
+Each agent's reasoning effort is set explicitly for both tools. Without it, an agent would run at whatever effort the session that started it uses.
 
 ## This folder
 
@@ -52,14 +56,14 @@ factory/
   agents/<name>.md          one file per agent: frontmatter for both tools, then the instructions
 ```
 
-Each agent is written once. `init` renders it for each tool:
+Each agent is written once. Once `init` installs the factory, it will render each one for each tool:
 
 | Source | Claude Code | Codex |
 |---|---|---|
 | `skill/SKILL.md` | `.claude/skills/domain-factory/SKILL.md` | `.agents/skills/domain-factory/SKILL.md`, plus `agents/openai.yaml` |
-| `agents/<name>.md` | `.claude/agents/<name>.md` with `name`, `description`, `tools`, `model` | `.codex/agents/<name>.toml` with `name`, `description`, `model`, `model_reasoning_effort`, `developer_instructions` |
+| `agents/<name>.md` | `.claude/agents/<name>.md` with `name`, `description`, `tools`, `model`, `effort` | `.codex/agents/<name>.toml` with `name`, `description`, `model`, `model_reasoning_effort`, `developer_instructions` |
 
-Agent frontmatter keys: `name`, `description`, `claude-model`, `claude-tools`, `codex-model`, `codex-reasoning-effort`. Everything below the frontmatter is the instructions, copied unchanged into both outputs, so the two tools can never drift apart.
+Agent frontmatter keys: `name`, `description`, `claude-model`, `claude-tools`, `claude-effort`, `codex-model`, `codex-reasoning-effort`. Everything below the frontmatter is the instructions, copied unchanged into both outputs, so the two tools can never drift apart.
 
 ## What it writes into a project
 

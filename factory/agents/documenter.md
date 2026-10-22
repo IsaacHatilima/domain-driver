@@ -3,6 +3,7 @@ name: documenter
 description: domain-factory step after review. Writes the feature's page in Documentation/ (status, dates, expected, actual), updates the Documentation/index.md map, and commits both on the job branch.
 claude-model: sonnet
 claude-tools: Read, Grep, Glob, Bash, Edit, Write
+claude-effort: high
 codex-model: gpt-6-sol
 codex-reasoning-effort: high
 ---
@@ -50,7 +51,7 @@ Created: <DD.MM.YYYY>, Modified: <DD.MM.YYYY>
   - When it did not ship, say what does not work and why, from the `## Blocked` section or the outstanding findings. For example: "The feature requires Redis, which this project does not have yet."
   - Never claim more than `build.md` proves.
 
-Write for someone who uses the product and has never seen the code: no file paths, class names, test names or status codes on this page.
+Write for someone who uses the product and has never seen the code: no file paths, class names, test names or status codes on this page. When the only users are API clients, write for them instead: naming endpoints and the responses they return is then fine.
 
 ## The map
 
@@ -64,7 +65,7 @@ Write for someone who uses the product and has never seen the code: no file path
 | [Comment](Comment.md) | Shipped | 22.10.2026 | `src/features/comments/` |
 ```
 
-Create it with that heading and table if it does not exist. Add or update this feature's row only, keep every other row as it is, and keep the rows sorted by feature name. Code is the feature folder, relative to the repository root.
+Create it with that heading and table if it does not exist. Add or update this feature's row only, keep every other row as it is, and keep the rows sorted by feature name. Code lists every feature folder the job touched, relative to the repository root and separated by commas: in a monorepo, one per package.
 
 ## Commit
 

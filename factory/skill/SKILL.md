@@ -55,7 +55,7 @@ Start a fresh agent every time, the builder included. A builder in a later round
 - `<base>`: the branch jobs start from and merge into. Use the remote's default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, without the `origin/` prefix). With no remote, use `main` if it exists, otherwise `master`.
 - `<job-id>`: three digits and a short kebab-case slug, such as `004-post-comments`.
 - `<worktree>`: `<parent of repo>/<repo folder name>-factory/<job-id>`, a checkout of `factory/<job-id>`. It sits beside the repo rather than inside it, so the project's test runners, linters and editors never see a second copy of the code.
-- `<n>`: the job number without leading zeros. Agents that run the app get a port so parallel jobs never collide: builder `7100 + 10n`, `reviewer-ux` `7101 + 10n`, `reviewer-ui` `7102 + 10n`.
+- `<n>`: the job number without leading zeros. Agents that run the app get a port so parallel jobs never collide: builder `7100 + 10n`, `reviewer-ux` `7101 + 10n`, `reviewer-ui` `7102 + 10n`. An agent that also needs an API from another package runs it on its port plus 5.
 
 ```
 <repo>/.factory/jobs/<job-id>/
@@ -109,13 +109,13 @@ In Codex every command starts with `$domain-factory` instead.
 1. Keep job state out of git without touching tracked files: `git check-ignore -q .factory/ || echo '.factory/' >> "$(git rev-parse --git-path info/exclude)"`.
 2. Work out `<base>` and confirm the branch exists.
 3. Create the job. Run `mkdir -p .factory/jobs`, then take the next number after the highest existing job folder (`001` if there is none) and a two-to-four-word slug of the request. Claim it with `mkdir .factory/jobs/<job-id>`, without `-p`. If that fails, another session took the number, so try the next one. Write `job.json` with `stage: "spec"`, `round: 0`, every review `pending` and `doc: null`.
-4. Create the worktree: `git worktree add -b factory/<job-id> <worktree> <base>`. In the worktree, run the setup `AGENTS.md` gives for a fresh checkout, such as installing dependencies.
+4. Create the worktree: `git worktree add -b factory/<job-id> <worktree> <base>`. In the worktree, run the setup the root `AGENTS.md` gives for a fresh checkout, or the README when there is no `AGENTS.md`, such as installing dependencies.
 
 If any of this fails, set `needs-human` and tell the user what failed. When the failure is your tool refusing to write outside the project, say how to allow it. In Claude Code, add `<parent of repo>/<repo folder name>-factory` with `/add-dir` or `permissions.additionalDirectories`. In Codex, run with full access or allow git with a rule, because the default sandbox keeps `.git` read-only.
 
 ### Spec
 
-Start `spec-writer` with the extra line `Request: <the request, verbatim>`. When it finishes, check that `spec.md` exists and has `## Acceptance criteria` and `## Documentation` sections.
+Start `spec-writer` with the extra line `Request: <the request, verbatim>`. When it finishes, check that `spec.md` exists and has `## Project`, `## Acceptance criteria` and `## Documentation` sections.
 
 ### Build round N
 

@@ -3,6 +3,7 @@ name: reviewer-ux
 description: domain-factory review lens. Reviews a job branch for user experience - flows, states, each role's path, copy and accessibility - and writes round-<N>/review-ux.md.
 claude-model: sonnet
 claude-tools: Read, Grep, Glob, Bash, Write
+claude-effort: medium
 codex-model: gpt-6-luna
 codex-reasoning-effort: medium
 ---
@@ -15,7 +16,7 @@ It gives the job id, the job folder, the worktree, the branch, the base branch, 
 
 ## Read
 
-1. `AGENTS.md` (or `CLAUDE.md`).
+1. Every guidance file the spec's Project section lists for the packages the change touches.
 2. `spec.md`, especially its Permissions table, and `build.md`.
 3. The change: `git diff <base>...<branch>`, above all the pages, entry files, containers, components and hooks.
 4. From the second round: your previous review. Check that each finding was fixed.
@@ -26,7 +27,7 @@ On `node` and `nest` there are no screens, and some changes on other stacks have
 
 ## Use it
 
-Start the dev server from `AGENTS.md` in the worktree, in the background, on your port. Use the `agent-browser` CLI, passing `--session <job-id>-ux` on every call. Do not sign in or submit forms: the dev server may talk to real services. Review pages that need a signed-in user in the code instead, through the containers and components, for each role in the Permissions table. When you are done, close the session and stop the server.
+Start the dev servers the page needs, in the worktree and in the background, using the Project section's commands: the app on your port and, when it calls an API in another package, that API on your port plus 5, with the app pointed at it. Use the `agent-browser` CLI, passing `--session <job-id>-ux` on every call. Do not sign in or submit forms: the dev server may talk to real services. Review pages that need a signed-in user in the code instead, through the containers and components, for each role in the Permissions table. When you are done, close the session and stop the servers.
 
 ## Look for
 

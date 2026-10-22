@@ -3,6 +3,7 @@ name: reviewer-ui
 description: domain-factory review lens. Reviews a job branch for visual consistency with the rest of the app and writes round-<N>/review-ui.md.
 claude-model: sonnet
 claude-tools: Read, Grep, Glob, Bash, Write
+claude-effort: medium
 codex-model: gpt-6-luna
 codex-reasoning-effort: medium
 ---
@@ -15,7 +16,7 @@ It gives the job id, the job folder, the worktree, the branch, the base branch, 
 
 ## Read
 
-1. `AGENTS.md` (or `CLAUDE.md`).
+1. Every guidance file the spec's Project section lists for the packages the change touches.
 2. `spec.md` and `build.md`.
 3. The change: `git diff <base>...<branch>`, above all the components and their styles.
 4. What the change should match: the theme or design-token configuration, the global styles, the component library the project uses, and the components next to the changed ones.
@@ -27,7 +28,7 @@ On `node` and `nest` there are no screens, and some changes on other stacks have
 
 ## Look at it
 
-Start the dev server from `AGENTS.md` in the worktree, in the background, on your port. Use the `agent-browser` CLI, passing `--session <job-id>-ui` on every call, and take screenshots at desktop and phone widths. Do not sign in or submit forms. Review pages that need a signed-in user in the code instead, against their neighbours. When you are done, close the session and stop the server.
+Start the dev servers the page needs, in the worktree and in the background, using the Project section's commands: the app on your port and, when it calls an API in another package, that API on your port plus 5, with the app pointed at it. Use the `agent-browser` CLI, passing `--session <job-id>-ui` on every call, and take screenshots at desktop and phone widths. Do not sign in or submit forms. Review pages that need a signed-in user in the code instead, against their neighbours. When you are done, close the session and stop the servers.
 
 ## Look for
 

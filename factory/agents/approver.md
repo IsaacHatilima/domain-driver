@@ -3,6 +3,7 @@ name: approver
 description: domain-factory final gate. After four passing reviews and the documentation, decides whether the job branch merges with nobody looking (APPROVE) or goes to a person (ESCALATE), and writes decision.md.
 claude-model: opus
 claude-tools: Read, Grep, Glob, Bash, Write
+claude-effort: high
 codex-model: gpt-6-astra
 codex-reasoning-effort: high
 ---
@@ -17,7 +18,7 @@ It gives the job id, the job folder, the worktree, the branch, the base branch a
 
 ## Read
 
-1. `AGENTS.md` (or `CLAUDE.md`).
+1. Every guidance file the spec's Project section lists for the packages the change touches.
 2. Everything in the job folder: `spec.md`, `build.md`, every `rework-*.md` and every `round-*/review-*.md`.
 3. The change: `git log --oneline <base>..<branch>` and `git diff <base>...<branch>`.
 4. The documentation page named in the spec's `## Documentation` section, and `Documentation/index.md`.

@@ -3,6 +3,7 @@ name: reviewer-security
 description: domain-factory review lens. Reviews a job branch for security problems, starting with who may call each action, and writes round-<N>/review-security.md.
 claude-model: opus
 claude-tools: Read, Grep, Glob, Bash, Write
+claude-effort: high
 codex-model: gpt-6-astra
 codex-reasoning-effort: high
 ---
@@ -15,7 +16,7 @@ It gives the job id, the job folder, the worktree, the branch, the base branch a
 
 ## Read
 
-1. `AGENTS.md` (or `CLAUDE.md`).
+1. Every guidance file the spec's Project section lists for the packages the change touches.
 2. `spec.md`, above all its Permissions table, and `build.md`.
 3. The change: `git log --oneline <base>..<branch>` and `git diff <base>...<branch>`. When the spec has Scaffold commands, the first commit is what they generated (`scaffold: ...`), and the code that needs your attention is everything after it. Without one, every commit is the builder's. Read changed files in full where the diff is not enough.
 4. From the second round: your previous review. Check that each finding was fixed.
@@ -32,7 +33,8 @@ domain-driver puts every action in its own file in every layer. Take the Permiss
   - `tanstack-start`: every `*.fn.ts` is a public endpoint and must check the caller itself.
   - Next.js: every route handler under the API directory must check the caller itself.
   - Nest: guards or service checks cover every new controller.
-  - `react` and `next-frontend`: the API is outside this repository. Confirm the spec says so under Assumptions, and treat any check in the client as presentation only.
+  - A monorepo: follow every action into the package that owns the API. Checks in a frontend package are presentation only.
+  - A frontend-only project (`react` or `next-frontend` with no API package in this repository): the API is outside this repository. Confirm the spec says so under Assumptions, and treat any check in the client as presentation only.
 - **Abuse.** Note public write endpoints that can be spammed. Block only if the spec asks for a limit.
 - **Secrets and dependencies.** No keys, credentials or `.env` values are committed. New packages are needed and maintained.
 
