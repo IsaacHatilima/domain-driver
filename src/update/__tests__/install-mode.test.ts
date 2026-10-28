@@ -30,6 +30,25 @@ describe('detectInstallMode', () => {
         expect(detectInstallMode(bin, read)).toEqual({ mode: 'local', root });
     });
 
+    it('selects the invoking frontend when pnpm shares its executable with the workspace root', () => {
+        const root = P('work', 'monorepo');
+        const frontend = path.join(root, 'frontend');
+        const bin = path.join(root, 'node_modules', '.pnpm', 'domain-driver@0.8.0', 'node_modules', 'domain-driver', 'dist', 'index.js');
+        const read = files({
+            [path.join(root, 'package.json')]: { devDependencies: { 'domain-driver': '0.8.0' } },
+            [path.join(frontend, 'package.json')]: { devDependencies: { 'domain-driver': '0.8.0' } },
+        });
+        const realpath = (file: string): string => file === path.join(frontend, 'node_modules', 'domain-driver', 'dist', 'index.js') ? bin : file;
+        expect(detectInstallMode(bin, read, { cwd: path.join(frontend, 'src'), realpath })).toEqual({ mode: 'local', root: frontend });
+    });
+
+    it('does not select a project dependency when the running executable is global', () => {
+        const root = P('work', 'app');
+        const bin = P('usr', 'local', 'lib', 'node_modules', 'domain-driver', 'dist', 'index.js');
+        const read = files({ [path.join(root, 'package.json')]: { devDependencies: { 'domain-driver': '0.8.0' } } });
+        expect(detectInstallMode(bin, read, { cwd: root, realpath: file => file })).toEqual({ mode: 'global', root: null });
+    });
+
     it('is global when the install root has no package.json', () => {
         const bin = P('usr', 'local', 'lib', 'node_modules', 'domain-driver', 'dist', 'index.js');
         expect(detectInstallMode(bin, files({}))).toEqual({ mode: 'global', root: null });

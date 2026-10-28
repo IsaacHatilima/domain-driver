@@ -43,6 +43,18 @@ describe('detectPackageManager', () => {
     it('falls back to lockfiles when packageManager names something unknown', () => {
         expect(detectPackageManager(ROOT, fsWith({ 'package.json': JSON.stringify({ packageManager: 'deno@2' }), 'pnpm-lock.yaml': '' }))).toBe('pnpm');
     });
+
+    it('inherits pnpm from the workspace when the frontend has no local lockfile', () => {
+        const frontend = path.join(ROOT, 'frontend');
+        const map: Record<string, string> = {
+            [path.join(frontend, 'package.json')]: '{}',
+            [path.join(ROOT, 'pnpm-workspace.yaml')]: 'packages:\n  - frontend\n',
+        };
+        expect(detectPackageManager(frontend, {
+            exists: file => file in map,
+            readFile: file => { if (!(file in map)) throw new Error('ENOENT'); return map[file]; },
+        })).toBe('pnpm');
+    });
 });
 
 describe('updateCommand', () => {

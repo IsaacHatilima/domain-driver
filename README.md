@@ -351,6 +351,8 @@ domain-driver update --check    # only report whether a newer version exists
 
 Local installs use the package manager the project uses (npm, pnpm, yarn, or bun, from the `packageManager` field or the lockfile). Global installs use `npm install -g`. Running through `npx` needs no update: `npx domain-driver@latest` always fetches the newest.
 
+In a workspace, `update` selects the invoking package when its local executable resolves to the running binary. A frontend sharing pnpm's virtual store with the root is updated in `frontend`, using the workspace package manager. After installation, the updater reads the installed version before reporting success and refreshing that package's guidance. If constraints or release-age policies retain an older version, it reports the actual version and stops before refreshing guidance.
+
 The check is skipped in CI (any `CI` value other than empty, `0`, or `false`), when output is not a terminal, when `DOMAIN_DRIVER_NO_UPDATE_CHECK` is set (same value rule), or when `NO_UPDATE_NOTIFIER` is set to anything.
 
 The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`); `DOMAIN_DRIVER_CACHE_DIR` overrides it.

@@ -103,6 +103,7 @@ describe('createProgram', () => {
                 return files[key];
             },
             exists: (filePath) => Object.keys(files).some((candidate) => path.resolve(candidate) === path.resolve(filePath)),
+            realpath: file => path.resolve(file),
             spawn: () => {
                 throw new Error('--dry-run must not spawn');
             },

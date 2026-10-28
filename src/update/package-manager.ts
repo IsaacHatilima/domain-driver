@@ -16,14 +16,40 @@ export interface UpdateCommand {
 const PACKAGE = 'domain-driver@latest';
 
 export function detectPackageManager(root: string, fsLike: FsLike): PackageManager {
+    return localManager(root, fsLike) ?? workspaceManager(root, fsLike) ?? 'npm';
+}
+
+function localManager(root: string, fsLike: FsLike): PackageManager | null {
     const declared = declaredManager(root, fsLike);
     if (declared !== null) return declared;
 
     const has = (name: string): boolean => fsLike.exists(path.join(root, name));
     if (has('bun.lock') || has('bun.lockb')) return 'bun';
-    if (has('pnpm-lock.yaml')) return 'pnpm';
+    if (has('pnpm-lock.yaml') || has('pnpm-workspace.yaml')) return 'pnpm';
     if (has('yarn.lock')) return yarnFlavourFromLock(root, fsLike);
-    return 'npm';
+    return null;
+}
+
+function workspaceManager(root: string, fsLike: FsLike): PackageManager | null {
+    let current = path.dirname(root);
+    for (let level = 0; level < 6 && current !== root; level += 1) {
+        if (fsLike.exists(path.join(current, 'pnpm-workspace.yaml'))) return localManager(current, fsLike) ?? 'pnpm';
+        if (declaresWorkspaces(current, fsLike)) return localManager(current, fsLike) ?? 'npm';
+        const parent = path.dirname(current);
+        if (parent === current) break;
+        current = parent;
+    }
+    return null;
+}
+
+function declaresWorkspaces(root: string, fsLike: FsLike): boolean {
+    try {
+        const pkg = JSON.parse(fsLike.readFile(path.join(root, 'package.json'))) as { workspaces?: unknown };
+        const workspaces = pkg.workspaces;
+        return Array.isArray(workspaces) || (workspaces !== null && typeof workspaces === 'object' && 'packages' in workspaces && Array.isArray(workspaces.packages));
+    } catch {
+        return false;
+    }
 }
 
 function declaredManager(root: string, fsLike: FsLike): PackageManager | null {

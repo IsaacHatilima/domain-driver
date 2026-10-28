@@ -9,14 +9,24 @@ export interface InstallInfo {
 
 type ReadFile = (filePath: string) => string;
 
+export interface InstallContext {
+    readonly cwd: string;
+    readonly realpath: (filePath: string) => string;
+}
+
 const MAX_ANCESTORS = 6;
 
-export function detectInstallMode(binPath: string, readFile: ReadFile): InstallInfo {
+export function detectInstallMode(binPath: string, readFile: ReadFile, context?: InstallContext): InstallInfo {
     const segments = binPath.split(path.sep);
     const index = findInstallIndex(segments);
     if (index === null) return Object.freeze({ mode: 'global', root: null });
     // npx unpacks into <cache>/_npx/<hash>/node_modules/domain-driver, so _npx sits three segments before the package.
     if (segments[index - 3] === '_npx') return Object.freeze({ mode: 'npx', root: null });
+
+    // pnpm can share a physical executable between workspace packages. Select
+    // the invoking package only when its local entry resolves to this binary.
+    const invokingRoot = context === undefined ? null : invokingProject(binPath, readFile, context);
+    if (invokingRoot !== null) return Object.freeze({ mode: 'local', root: invokingRoot });
 
     const installRoot = rootFrom(segments, index);
     const projectRoot = findProjectRoot(installRoot, readFile);
@@ -24,6 +34,17 @@ export function detectInstallMode(binPath: string, readFile: ReadFile): InstallI
     return hasPackageJson(installRoot, readFile)
         ? Object.freeze({ mode: 'unknown', root: installRoot })
         : Object.freeze({ mode: 'global', root: null });
+}
+
+function invokingProject(binPath: string, readFile: ReadFile, context: InstallContext): string | null {
+    const root = findProjectRoot(context.cwd, readFile);
+    if (root === null) return null;
+    try {
+        const entry = path.join(root, 'node_modules', 'domain-driver', 'dist', 'index.js');
+        return context.realpath(entry) === context.realpath(binPath) ? root : null;
+    } catch {
+        return null;
+    }
 }
 
 function findInstallIndex(segments: readonly string[]): number | null {

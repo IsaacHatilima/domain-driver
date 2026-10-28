@@ -6,7 +6,7 @@ import { formatNotice, latestVersion } from '../update/check';
 import { detectInstallMode, InstallInfo } from '../update/install-mode';
 import { detectPackageManager, updateCommand, UpdateCommand } from '../update/package-manager';
 import { FetchLike, nodeFetch } from '../update/registry';
-import { currentVersion, isNewer } from '../update/version';
+import { currentVersion, isNewer, parseVersion } from '../update/version';
 
 export interface UpdateOptions {
     readonly dryRun: boolean;
@@ -28,6 +28,7 @@ export interface UpdateDeps {
     readonly cwd: string;
     readonly readFile: (filePath: string) => string;
     readonly exists: (filePath: string) => boolean;
+    readonly realpath: (filePath: string) => string;
     readonly spawn: (command: string, args: readonly string[], cwd: string) => SpawnResult;
     readonly execPath: string;
     readonly log: (line: string) => void;
@@ -65,6 +66,7 @@ export function defaultUpdateDeps(): UpdateDeps {
         cwd: process.cwd(),
         readFile: (filePath) => fs.readFileSync(filePath, 'utf-8'),
         exists: (filePath) => fs.existsSync(filePath),
+        realpath: safeRealpath,
         spawn: (command, args, cwd) => {
             const result = spawnSync(command, [...args], { stdio: 'inherit', cwd, shell: process.platform === 'win32' });
             return { status: result.status, error: result.error };
@@ -75,7 +77,7 @@ export function defaultUpdateDeps(): UpdateDeps {
 }
 
 export async function runUpdate(options: UpdateOptions, deps: UpdateDeps): Promise<void> {
-    const install = detectInstallMode(deps.binPath, deps.readFile);
+    const install = detectInstallMode(deps.binPath, deps.readFile, { cwd: deps.cwd, realpath: deps.realpath });
     if (install.mode === 'npx') {
         deps.log(NPX_MESSAGE);
         return;
@@ -111,8 +113,16 @@ export async function runUpdate(options: UpdateOptions, deps: UpdateDeps): Promi
     if (latest === null) deps.log('Could not reach the registry; updating to @latest anyway.');
 
     runInstall(command, install, deps);
-    deps.log(`✅ domain-driver updated to ${latest ?? '@latest'}`);
-    refreshGuidance(install, deps);
+    const entry = installedEntry(install, install.root ?? deps.cwd, deps);
+    const installed = readInstalledVersion(entry, deps);
+    if (latest !== null && isNewer(latest, installed)) {
+        throw new Error(
+            `Update did not install ${latest}: ${path.resolve(path.dirname(entry), '..', 'package.json')} still reports ${installed}. ` +
+            `Check dependency constraints and package-manager release policies, then retry: ${command.display}`
+        );
+    }
+    deps.log(isNewer(installed, deps.current) ? `✅ domain-driver updated to ${installed}` : `domain-driver ${installed} is installed.`);
+    refreshGuidance(install, deps, entry);
 }
 
 function commandFor(install: InstallInfo, deps: UpdateDeps): UpdateCommand {
@@ -133,15 +143,26 @@ function runInstall(command: UpdateCommand, install: InstallInfo, deps: UpdateDe
 }
 
 // The freshly installed package is run in a new process: this one already has the old modules loaded.
-function refreshGuidance(install: InstallInfo, deps: UpdateDeps): void {
+function refreshGuidance(install: InstallInfo, deps: UpdateDeps, entry: string): void {
     const root = install.mode === 'local' ? install.root : deps.exists(path.join(deps.cwd, 'package.json')) ? deps.cwd : null;
     if (root === null) return;
-    const result = deps.spawn(deps.execPath, [installedEntry(install, root, deps), 'init'], root);
+    const result = deps.spawn(deps.execPath, [entry, 'init'], root);
     if (result.error !== undefined || result.status !== 0) deps.log(REFRESH_FAILED);
 }
 
 function installedEntry(install: InstallInfo, root: string, deps: UpdateDeps): string {
     if (install.mode !== 'local') return deps.binPath;
-    const entry = path.join(root, 'node_modules', 'domain-driver', 'dist', 'index.js');
-    return deps.exists(entry) ? entry : deps.binPath;
+    return path.join(root, 'node_modules', 'domain-driver', 'dist', 'index.js');
+}
+
+function readInstalledVersion(entry: string, deps: UpdateDeps): string {
+    const manifest = path.resolve(path.dirname(entry), '..', 'package.json');
+    try {
+        const pkg: unknown = JSON.parse(deps.readFile(manifest));
+        const version = (pkg as { version?: unknown } | null)?.version;
+        if (typeof version === 'string' && parseVersion(version) !== null) return version;
+    } catch {
+        // A package-manager success code is insufficient if its installed files cannot be read.
+    }
+    throw new Error(`Cannot verify the installed domain-driver version at ${manifest}. Guidance was not refreshed.`);
 }
