@@ -200,10 +200,14 @@ domain-driver init
 Writes agent guidance into the current project so coding agents scaffold with domain-driver instead of hand-writing layers:
 
 - `AGENTS.md` and `CLAUDE.md` get a section between `<!-- domain-driver:start -->` and `<!-- domain-driver:end -->`. Existing content outside the markers is never touched; the section is created, refreshed in place, or left alone.
-- The non-Laravel skills from [IsaacHatilima/skills](https://github.com/IsaacHatilima/skills), including `javascript-domain-driver`, are installed under `.agents/skills/`, `.claude/skills/`, and `.ai/skills/`. Each root has a delivered `catalog.md`.
+- The non-Laravel skills from [IsaacHatilima/skills](https://github.com/IsaacHatilima/skills), including `javascript-domain-driver`, have one shared copy in `.agents/skills/`. Claude discovers the same files through relative links in `.claude/skills/`. Codex reads `.agents/skills/` directly; `.codex/skills/` is unnecessary. JavaScript projects do not need a separate `.ai/skills/` copy.
 - The [factory](#factory-preview) skill and its agents, for Claude Code and Codex: the skill in `.claude/skills/factory/` and `.agents/skills/factory/`, and one file per agent in `.claude/agents/` and `.codex/agents/`. The tool owns these files and rewrites them when they change; other agents in those folders are left alone. The first time `init` adds them, it says so and links to what the factory needs.
 
 Running `init` twice reports `unchanged`. Re-run it after upgrading domain-driver.
+
+The previous three-copy layout is migrated when each old copy matches the existing shared copy or the delivered version. Divergent edits and unowned files are preserved and reported before any guidance changes; reconcile them before retrying. Skill links require symlink support and never fall back to duplicated files.
+
+Generated type references use `import type`, including under Vite's `verbatimModuleSyntax`. In Node ESM projects using NodeNext/Node16 resolution, local imports use runtime `.js` extensions; CommonJS and bundler projects retain their existing import style. Nest DTOs and injected classes remain runtime imports.
 
 **On install.** A local `npm install domain-driver` in a project runs `init` automatically. It does nothing when `CI` is set, for global installs, when there is no `package.json` in the installing project, or when domain-driver installs itself. Files are written to the directory you ran npm install from, which in a workspace is the repository root. Opt out with `npm install --ignore-scripts`, or delete the marked section afterwards.
 
@@ -350,6 +354,8 @@ domain-driver update --check    # only report whether a newer version exists
 ```
 
 Local installs use the package manager the project uses (npm, pnpm, yarn, or bun, from the `packageManager` field or the lockfile). Global installs use `npm install -g`. Running through `npx` needs no update: `npx domain-driver@latest` always fetches the newest.
+
+In a workspace, `update` selects the invoking package when its local executable resolves to the running binary. A frontend sharing pnpm's virtual store with the root is updated in `frontend`, using the workspace package manager. After installation, the updater reads the installed version before reporting success and refreshing that package's guidance. If constraints or release-age policies retain an older version, it reports the actual version and stops before refreshing guidance.
 
 The check is skipped in CI (any `CI` value other than empty, `0`, or `false`), when output is not a terminal, when `DOMAIN_DRIVER_NO_UPDATE_CHECK` is set (same value rule), or when `NO_UPDATE_NOTIFIER` is set to anything.
 

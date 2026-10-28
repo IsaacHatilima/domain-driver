@@ -23,7 +23,7 @@ describe('renderNestController', () => {
     it('renders a single-action Post controller with a DTO body', () => {
         const content = renderNestController(ctx(), standardAction('Create', 'CoffeeType'), 'CoffeeType', controllerFile('Create'));
         expect(content).toContain("import { Body, Controller, Post } from '@nestjs/common';");
-        expect(content).toContain("import { CoffeeType } from '../types/CoffeeType.types';");
+        expect(content).toContain("import type { CoffeeType } from '../types/CoffeeType.types';");
         expect(content).toContain("import { CreateCoffeeTypeDto } from '../dto/CreateCoffeeType.dto';");
         expect(content).toContain("import { CreateCoffeeTypeService } from '../services/CreateCoffeeType.service';");
         expect(content).toContain("@Controller('coffee-type')");

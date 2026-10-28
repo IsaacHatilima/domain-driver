@@ -9,7 +9,7 @@ export function renderGenericController(
     fromFile: string
 ): string {
     const typeImport = spec.usesEntityType
-        ? [`import { ${entity} } from '${ctx.importLayer(fromFile, 'types', `${entity}.types`)}';`]
+        ? [`import type { ${entity} } from '${ctx.importLayer(fromFile, 'types', `${entity}.types`)}';`]
         : [];
     const imports = [
         ...typeImport,

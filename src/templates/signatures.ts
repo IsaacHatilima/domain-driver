@@ -11,11 +11,11 @@ export function domainImports(
 
     if (spec.usesEntityType) {
         const typePath = ctx.importLayer(fromFile, 'types', `${entity}.types`);
-        lines.push(`import { ${entity} } from '${typePath}';`);
+        lines.push(`import type { ${entity} } from '${typePath}';`);
     }
     if (spec.schema !== null) {
         const schemaPath = ctx.importLayer(fromFile, 'schema', `${spec.schema}.schema`);
-        lines.push(`import { ${spec.schema} } from '${schemaPath}';`);
+        lines.push(`import type { ${spec.schema} } from '${schemaPath}';`);
     }
     return lines;
 }

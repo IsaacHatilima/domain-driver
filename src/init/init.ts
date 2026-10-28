@@ -1,9 +1,9 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import { mkdirSafe, readTextFile, writeFileSafe } from '../utils/fs';
 import { AGENTS_SECTION } from './content';
-import { LibraryFile, readLibraryFiles } from './library';
+import { LibraryFile, readLibrary, readLibraryFiles } from './library';
 import { applySection, SectionStatus } from './markers';
+import { planSharedSkills } from './shared-skills';
 
 export interface InitResult {
     readonly file: string;
@@ -16,17 +16,11 @@ export const FACTORY_LABEL = 'factory agents and shared skills';
 const FACTORY_DOCS = 'https://github.com/IsaacHatilima/skills/tree/main/agents/factory';
 
 export function runInit(root: string): readonly InitResult[] {
-    const files = readLibraryFiles();
-    for (const file of ['AGENTS.md', 'CLAUDE.md', ...files.map(file => file.file)]) {
-        let absolute = root;
-        for (const part of file.split('/')) {
-            absolute = path.join(absolute, part);
-            if (fs.lstatSync(absolute, { throwIfNoEntry: false })?.isSymbolicLink()) {
-                throw new Error(`Refusing symlink in init destination: ${file}`);
-            }
-        }
-    }
-    return [writeSection(root, 'AGENTS.md'), writeSection(root, 'CLAUDE.md'), writeFactory(root, files)];
+    const library = readLibrary();
+    const consolidate = planSharedSkills(root, library);
+    const sections = [writeSection(root, 'AGENTS.md'), writeSection(root, 'CLAUDE.md')];
+    const result = writeFactory(root, library.files);
+    return [...sections, Object.freeze({ file: FACTORY_LABEL, status: combine([result.status, ...consolidate()]) })];
 }
 
 function writeSection(root: string, file: string): InitResult {

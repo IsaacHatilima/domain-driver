@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { LIBRARY_ROOT, readLibraryFiles } from '../library';
+import { LIBRARY_ROOT, readLibrary, readLibraryFiles } from '../library';
 
 let temporary: string | undefined;
 afterEach(() => {
@@ -38,7 +38,10 @@ describe('the delivered library', () => {
     it('includes every referenced source in the published package', () => {
         const pkg = JSON.parse(fs.readFileSync(path.join(LIBRARY_ROOT, '../package.json'), 'utf8'));
         expect(pkg.files).toContain('agent-library');
-        expect(readLibraryFiles().length).toBeGreaterThan(100);
+        const library = readLibrary();
+        expect(library.files.some(file => file.file.startsWith('.ai/skills/') || file.file.startsWith('.claude/skills/'))).toBe(false);
+        expect(library.links.some(link => link.file === '.claude/skills/factory' && link.target === '.agents/skills/factory')).toBe(true);
+        expect(library.links.every(link => link.file.startsWith('.claude/skills/'))).toBe(true);
     });
 });
 
@@ -61,5 +64,16 @@ describe('invalid library deliveries', () => {
         catalog.items.push({ name: 'other', files: { '.agents/skills/demo/SKILL.md': 'source.md' } });
         fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify(catalog));
         expect(() => readLibraryFiles(root)).toThrow('Duplicate library destination');
+    });
+
+    it('rejects links to another skill or outside the shared directory', () => {
+        const root = fixture({ '.agents/skills/demo/SKILL.md': 'source.md' });
+        const manifest = JSON.parse(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'));
+        manifest.schema = 2;
+        for (const target of ['../outside', '.agents/skills/other']) {
+            manifest.items[0].links = { '.claude/skills/demo': target };
+            fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify(manifest));
+            expect(() => readLibrary(root)).toThrow('Unsafe library link');
+        }
     });
 });

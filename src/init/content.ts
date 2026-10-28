@@ -6,7 +6,7 @@ export const AGENTS_SECTION: string = [
     '## Scaffolding with domain-driver',
     '',
     'Use the domain-driver CLI to scaffold feature folders before filling in their implementation.',
-    'Read `.agents/skills/javascript-domain-driver/SKILL.md` (or the matching `.claude/skills/` copy) for commands and stack detection.',
+    'Read `.agents/skills/javascript-domain-driver/SKILL.md` for commands and stack detection. Claude discovers the same files through `.claude/skills/` links.',
     'For a complete feature workflow, explicitly invoke `/factory <request>` in Claude Code or `$factory <request>` in Codex.',
     'Shared capabilities are indexed in `.agents/skills/catalog.md`. Re-run `npx domain-driver init` after upgrading to refresh them.',
     END,

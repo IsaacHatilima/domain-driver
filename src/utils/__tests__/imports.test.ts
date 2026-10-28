@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
+import * as fs from 'fs';
 import { resolveImport } from '../imports';
-import { createTempProject, writeTsconfig, TempProject } from '../../__tests__/helpers/project';
+import { createTempProject, writePackageJson, writeTsconfig, TempProject } from '../../__tests__/helpers/project';
 
 let project: TempProject;
 
@@ -76,5 +77,34 @@ describe('resolveImport with alias', () => {
         expect(resolveImport(abs('app/cat/hooks/useCat.ts'), abs('app/cat/types/Cat.types.ts'))).toBe(
             '../types/Cat.types'
         );
+    });
+});
+
+describe('Node ESM imports', () => {
+    function configure(moduleResolution: string, extra: Record<string, unknown> = {}): void {
+        fs.mkdirSync('node_modules', { recursive: true });
+        fs.symlinkSync(path.dirname(require.resolve('typescript/package.json')), 'node_modules/typescript', 'dir');
+        writePackageJson({}, {}, { type: 'module' });
+        fs.writeFileSync('tsconfig.json', JSON.stringify({ compilerOptions: { module: moduleResolution === 'bundler' ? 'esnext' : moduleResolution, moduleResolution, ...extra } }));
+    }
+
+    it('uses runtime .js extensions in the Nest NodeNext ESM starter', () => {
+        configure('nodenext');
+        expect(resolveImport(abs('src/app.module.ts'), abs('src/cat/cat.module.ts'))).toBe('./cat/cat.module.js');
+        expect(resolveImport(abs('src/cat/dto/CreateCat.dto.ts'), abs('src/cat/schemas/CreateCat.schema'))).toBe('../schemas/CreateCat.schema.js');
+    });
+
+    it('keeps extensionless imports for CommonJS and bundler projects', () => {
+        configure('nodenext');
+        writePackageJson({});
+        expect(resolveImport(abs('src/app.module.ts'), abs('src/cat/cat.module.ts'))).toBe('./cat/cat.module');
+    });
+
+    it('keeps bundler aliases and resolves inherited NodeNext compiler settings', () => {
+        configure('bundler', { paths: { '@/*': ['./src/*'] } });
+        expect(resolveImport(abs('src/a.ts'), abs('src/b.ts'))).toBe('@/b');
+        fs.writeFileSync('tsconfig.base.json', JSON.stringify({ compilerOptions: { module: 'nodenext', moduleResolution: 'nodenext' } }));
+        fs.writeFileSync('tsconfig.json', JSON.stringify({ extends: './tsconfig.base.json' }));
+        expect(resolveImport(abs('src/a.ts'), abs('src/b.ts'))).toBe('./b.js');
     });
 });

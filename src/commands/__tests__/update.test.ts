@@ -32,7 +32,7 @@ interface Harness {
     readonly spawned: { command: string; args: readonly string[]; cwd: string }[];
 }
 
-function harness(overrides: Partial<UpdateDeps> = {}, spawnResults: readonly SpawnResult[] = [{ status: 0 }]): Harness {
+function harness(overrides: Partial<UpdateDeps> = {}, spawnResults: readonly SpawnResult[] = [{ status: 0 }], installedVersion = '0.3.0'): Harness {
     const lines: string[] = [];
     const spawned: Harness['spawned'] = [];
     const queue = [...spawnResults];
@@ -40,6 +40,8 @@ function harness(overrides: Partial<UpdateDeps> = {}, spawnResults: readonly Spa
         [path.join(ROOT, 'package.json')]: JSON.stringify({ devDependencies: { 'domain-driver': '^0.2.0' } }),
         [path.join(ROOT, 'pnpm-lock.yaml')]: '',
         [LOCAL_BIN]: '',
+        [path.join(ROOT, 'node_modules', 'domain-driver', 'package.json')]: JSON.stringify({ version: '0.2.0' }),
+        [path.resolve(path.dirname(GLOBAL_BIN), '..', 'package.json')]: JSON.stringify({ version: '0.2.0' }),
     };
     const deps: UpdateDeps = {
         env: { DOMAIN_DRIVER_CACHE_DIR: cacheDir },
@@ -55,9 +57,15 @@ function harness(overrides: Partial<UpdateDeps> = {}, spawnResults: readonly Spa
             return files[key];
         },
         exists: (filePath) => Object.keys(files).some((candidate) => path.resolve(candidate) === path.resolve(filePath)),
+        realpath: file => path.resolve(file),
         spawn: (command, args, cwd) => {
             spawned.push({ command, args, cwd });
-            return queue.shift() ?? { status: 0 };
+            const result = queue.shift() ?? { status: 0 };
+            if (command !== NODE && result.status === 0 && result.error === undefined) {
+                files[path.join(ROOT, 'node_modules', 'domain-driver', 'package.json')] = JSON.stringify({ version: installedVersion });
+                files[path.resolve(path.dirname(GLOBAL_BIN), '..', 'package.json')] = JSON.stringify({ version: installedVersion });
+            }
+            return result;
         },
         execPath: NODE,
         log: (line) => lines.push(line),
@@ -137,6 +145,64 @@ describe('runUpdate', () => {
         expect(h.lines).toEqual(['✅ domain-driver updated to 0.3.0']);
     });
 
+    it('rejects a successful package-manager exit when the old version remains installed', async () => {
+        const h = harness({}, [{ status: 0 }], '0.2.0');
+        await expect(runUpdate({ dryRun: false, check: false }, h.deps)).rejects.toThrow('still reports 0.2.0');
+        expect(h.lines.some(line => line.includes('✅'))).toBe(false);
+        expect(h.spawned).toHaveLength(1);
+    });
+
+    it('reports the actual installed version instead of the registry guess', async () => {
+        const h = harness({}, [{ status: 0 }], '0.3.1');
+        await runUpdate({ dryRun: false, check: false }, h.deps);
+        expect(h.lines).toEqual(['✅ domain-driver updated to 0.3.1']);
+    });
+
+    it('updates and refreshes only frontend when pnpm hoists the running binary', async () => {
+        const frontend = path.join(ROOT, 'frontend');
+        const entry = path.join(frontend, 'node_modules', 'domain-driver', 'dist', 'index.js');
+        const bin = path.join(ROOT, 'node_modules', '.pnpm', 'domain-driver@0.2.0', 'node_modules', 'domain-driver', 'dist', 'index.js');
+        const manifests: Record<string, string> = {
+            [path.join(ROOT, 'package.json')]: JSON.stringify({ devDependencies: { 'domain-driver': '0.2.0' } }),
+            [path.join(frontend, 'package.json')]: JSON.stringify({ devDependencies: { 'domain-driver': '0.2.0' } }),
+            [path.join(ROOT, 'pnpm-workspace.yaml')]: 'packages:\n  - frontend\n',
+        };
+        let installed = '0.2.0';
+        const calls: Harness['spawned'] = [];
+        const h = harness({
+            binPath: bin,
+            cwd: frontend,
+            realpath: file => file === entry ? bin : file,
+            readFile: file => {
+                if (file === path.join(frontend, 'node_modules', 'domain-driver', 'package.json')) return JSON.stringify({ version: installed });
+                if (file in manifests) return manifests[file];
+                throw new Error('ENOENT');
+            },
+            exists: file => file === entry || file in manifests,
+            spawn: (command, args, cwd) => {
+                calls.push({ command, args, cwd });
+                if (command === 'pnpm') installed = '0.3.0';
+                return { status: 0 };
+            },
+        });
+        await runUpdate({ dryRun: false, check: false }, h.deps);
+        expect(calls).toEqual([
+            { command: 'pnpm', args: ['update', 'domain-driver@latest'], cwd: frontend },
+            { command: NODE, args: [entry, 'init'], cwd: frontend },
+        ]);
+        expect(h.lines).toEqual(['✅ domain-driver updated to 0.3.0']);
+    });
+
+    it('does not refresh guidance when the installed version cannot be verified', async () => {
+        const h = harness({ readFile: file => {
+            if (file === path.join(ROOT, 'package.json')) return JSON.stringify({ devDependencies: { 'domain-driver': '^0.2.0' } });
+            throw new Error('ENOENT');
+        } });
+        await expect(runUpdate({ dryRun: false, check: false }, h.deps)).rejects.toThrow('Cannot verify the installed');
+        expect(h.spawned).toHaveLength(1);
+        expect(h.lines.some(line => line.includes('✅'))).toBe(false);
+    });
+
     it('reports a failed guidance refresh without failing the update', async () => {
         const h = harness({}, [{ status: 0 }, { status: 1 }]);
         await runUpdate({ dryRun: false, check: false }, h.deps);
@@ -148,7 +214,7 @@ describe('runUpdate', () => {
         const h = harness({ fetchImpl: registry(null) });
         await runUpdate({ dryRun: false, check: false }, h.deps);
         expect(h.lines[0]).toBe('Could not reach the registry; updating to @latest anyway.');
-        expect(h.lines).toContain('✅ domain-driver updated to @latest');
+        expect(h.lines).toContain('✅ domain-driver updated to 0.3.0');
         expect(h.spawned).toHaveLength(2);
     });
 
