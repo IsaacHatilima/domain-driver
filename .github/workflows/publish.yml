@@ -6,8 +6,13 @@ on:
       - master
   workflow_dispatch:
 
+concurrency:
+  group: publish-npm
+  cancel-in-progress: false
+
 jobs:
   publish:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
