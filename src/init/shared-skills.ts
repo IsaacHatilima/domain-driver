@@ -1,7 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { createHash } from 'crypto';
 import { Library } from './library';
 import { SectionStatus } from './markers';
+import { LEGACY_SKILL_DIRECTORIES, LEGACY_SKILL_HASHES } from './legacy-skills';
 
 /** Plan every retirement before writing so a conflicting old copy stays intact. */
 export function planSharedSkills(root: string, library: Library): () => readonly SectionStatus[] {
@@ -9,6 +11,24 @@ export function planSharedSkills(root: string, library: Library): () => readonly
     const directories = new Set<string>();
     const canonical = new Map(library.files.map(file => [file.file, file.content]));
     for (const file of ['AGENTS.md', 'CLAUDE.md', ...canonical.keys()]) assertPlainPath(root, file);
+
+    const inspectRetired = (relative: string): void => {
+        assertPlainPath(root, relative);
+        const absolute = path.join(root, relative);
+        const stat = fs.lstatSync(absolute, { throwIfNoEntry: false });
+        if (!stat) return;
+        if (stat.isDirectory()) {
+            directories.add(absolute);
+            for (const entry of fs.readdirSync(absolute)) inspectRetired(`${relative}/${entry}`);
+            return;
+        }
+        const expected = LEGACY_SKILL_HASHES[relative];
+        if (!stat.isFile() || expected === undefined || createHash('sha256').update(fs.readFileSync(absolute)).digest('hex') !== expected) {
+            throw new Error(`Cannot retire ${relative}: locally modified or unowned legacy file preserved. Reconcile it with your project skills before running init again.`);
+        }
+        removals.add(absolute);
+    };
+    for (const directory of LEGACY_SKILL_DIRECTORIES) inspectRetired(directory);
 
     const inspectCopy = (relative: string, target: string): void => {
         assertPlainPath(root, relative);
@@ -47,7 +67,7 @@ export function planSharedSkills(root: string, library: Library): () => readonly
         const statuses: SectionStatus[] = [];
         for (const file of removals) fs.unlinkSync(file);
         for (const directory of [...directories].sort((a, b) => b.length - a.length)) fs.rmdirSync(directory);
-        if (removals.size > 0) statuses.push('updated');
+        if (removals.size > 0 || directories.size > 0) statuses.push('updated');
         for (const link of library.links) {
             const absolute = path.join(root, link.file);
             if (fs.lstatSync(absolute, { throwIfNoEntry: false })?.isSymbolicLink()) {
