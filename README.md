@@ -359,7 +359,7 @@ The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`)
 
 ## Shared skill delivery
 
-Factory and all skill instructions are maintained in [IsaacHatilima/skills](https://github.com/IsaacHatilima/skills). Its main-branch workflow opens update PRs here for factory and every active non-Laravel skill group. The generated snapshot is in `agent-library/`; edit the upstream source rather than these generated files.
+Factory and all skill instructions are maintained in [IsaacHatilima/skills](https://github.com/IsaacHatilima/skills). Its main-branch workflow opens update PRs here for factory and every active non-Laravel skill group. The generated snapshot is in `agent-library/`; edit the upstream source rather than these generated files. Each changed delivery bumps `package.json` and `package-lock.json` to the next patch version. Merging that PR into `master` runs the existing build/test/npm publishing workflow and creates its version tag and GitHub release. An unchanged delivery creates neither a PR nor a version bump.
 
 `init` installs the delivered files and renders no authored instructions itself. Factory is invoked as `/factory` in Claude Code or `$factory` in Codex. CLI guidance is the `javascript-domain-driver` skill. The legacy source `factory/` and embedded TypeScript skill strings have been removed.
 
