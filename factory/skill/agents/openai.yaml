@@ -1,5 +1,0 @@
-interface:
-  display_name: "domain-factory"
-  short_description: "Build a domain-driver feature with spec, build, review, documentation and approval agents"
-policy:
-  allow_implicit_invocation: false

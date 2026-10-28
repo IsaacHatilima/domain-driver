@@ -1,0 +1,5 @@
+interface:
+  display_name: "factory"
+  short_description: "Build features with stack skills, reviews and approval"
+policy:
+  allow_implicit_invocation: false

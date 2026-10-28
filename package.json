@@ -12,7 +12,7 @@
   },
   "files": [
     "dist",
-    "factory",
+    "agent-library",
     "scripts/postinstall.js"
   ],
   "scripts": {

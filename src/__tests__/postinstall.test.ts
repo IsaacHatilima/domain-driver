@@ -78,7 +78,7 @@ describe('run', () => {
         run(init, { INIT_CWD: '/consumer' }, () => 'my-app');
         const printed = log.mock.calls.map(([line]) => String(line));
         expect(printed).toContain(`domain-driver: ${FACTORY_LABEL} created`);
-        expect(printed.some((line) => line.includes('Added the /domain-factory skill'))).toBe(true);
+        expect(printed.some((line) => line.includes('Added the /factory skill'))).toBe(true);
     });
 
     it('does nothing when skipped', () => {
