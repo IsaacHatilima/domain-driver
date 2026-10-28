@@ -1,7 +1,8 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import { mkdirSafe, readTextFile, writeFileSafe } from '../utils/fs';
-import { AGENTS_SECTION, SKILL_CONTENT } from './content';
-import { FactoryFile, readFactoryFiles } from './factory';
+import { AGENTS_SECTION } from './content';
+import { LibraryFile, readLibraryFiles } from './library';
 import { applySection, SectionStatus } from './markers';
 
 export interface InitResult {
@@ -9,15 +10,23 @@ export interface InitResult {
     readonly status: SectionStatus;
 }
 
-const SKILL_FILE = '.claude/skills/domain-driver/SKILL.md';
-
 /** The factory installs many files; init reports them as one line under this label. */
-export const FACTORY_LABEL = 'domain-factory skill and agents';
+export const FACTORY_LABEL = 'factory agents and shared skills';
 
-const FACTORY_DOCS = 'https://github.com/IsaacHatilima/domain-driver/tree/master/factory';
+const FACTORY_DOCS = 'https://github.com/IsaacHatilima/skills/tree/main/agents/factory';
 
 export function runInit(root: string): readonly InitResult[] {
-    return [writeSection(root, 'AGENTS.md'), writeSection(root, 'CLAUDE.md'), writeSkill(root), writeFactory(root)];
+    const files = readLibraryFiles();
+    for (const file of ['AGENTS.md', 'CLAUDE.md', ...files.map(file => file.file)]) {
+        let absolute = root;
+        for (const part of file.split('/')) {
+            absolute = path.join(absolute, part);
+            if (fs.lstatSync(absolute, { throwIfNoEntry: false })?.isSymbolicLink()) {
+                throw new Error(`Refusing symlink in init destination: ${file}`);
+            }
+        }
+    }
+    return [writeSection(root, 'AGENTS.md'), writeSection(root, 'CLAUDE.md'), writeFactory(root, files)];
 }
 
 function writeSection(root: string, file: string): InitResult {
@@ -27,16 +36,12 @@ function writeSection(root: string, file: string): InitResult {
     return Object.freeze({ file, status: result.status });
 }
 
-function writeSkill(root: string): InitResult {
-    return Object.freeze({ file: SKILL_FILE, status: writeOwnedFile(root, SKILL_FILE, SKILL_CONTENT) });
-}
-
 /**
  * Writes every factory file the tool owns. Other files in `.claude/agents` and
  * `.codex/agents` belong to the project and are never touched.
  */
-function writeFactory(root: string): InitResult {
-    const statuses = readFactoryFiles().map((file: FactoryFile) => writeOwnedFile(root, file.file, file.content));
+function writeFactory(root: string, files: readonly LibraryFile[]): InitResult {
+    const statuses = files.map((file: LibraryFile) => writeOwnedFile(root, file.file, file.content));
     return Object.freeze({ file: FACTORY_LABEL, status: combine(statuses) });
 }
 
@@ -63,9 +68,9 @@ function combine(statuses: readonly SectionStatus[]): SectionStatus {
 export function factoryNotice(results: readonly InitResult[]): readonly string[] {
     const added = results.some((result) => result.file === FACTORY_LABEL && result.status === 'created');
     if (!added) return [];
-    const agents = readFactoryFiles().filter((file) => file.file.startsWith('.codex/agents/')).length;
+    const agents = readLibraryFiles().filter((file) => file.file.startsWith('.codex/agents/')).length;
     return [
-        `ℹ️  Added the /domain-factory skill ($domain-factory in Codex) and its ${agents} agents to this project.`,
+        `ℹ️  Added the /factory skill ($factory in Codex) and its ${agents} agents to this project.`,
         '   It takes a feature request through spec, build, review, documentation and approval, each step its own agent.',
         '   It only runs when you start it. Read what it needs first:',
         `   ${FACTORY_DOCS}`,

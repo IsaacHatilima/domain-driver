@@ -182,7 +182,7 @@ export function createProgram(deps: CliDeps): Command {
     program
         .command('init')
         .description(
-            'Write agent guidance into this project: AGENTS.md, CLAUDE.md, the domain-driver skill, and the /domain-factory skill and agents'
+            'Write AGENTS.md, CLAUDE.md, /factory and its agents, and the shared non-Laravel skills into this project'
         )
         .action(() => {
             const results = runInit(process.cwd());

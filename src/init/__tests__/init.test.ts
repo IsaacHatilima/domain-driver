@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FACTORY_LABEL, factoryNotice, runInit } from '../init';
-import { AGENTS_SECTION, SKILL_CONTENT } from '../content';
-import { readFactoryFiles } from '../factory';
+import { AGENTS_SECTION } from '../content';
+import { readLibraryFiles } from '../library';
 import { END, START } from '../markers';
 import { createTempProject, projectFileExists, readProjectFile, TempProject } from '../../__tests__/helpers/project';
 
@@ -20,13 +20,12 @@ describe('runInit', () => {
         expect(runInit(process.cwd())).toEqual([
             { file: 'AGENTS.md', status: 'created' },
             { file: 'CLAUDE.md', status: 'created' },
-            { file: '.claude/skills/domain-driver/SKILL.md', status: 'created' },
             { file: FACTORY_LABEL, status: 'created' },
         ]);
         expect(readProjectFile('AGENTS.md')).toBe(`${AGENTS_SECTION}\n`);
         expect(readProjectFile('CLAUDE.md')).toBe(`${AGENTS_SECTION}\n`);
-        expect(readProjectFile('.claude/skills/domain-driver/SKILL.md')).toBe(SKILL_CONTENT);
-        for (const file of readFactoryFiles()) {
+        expect(readProjectFile('.claude/skills/javascript-domain-driver/SKILL.md')).toContain('name: javascript-domain-driver');
+        for (const file of readLibraryFiles()) {
             expect(readProjectFile(file.file)).toBe(file.content);
         }
     });
@@ -38,7 +37,6 @@ describe('runInit', () => {
             'unchanged',
             'unchanged',
             'unchanged',
-            'unchanged',
         ]);
         expect(readProjectFile('AGENTS.md')).toBe(before);
     });
@@ -46,8 +44,8 @@ describe('runInit', () => {
     it('restores a modified factory file and reports the factory as updated', () => {
         runInit(process.cwd());
         fs.writeFileSync(path.join(process.cwd(), '.codex/agents/builder.toml'), 'edited\n');
-        expect(runInit(process.cwd())[3]).toEqual({ file: FACTORY_LABEL, status: 'updated' });
-        const builder = readFactoryFiles().find((file) => file.file === '.codex/agents/builder.toml');
+        expect(runInit(process.cwd())[2]).toEqual({ file: FACTORY_LABEL, status: 'updated' });
+        const builder = readLibraryFiles().find((file) => file.file === '.codex/agents/builder.toml');
         expect(readProjectFile('.codex/agents/builder.toml')).toBe(builder?.content);
     });
 
@@ -57,6 +55,15 @@ describe('runInit', () => {
         runInit(process.cwd());
         expect(readProjectFile('.claude/agents/mine.md')).toBe('my agent\n');
         expect(projectFileExists('.claude/agents/builder.md')).toBe(true);
+    });
+
+    it('refuses symlinked skill destinations before writing project files', () => {
+        fs.mkdirSync(path.join(process.cwd(), 'outside'));
+        fs.mkdirSync(path.join(process.cwd(), '.agents'));
+        fs.symlinkSync(path.join(process.cwd(), 'outside'), path.join(process.cwd(), '.agents/skills'));
+        expect(() => runInit(process.cwd())).toThrow('Refusing symlink');
+        expect(projectFileExists('AGENTS.md')).toBe(false);
+        expect(fs.readdirSync(path.join(process.cwd(), 'outside'))).toEqual([]);
     });
 
     it('appends to an existing file and preserves hand edits outside the markers', () => {
@@ -76,9 +83,9 @@ describe('runInit', () => {
 
     it('overwrites a modified skill file', () => {
         runInit(process.cwd());
-        fs.writeFileSync(path.join(process.cwd(), '.claude/skills/domain-driver/SKILL.md'), 'edited\n');
-        expect(runInit(process.cwd())[2]).toEqual({ file: '.claude/skills/domain-driver/SKILL.md', status: 'updated' });
-        expect(readProjectFile('.claude/skills/domain-driver/SKILL.md')).toBe(SKILL_CONTENT);
+        fs.writeFileSync(path.join(process.cwd(), '.claude/skills/javascript-domain-driver/SKILL.md'), 'edited\n');
+        expect(runInit(process.cwd())[2]).toEqual({ file: FACTORY_LABEL, status: 'updated' });
+        expect(readProjectFile('.claude/skills/javascript-domain-driver/SKILL.md')).toContain('name: javascript-domain-driver');
     });
 
     it('works with a root that is not the cwd', () => {
@@ -93,10 +100,10 @@ describe('runInit', () => {
 describe('factoryNotice', () => {
     it('tells the user what the factory is the first time it is added', () => {
         const notice = factoryNotice(runInit(process.cwd())).join('\n');
-        expect(notice).toContain('Added the /domain-factory skill ($domain-factory in Codex)');
-        expect(notice).toContain(`${readFactoryFiles().filter((file) => file.file.startsWith('.codex/agents/')).length} agents`);
+        expect(notice).toContain('Added the /factory skill ($factory in Codex)');
+        expect(notice).toContain(`${readLibraryFiles().filter((file) => file.file.startsWith('.codex/agents/')).length} agents`);
         expect(notice).toContain('It only runs when you start it.');
-        expect(notice).toContain('https://github.com/IsaacHatilima/domain-driver/tree/master/factory');
+        expect(notice).toContain('https://github.com/IsaacHatilima/skills/tree/main/agents/factory');
     });
 
     it('stays quiet once the factory is already installed', () => {
