@@ -1,240 +1,235 @@
 {
-  "schema": 1,
+  "schema": 2,
   "source": "https://github.com/IsaacHatilima/skills",
   "items": [
     {
       "name": "factory",
       "description": "Start the factory workflow only when explicitly invoked as /factory in Claude Code or $factory in Codex with a feature request, approve command, or rework command.",
       "files": {
-        ".ai/skills/factory/AGENT.md": "agents/factory/AGENT.md",
         ".agents/skills/factory/AGENT.md": "agents/factory/AGENT.md",
-        ".claude/skills/factory/AGENT.md": "agents/factory/AGENT.md",
-        ".ai/skills/factory/agents/openai.yaml": "agents/factory/agents/openai.yaml",
         ".agents/skills/factory/agents/openai.yaml": "agents/factory/agents/openai.yaml",
-        ".claude/skills/factory/agents/openai.yaml": "agents/factory/agents/openai.yaml",
-        ".ai/skills/factory/approver.md": "agents/factory/approver.md",
         ".agents/skills/factory/approver.md": "agents/factory/approver.md",
-        ".claude/skills/factory/approver.md": "agents/factory/approver.md",
         ".claude/agents/approver.md": "rendered/claude/approver.md",
         ".codex/agents/approver.toml": "rendered/codex/approver.toml",
-        ".ai/skills/factory/builder.md": "agents/factory/builder.md",
         ".agents/skills/factory/builder.md": "agents/factory/builder.md",
-        ".claude/skills/factory/builder.md": "agents/factory/builder.md",
         ".claude/agents/builder.md": "rendered/claude/builder.md",
         ".codex/agents/builder.toml": "rendered/codex/builder.toml",
-        ".ai/skills/factory/documenter.md": "agents/factory/documenter.md",
         ".agents/skills/factory/documenter.md": "agents/factory/documenter.md",
-        ".claude/skills/factory/documenter.md": "agents/factory/documenter.md",
         ".claude/agents/documenter.md": "rendered/claude/documenter.md",
         ".codex/agents/documenter.toml": "rendered/codex/documenter.toml",
-        ".ai/skills/factory/README.md": "agents/factory/README.md",
         ".agents/skills/factory/README.md": "agents/factory/README.md",
-        ".claude/skills/factory/README.md": "agents/factory/README.md",
-        ".ai/skills/factory/references/skills.md": "agents/factory/references/skills.md",
         ".agents/skills/factory/references/skills.md": "agents/factory/references/skills.md",
-        ".claude/skills/factory/references/skills.md": "agents/factory/references/skills.md",
-        ".ai/skills/factory/reviewer-code.md": "agents/factory/reviewer-code.md",
         ".agents/skills/factory/reviewer-code.md": "agents/factory/reviewer-code.md",
-        ".claude/skills/factory/reviewer-code.md": "agents/factory/reviewer-code.md",
         ".claude/agents/reviewer-code.md": "rendered/claude/reviewer-code.md",
         ".codex/agents/reviewer-code.toml": "rendered/codex/reviewer-code.toml",
-        ".ai/skills/factory/reviewer-security.md": "agents/factory/reviewer-security.md",
         ".agents/skills/factory/reviewer-security.md": "agents/factory/reviewer-security.md",
-        ".claude/skills/factory/reviewer-security.md": "agents/factory/reviewer-security.md",
         ".claude/agents/reviewer-security.md": "rendered/claude/reviewer-security.md",
         ".codex/agents/reviewer-security.toml": "rendered/codex/reviewer-security.toml",
-        ".ai/skills/factory/reviewer-ui.md": "agents/factory/reviewer-ui.md",
         ".agents/skills/factory/reviewer-ui.md": "agents/factory/reviewer-ui.md",
-        ".claude/skills/factory/reviewer-ui.md": "agents/factory/reviewer-ui.md",
         ".claude/agents/reviewer-ui.md": "rendered/claude/reviewer-ui.md",
         ".codex/agents/reviewer-ui.toml": "rendered/codex/reviewer-ui.toml",
-        ".ai/skills/factory/reviewer-ux.md": "agents/factory/reviewer-ux.md",
         ".agents/skills/factory/reviewer-ux.md": "agents/factory/reviewer-ux.md",
-        ".claude/skills/factory/reviewer-ux.md": "agents/factory/reviewer-ux.md",
         ".claude/agents/reviewer-ux.md": "rendered/claude/reviewer-ux.md",
         ".codex/agents/reviewer-ux.toml": "rendered/codex/reviewer-ux.toml",
-        ".ai/skills/factory/SKILL.md": "agents/factory/SKILL.md",
         ".agents/skills/factory/SKILL.md": "agents/factory/SKILL.md",
-        ".claude/skills/factory/SKILL.md": "agents/factory/SKILL.md",
-        ".ai/skills/factory/spec-writer.md": "agents/factory/spec-writer.md",
         ".agents/skills/factory/spec-writer.md": "agents/factory/spec-writer.md",
-        ".claude/skills/factory/spec-writer.md": "agents/factory/spec-writer.md",
         ".claude/agents/spec-writer.md": "rendered/claude/spec-writer.md",
         ".codex/agents/spec-writer.toml": "rendered/codex/spec-writer.toml",
-        ".ai/skills/catalog.md": "skills/catalog.md",
-        ".agents/skills/catalog.md": "skills/catalog.md",
-        ".claude/skills/catalog.md": "skills/catalog.md"
+        ".agents/skills/catalog.md": "skills/catalog.md"
+      },
+      "links": {
+        ".claude/skills/factory": ".agents/skills/factory",
+        ".claude/skills/catalog.md": ".agents/skills/catalog.md"
       }
     },
     {
       "name": "frontend-app-shell",
       "description": "Use when building or reviewing the frame around signed-in screens (sidebar, header, page layout, the route after login), especially when the sidebar and body clash, the header scrolls away or crowds, a collapsed sidebar hides its options, pages repeat their title, or the shell lacks mobile, loading, or error states.",
       "files": {
-        ".ai/skills/frontend-app-shell/SKILL.md": "skills/frontend/app-shell/SKILL.md",
-        ".agents/skills/frontend-app-shell/SKILL.md": "skills/frontend/app-shell/SKILL.md",
-        ".claude/skills/frontend-app-shell/SKILL.md": "skills/frontend/app-shell/SKILL.md"
+        ".agents/skills/frontend-app-shell/SKILL.md": "skills/frontend/app-shell/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/frontend-app-shell": ".agents/skills/frontend-app-shell"
       }
     },
     {
       "name": "frontend-data-display",
       "description": "Use when designing, building, or reviewing how records and metrics are shown (data tables, lists, activity or audit logs, timelines, KPI tiles, summary charts), especially when a table looks generic, numbers don't line up, status is plain text, history is buried in a table, or every section sits in the same card.",
       "files": {
-        ".ai/skills/frontend-data-display/SKILL.md": "skills/frontend/data-display/SKILL.md",
-        ".agents/skills/frontend-data-display/SKILL.md": "skills/frontend/data-display/SKILL.md",
-        ".claude/skills/frontend-data-display/SKILL.md": "skills/frontend/data-display/SKILL.md"
+        ".agents/skills/frontend-data-display/SKILL.md": "skills/frontend/data-display/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/frontend-data-display": ".agents/skills/frontend-data-display"
       }
     },
     {
       "name": "frontend-overlays",
       "description": "Use when adding, choosing, or reviewing a dialog, modal, drawer, sheet, popover, dropdown menu, tooltip, toast, or confirmation, especially when it's unclear what opens it or whether it needs a URL, or when overlays stack, lose focus, close by accident, drop unsaved work, blur the page, or break on mobile.",
       "files": {
-        ".ai/skills/frontend-overlays/SKILL.md": "skills/frontend/overlays/SKILL.md",
-        ".agents/skills/frontend-overlays/SKILL.md": "skills/frontend/overlays/SKILL.md",
-        ".claude/skills/frontend-overlays/SKILL.md": "skills/frontend/overlays/SKILL.md"
+        ".agents/skills/frontend-overlays/SKILL.md": "skills/frontend/overlays/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/frontend-overlays": ".agents/skills/frontend-overlays"
       }
     },
     {
       "name": "javascript-domain-driver",
       "description": "Scaffold domain-driven feature folders with the domain-driver CLI. Use when creating a feature, adding a layer (types, schema, repository, service, controller, component, container, hook) to an existing feature, or adding any operation beyond List, Show, Create, Update, and Delete.",
       "files": {
-        ".ai/skills/javascript-domain-driver/SKILL.md": "skills/javascript/domain-driver/SKILL.md",
-        ".agents/skills/javascript-domain-driver/SKILL.md": "skills/javascript/domain-driver/SKILL.md",
-        ".claude/skills/javascript-domain-driver/SKILL.md": "skills/javascript/domain-driver/SKILL.md"
+        ".agents/skills/javascript-domain-driver/SKILL.md": "skills/javascript/domain-driver/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/javascript-domain-driver": ".agents/skills/javascript-domain-driver"
       }
     },
     {
       "name": "nest-actions",
       "description": "Use when creating, refactoring, or reviewing a NestJS action or service that performs one business operation, or deciding its typed input, actor, transaction, side effects, or return value.",
       "files": {
-        ".ai/skills/nest-actions/SKILL.md": "skills/nest/actions/SKILL.md",
-        ".agents/skills/nest-actions/SKILL.md": "skills/nest/actions/SKILL.md",
-        ".claude/skills/nest-actions/SKILL.md": "skills/nest/actions/SKILL.md"
+        ".agents/skills/nest-actions/SKILL.md": "skills/nest/actions/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/nest-actions": ".agents/skills/nest-actions"
       }
     },
     {
       "name": "nest-api-responses",
       "description": "Use when adding or changing a NestJS JSON response shape, the success envelope or its interceptor, the exception filter, error codes, paginated list output, or how validation, auth, rate-limit, Prisma, and unexpected errors reach the client.",
       "files": {
-        ".ai/skills/nest-api-responses/SKILL.md": "skills/nest/api-responses/SKILL.md",
-        ".agents/skills/nest-api-responses/SKILL.md": "skills/nest/api-responses/SKILL.md",
-        ".claude/skills/nest-api-responses/SKILL.md": "skills/nest/api-responses/SKILL.md"
+        ".agents/skills/nest-api-responses/SKILL.md": "skills/nest/api-responses/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/nest-api-responses": ".agents/skills/nest-api-responses"
       }
     },
     {
       "name": "nest-architecture",
       "description": "Use when adding a NestJS feature or module, deciding where code belongs, sharing providers between modules, fixing \"Nest can't resolve dependencies\" or circular-import errors, decoupling side effects with events, or setting up config validation, logging, or shutdown.",
       "files": {
-        ".ai/skills/nest-architecture/SKILL.md": "skills/nest/architecture/SKILL.md",
-        ".agents/skills/nest-architecture/SKILL.md": "skills/nest/architecture/SKILL.md",
-        ".claude/skills/nest-architecture/SKILL.md": "skills/nest/architecture/SKILL.md"
+        ".agents/skills/nest-architecture/SKILL.md": "skills/nest/architecture/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/nest-architecture": ".agents/skills/nest-architecture"
       }
     },
     {
       "name": "nest-controllers",
       "description": "Use when adding or changing a NestJS controller or route, wiring a DTO, pipe, or guard to an endpoint, choosing an HTTP method or status code, or reading the authenticated actor in a handler.",
       "files": {
-        ".ai/skills/nest-controllers/SKILL.md": "skills/nest/controllers/SKILL.md",
-        ".agents/skills/nest-controllers/SKILL.md": "skills/nest/controllers/SKILL.md",
-        ".claude/skills/nest-controllers/SKILL.md": "skills/nest/controllers/SKILL.md"
+        ".agents/skills/nest-controllers/SKILL.md": "skills/nest/controllers/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/nest-controllers": ".agents/skills/nest-controllers"
       }
     },
     {
       "name": "nest-database",
       "description": "Use when writing NestJS persistence code with Prisma: setting up PrismaService, adding models or relations to schema.prisma, writing repository queries, fixing N+1 queries or over-fetching, wrapping writes in a transaction, or paginating a list.",
       "files": {
-        ".ai/skills/nest-database/SKILL.md": "skills/nest/database/SKILL.md",
-        ".agents/skills/nest-database/SKILL.md": "skills/nest/database/SKILL.md",
-        ".claude/skills/nest-database/SKILL.md": "skills/nest/database/SKILL.md"
+        ".agents/skills/nest-database/SKILL.md": "skills/nest/database/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/nest-database": ".agents/skills/nest-database"
       }
     },
     {
       "name": "nest-dtos",
       "description": "Use when creating or changing a NestJS request DTO, Zod input schema, query or path validation, or partial-update contract, or when deciding what an endpoint returns and how a Prisma result becomes that response.",
       "files": {
-        ".ai/skills/nest-dtos/SKILL.md": "skills/nest/dtos/SKILL.md",
-        ".agents/skills/nest-dtos/SKILL.md": "skills/nest/dtos/SKILL.md",
-        ".claude/skills/nest-dtos/SKILL.md": "skills/nest/dtos/SKILL.md"
+        ".agents/skills/nest-dtos/SKILL.md": "skills/nest/dtos/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/nest-dtos": ".agents/skills/nest-dtos"
       }
     },
     {
       "name": "nest-jobs",
       "description": "Use when adding or reviewing NestJS background work with BullMQ, such as mail, exports, imports, webhooks, or third-party calls, scheduling recurring jobs, or when a request is slow because it does work the client doesn't need to wait for.",
       "files": {
-        ".ai/skills/nest-jobs/SKILL.md": "skills/nest/jobs/SKILL.md",
-        ".agents/skills/nest-jobs/SKILL.md": "skills/nest/jobs/SKILL.md",
-        ".claude/skills/nest-jobs/SKILL.md": "skills/nest/jobs/SKILL.md"
+        ".agents/skills/nest-jobs/SKILL.md": "skills/nest/jobs/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/nest-jobs": ".agents/skills/nest-jobs"
       }
     },
     {
       "name": "nest-migrations",
       "description": "Use when adding or changing a Prisma model, table, column, index, relation, or constraint in a NestJS app, writing a backfill, or running migrations locally, in CI, or in production.",
       "files": {
-        ".ai/skills/nest-migrations/SKILL.md": "skills/nest/migrations/SKILL.md",
-        ".agents/skills/nest-migrations/SKILL.md": "skills/nest/migrations/SKILL.md",
-        ".claude/skills/nest-migrations/SKILL.md": "skills/nest/migrations/SKILL.md"
+        ".agents/skills/nest-migrations/SKILL.md": "skills/nest/migrations/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/nest-migrations": ".agents/skills/nest-migrations"
       }
     },
     {
       "name": "nest-security",
       "description": "Use when adding or reviewing NestJS authentication or permission guards, public routes, ownership or tenant scoping, rate limits, CORS or helmet, JWT or refresh-token handling, password hashing, or how secrets reach the app.",
       "files": {
-        ".ai/skills/nest-security/SKILL.md": "skills/nest/security/SKILL.md",
-        ".agents/skills/nest-security/SKILL.md": "skills/nest/security/SKILL.md",
-        ".claude/skills/nest-security/SKILL.md": "skills/nest/security/SKILL.md"
+        ".agents/skills/nest-security/SKILL.md": "skills/nest/security/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/nest-security": ".agents/skills/nest-security"
       }
     },
     {
       "name": "nest-tests",
       "description": "Use when writing, choosing, or running tests for a NestJS application, including unit tests for actions and schemas, e2e tests against an isolated Prisma test database, provider overrides, or deciding which tests a change needs.",
       "files": {
-        ".ai/skills/nest-tests/SKILL.md": "skills/nest/tests/SKILL.md",
-        ".agents/skills/nest-tests/SKILL.md": "skills/nest/tests/SKILL.md",
-        ".claude/skills/nest-tests/SKILL.md": "skills/nest/tests/SKILL.md"
+        ".agents/skills/nest-tests/SKILL.md": "skills/nest/tests/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/nest-tests": ".agents/skills/nest-tests"
       }
     },
     {
       "name": "next-actions",
       "description": "Use when adding, changing, or reviewing a Next.js Server Action, a form or button that submits to one, or the revalidation, redirect, or returned state after it.",
       "files": {
-        ".ai/skills/next-actions/SKILL.md": "skills/next/actions/SKILL.md",
-        ".agents/skills/next-actions/SKILL.md": "skills/next/actions/SKILL.md",
-        ".claude/skills/next-actions/SKILL.md": "skills/next/actions/SKILL.md"
+        ".agents/skills/next-actions/SKILL.md": "skills/next/actions/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/next-actions": ".agents/skills/next-actions"
       }
     },
     {
       "name": "quality-review",
       "description": "Use when reviewing a diff, branch, or pull request and deciding what blocks the merge, especially when findings mix real bugs with pre-existing problems, style preferences, or claims about code outside the diff.",
       "files": {
-        ".ai/skills/quality-review/SKILL.md": "skills/quality/review/SKILL.md",
-        ".agents/skills/quality-review/SKILL.md": "skills/quality/review/SKILL.md",
-        ".claude/skills/quality-review/SKILL.md": "skills/quality/review/SKILL.md"
+        ".agents/skills/quality-review/SKILL.md": "skills/quality/review/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/quality-review": ".agents/skills/quality-review"
       }
     },
     {
       "name": "quality-security-review",
       "description": "Use when reviewing a diff, branch, or pull request for security problems, such as authorization, injection, redirects, secrets, sensitive data in logs, or limits that a failure could bypass, and deciding which ones block the merge.",
       "files": {
-        ".ai/skills/quality-security-review/SKILL.md": "skills/quality/security-review/SKILL.md",
-        ".agents/skills/quality-security-review/SKILL.md": "skills/quality/security-review/SKILL.md",
-        ".claude/skills/quality-security-review/SKILL.md": "skills/quality/security-review/SKILL.md"
+        ".agents/skills/quality-security-review/SKILL.md": "skills/quality/security-review/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/quality-security-review": ".agents/skills/quality-security-review"
       }
     },
     {
       "name": "quality-simplicity",
       "description": "Use when writing, refactoring, or reviewing code that should be easy for the next developer to read, especially code written under time pressure, code that grew defensive checks or options nobody asked for, or code with nested conditionals, pass-through methods, or comments that no longer match.",
       "files": {
-        ".ai/skills/quality-simplicity/SKILL.md": "skills/quality/simplicity/SKILL.md",
-        ".agents/skills/quality-simplicity/SKILL.md": "skills/quality/simplicity/SKILL.md",
-        ".claude/skills/quality-simplicity/SKILL.md": "skills/quality/simplicity/SKILL.md"
+        ".agents/skills/quality-simplicity/SKILL.md": "skills/quality/simplicity/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/quality-simplicity": ".agents/skills/quality-simplicity"
       }
     },
     {
       "name": "tanstack-start-actions",
       "description": "Use when adding, changing, or reviewing a TanStack Start server function, its validator or auth middleware, or the hook or loader that calls it and refreshes data afterwards.",
       "files": {
-        ".ai/skills/tanstack-start-actions/SKILL.md": "skills/tanstack-start/actions/SKILL.md",
-        ".agents/skills/tanstack-start-actions/SKILL.md": "skills/tanstack-start/actions/SKILL.md",
-        ".claude/skills/tanstack-start-actions/SKILL.md": "skills/tanstack-start/actions/SKILL.md"
+        ".agents/skills/tanstack-start-actions/SKILL.md": "skills/tanstack-start/actions/SKILL.md"
+      },
+      "links": {
+        ".claude/skills/tanstack-start-actions": ".agents/skills/tanstack-start-actions"
       }
     }
   ]

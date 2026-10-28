@@ -148,7 +148,7 @@ describe('generic', () => {
 
     it('renders a class that parses input', () => {
         const content = renderGenericController(ctx(), standardAction('Create', 'Cat'), 'Cat', controllerFile(ctx(), 'Create'));
-        expect(content).toContain("import { Cat } from '../types/Cat.types';");
+        expect(content).toContain("import type { Cat } from '../types/Cat.types';");
         expect(content).toContain('export class CreateCatController {');
         expect(content).toContain('async handle(input: unknown): Promise<Cat> {');
         expect(content).toContain('return service.handle(CreateCatSchema.parse(input));');

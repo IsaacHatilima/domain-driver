@@ -4,12 +4,12 @@ Generated from IsaacHatilima/skills. Only the skills delivered to this consumer 
 
 ## Resolve skill files
 
-A skill id is its grouped source path. In project-native roots it uses a group-prefixed folder, such as `laravel-actions/SKILL.md`.
+A skill id is its grouped source path. Installed skills have one shared copy in `.agents/skills/`, with group-prefixed folders such as `laravel-actions/SKILL.md`. Claude and Laravel Boost discover these same files through relative links in their native skill directories. Codex reads `.agents/skills/` directly; it does not need `.codex/skills/`.
 
-1. Prefer a copy in the target worktree's `.agents/skills/`, `.claude/skills/`, or `.ai/skills/`.
+1. Prefer the target worktree's `.agents/skills/`.
 2. Then use the supplied library roots in their stated order: a grouped canonical path, or the group-prefixed folder in a flat root.
 
-Read the selected file and record its absolute path. Conflicting copies at the same priority require an explicit selection. Library roots outside the target worktree are read-only. Missing required skills block the relevant stage; missing unused groups do not. Project guidance takes precedence. Skills do not expand write ownership or authorize external effects.
+Read the selected file and record its absolute path. Library roots outside the target worktree are read-only. Missing required skills block the relevant stage; missing unused groups do not. Project guidance takes precedence. Skills do not expand write ownership or authorize external effects.
 
 ## Available skills
 

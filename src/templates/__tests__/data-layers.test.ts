@@ -22,8 +22,8 @@ describe('renderService', () => {
         const ctx = contextFor('node', 'cat');
         const fromFile = path.join(ctx.featureDir, 'services', 'CreateCat.service.ts');
         const content = renderService(ctx, standardAction('Create', 'Cat'), 'Cat', fromFile);
-        expect(content).toContain("import { Cat } from '../types/Cat.types';");
-        expect(content).toContain("import { CreateCat } from '../schemas/CreateCat.schema';");
+        expect(content).toContain("import type { Cat } from '../types/Cat.types';");
+        expect(content).toContain("import type { CreateCat } from '../schemas/CreateCat.schema';");
         expect(content).toContain("import { CreateCatRepository } from '../repositories/CreateCat.repository';");
         expect(content).toContain('const repository = new CreateCatRepository();');
         expect(content).toContain('export class CreateCatService {');
@@ -91,7 +91,7 @@ describe('renderHook requests the API', () => {
         expect(content).toContain("method: 'POST'");
         expect(content).toContain("'Content-Type': 'application/json'");
         expect(content).toContain('body: JSON.stringify(data),');
-        expect(content).toContain("import { CreateCoffeeType } from '../schemas/CreateCoffeeType.schema';");
+        expect(content).toContain("import type { CreateCoffeeType } from '../schemas/CreateCoffeeType.schema';");
         expect(content).not.toContain('Service');
     });
 
@@ -118,7 +118,7 @@ describe('renderServerRepository', () => {
         const ctx = contextFor('node', 'cat');
         const fromFile = path.join(ctx.featureDir, 'repositories', 'CreateCat.repository.ts');
         const content = renderServerRepository(ctx, standardAction('Create', 'Cat'), 'Cat', fromFile);
-        expect(content).toContain("import { Cat } from '../types/Cat.types';");
+        expect(content).toContain("import type { Cat } from '../types/Cat.types';");
         expect(content).toContain('export class CreateCatRepository {');
         expect(content).toContain('// TODO: implement with your ORM (Prisma, Drizzle, TypeORM, ...)');
         expect(content).toContain("throw new Error('CreateCatRepository.handle is not implemented');");
@@ -147,7 +147,7 @@ describe('custom action specs through the data templates', () => {
         const spec = customAction('User', 'findActiveUsers', { withInput: false, returns: 'list' });
         const fromFile = path.join(ctx.featureDir, 'hooks', 'FindActiveUsers.hook.ts');
         const content = renderHook(ctx, spec, 'User', fromFile);
-        expect(content).toContain("import { User } from '../types/User.types';");
+        expect(content).toContain("import type { User } from '../types/User.types';");
         expect(content).toContain('export function useFindActiveUsers() {');
         expect(content).toContain('const [data, setData] = useState<User[]>([]);');
         expect(content).toContain("const response = await fetch('/api/users/find-active-users');");
@@ -160,7 +160,7 @@ describe('custom action specs through the data templates', () => {
         const spec = customAction('User', 'notifyUsers', { withInput: true, returns: 'void' });
         const fromFile = path.join(ctx.featureDir, 'hooks', 'NotifyUsers.hook.ts');
         const content = renderHook(ctx, spec, 'User', fromFile);
-        expect(content).toContain("import { NotifyUsers } from '../schemas/NotifyUsers.schema';");
+        expect(content).toContain("import type { NotifyUsers } from '../schemas/NotifyUsers.schema';");
         expect(content).not.toContain('types/User.types');
         expect(content).toContain("const response = await fetch('/api/users/notify-users', {");
         expect(content).toContain("method: 'POST',");

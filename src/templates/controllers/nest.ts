@@ -49,7 +49,7 @@ export function renderNestController(
     const imports = [
         `import { ${route.commonImports.join(', ')} } from '@nestjs/common';`,
         ...(spec.usesEntityType
-            ? [`import { ${entity} } from '${ctx.importLayer(fromFile, 'types', `${entity}.types`)}';`]
+            ? [`import type { ${entity} } from '${ctx.importLayer(fromFile, 'types', `${entity}.types`)}';`]
             : []),
         ...(dto !== null && spec.schema !== null
             ? [`import { ${dto} } from '${ctx.importLayer(fromFile, 'dto', `${spec.schema}.dto`)}';`]

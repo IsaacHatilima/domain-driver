@@ -18,8 +18,8 @@ describe('domainImports', () => {
         const ctx = contextFor('next-frontend', 'cat');
         const fromFile = path.join(ctx.featureDir, 'services', 'CreateCat.service.ts');
         expect(domainImports(ctx, fromFile, standardAction('Create', 'Cat'), 'Cat')).toEqual([
-            "import { Cat } from '../types/Cat.types';",
-            "import { CreateCat } from '../schemas/CreateCat.schema';",
+            "import type { Cat } from '../types/Cat.types';",
+            "import type { CreateCat } from '../schemas/CreateCat.schema';",
         ]);
     });
 
@@ -33,7 +33,7 @@ describe('domainImports', () => {
         const ctx = contextFor('next-fullstack', 'cat');
         const fromFile = path.join(ctx.featureDir, 'client', 'services', 'ListCat.service.ts');
         expect(domainImports(ctx, fromFile, standardAction('List', 'Cat'), 'Cat')).toEqual([
-            "import { Cat } from '../../types/Cat.types';",
+            "import type { Cat } from '../../types/Cat.types';",
         ]);
     });
 });

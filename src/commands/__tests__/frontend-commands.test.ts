@@ -65,7 +65,7 @@ describe('on next-frontend', () => {
 
         const content = readProjectFile('app/cat/hooks/ListCat.hook.ts');
         expect(content).toContain('export function useListCat()');
-        expect(content).toContain("import { Cat } from '../types/Cat.types';");
+        expect(content).toContain("import type { Cat } from '../types/Cat.types';");
         expect(content).toContain("const response = await fetch('/api/cat');");
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat list');");
         expect(content).toContain('setData((await response.json()) as Cat[]);');
@@ -89,7 +89,7 @@ describe('on next-frontend', () => {
 
         const content = readProjectFile('app/cat/hooks/CreateCat.hook.ts');
         expect(content).toContain('export function useCreateCat(options: { onSuccess?: (result: Cat) => void } = {})');
-        expect(content).toContain("import { CreateCat } from '../schemas/CreateCat.schema';");
+        expect(content).toContain("import type { CreateCat } from '../schemas/CreateCat.schema';");
         expect(content).toContain("const response = await fetch('/api/cat', {");
         expect(content).toContain("method: 'POST',");
         expect(content).toContain("headers: { 'Content-Type': 'application/json' },");

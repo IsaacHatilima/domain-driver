@@ -41,6 +41,58 @@ describe('runInit', () => {
         expect(readProjectFile('AGENTS.md')).toBe(before);
     });
 
+    it('keeps one shared copy, links Claude skills, and uses .codex only for agents', () => {
+        runInit(process.cwd());
+        const shared = path.join(process.cwd(), '.agents/skills/nest-actions');
+        const alias = path.join(process.cwd(), '.claude/skills/nest-actions');
+        expect(fs.lstatSync(shared).isDirectory()).toBe(true);
+        expect(fs.lstatSync(alias).isSymbolicLink()).toBe(true);
+        expect(fs.realpathSync(alias)).toBe(fs.realpathSync(shared));
+        expect(projectFileExists('.ai/skills')).toBe(false);
+        expect(projectFileExists('.codex/skills')).toBe(false);
+        expect(projectFileExists('.codex/agents/builder.toml')).toBe(true);
+    });
+
+    function legacyCopies(): void {
+        for (const file of readLibraryFiles().filter(file => file.file.startsWith('.agents/skills/'))) {
+            for (const host of ['.agents', '.ai', '.claude']) {
+                const absolute = path.join(process.cwd(), file.file.replace(/^\.agents/, host));
+                fs.mkdirSync(path.dirname(absolute), { recursive: true });
+                fs.writeFileSync(absolute, `Previous version of ${file.file}\n`);
+            }
+        }
+    }
+
+    it('migrates matching previous-version copies before updating their canonical content', () => {
+        legacyCopies();
+        fs.mkdirSync('.ai/skills/my-skill', { recursive: true });
+        fs.writeFileSync('.ai/skills/my-skill/SKILL.md', 'Mine.');
+        runInit(process.cwd());
+        expect(fs.lstatSync('.claude/skills/factory').isSymbolicLink()).toBe(true);
+        expect(projectFileExists('.ai/skills/factory')).toBe(false);
+        expect(readProjectFile('.ai/skills/my-skill/SKILL.md')).toBe('Mine.');
+        expect(readProjectFile('.agents/skills/nest-actions/SKILL.md')).toContain('name: nest-actions');
+        expect(runInit(process.cwd()).every(result => result.status === 'unchanged')).toBe(true);
+    });
+
+    it('preserves a divergent legacy copy and fails before changing any project guidance', () => {
+        legacyCopies();
+        fs.writeFileSync('.claude/skills/nest-actions/SKILL.md', 'My local change.');
+        const canonical = readProjectFile('.agents/skills/nest-actions/SKILL.md');
+        expect(() => runInit(process.cwd())).toThrow('locally modified or unowned file preserved');
+        expect(readProjectFile('.claude/skills/nest-actions/SKILL.md')).toBe('My local change.');
+        expect(readProjectFile('.agents/skills/nest-actions/SKILL.md')).toBe(canonical);
+        expect(projectFileExists('AGENTS.md')).toBe(false);
+    });
+
+    it('refuses a link pointing to an unrelated destination', () => {
+        fs.mkdirSync('.claude/skills', { recursive: true });
+        fs.mkdirSync('outside');
+        fs.symlinkSync(path.join(process.cwd(), 'outside'), '.claude/skills/factory');
+        expect(() => runInit(process.cwd())).toThrow('Refusing symlink');
+        expect(projectFileExists('AGENTS.md')).toBe(false);
+    });
+
     it('restores a modified factory file and reports the factory as updated', () => {
         runInit(process.cwd());
         fs.writeFileSync(path.join(process.cwd(), '.codex/agents/builder.toml'), 'edited\n');

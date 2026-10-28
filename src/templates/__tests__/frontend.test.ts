@@ -109,7 +109,7 @@ describe('renderHook', () => {
         const content = renderHook(ctx, spec, 'Cat', file);
 
         expect(content).toContain('export function useListCat()');
-        expect(content).toContain("import { Cat } from '../types/Cat.types';");
+        expect(content).toContain("import type { Cat } from '../types/Cat.types';");
         expect(content).toContain('const [data, setData] = useState<Cat[]>([]);');
         expect(content).toContain("const response = await fetch('/api/cat');");
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat list');");
@@ -138,7 +138,7 @@ describe('renderHook', () => {
         expect(content).toContain('export function useUpdateCat(options: { onSuccess?: (result: Cat) => void } = {})');
         expect(content).toContain('const { onSuccess } = options;');
         expect(content).toContain('const updateCat = useCallback(async (id: string, data: UpdateCat) => {');
-        expect(content).toContain("import { UpdateCat } from '../schemas/UpdateCat.schema';");
+        expect(content).toContain("import type { UpdateCat } from '../schemas/UpdateCat.schema';");
         expect(content).toContain(`      const response = await fetch(\`/api/cat/\${id}\`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -196,8 +196,8 @@ describe('renderHook', () => {
         body: JSON.stringify(data),
       });`);
         expect(content).toContain('const result = (await response.json()) as Cat;');
-        expect(content).toContain("import { Cat } from '../types/Cat.types';");
-        expect(content).toContain("import { CreateCat } from '../schemas/CreateCat.schema';");
+        expect(content).toContain("import type { Cat } from '../types/Cat.types';");
+        expect(content).toContain("import type { CreateCat } from '../schemas/CreateCat.schema';");
         expect(content).not.toContain('service');
         expect(content).not.toContain('Service');
         expect(content).not.toContain('repositories');
