@@ -207,6 +207,8 @@ Running `init` twice reports `unchanged`. Re-run it after upgrading domain-drive
 
 The previous three-copy layout is migrated when each old copy matches the existing shared copy or the delivered version. Divergent edits and unowned files are preserved and reported before any guidance changes; reconcile them before retrying. Skill links require symlink support and never fall back to duplicated files.
 
+Initialization also retires the old `.claude/skills/domain-driver/`, `.claude/skills/domain-factory/`, and `.agents/skills/domain-factory/` directories when their files match the published 0.8.0 installer. Modified files, extra project files, and symlinks in those legacy paths block migration before any project writes. Other tools' skill directories are preserved. The current `factory` command replaces `domain-factory`, and `javascript-domain-driver` replaces the old CLI skill.
+
 Generated type references use `import type`, including under Vite's `verbatimModuleSyntax`. In Node ESM projects using NodeNext/Node16 resolution, local imports use runtime `.js` extensions; CommonJS and bundler projects retain their existing import style. Nest DTOs and injected classes remain runtime imports.
 
 **On install.** A local `npm install domain-driver` in a project runs `init` automatically. It does nothing when `CI` is set, for global installs, when there is no `package.json` in the installing project, or when domain-driver installs itself. Files are written to the directory you ran npm install from, which in a workspace is the repository root. Opt out with `npm install --ignore-scripts`, or delete the marked section afterwards.
