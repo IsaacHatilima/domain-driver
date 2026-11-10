@@ -15,7 +15,6 @@ import { makeService } from './commands/service';
 import { parseFeatureTarget, parseTarget } from './commands/target';
 import { makeTypes } from './commands/types';
 import { runUpdate, defaultUpdateDeps, UpdateDeps } from './commands/update';
-import { factoryNotice, INIT_ICONS, runInit } from './init/init';
 import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
 import { actionCase } from './templates/actions';
@@ -34,7 +33,7 @@ export interface CliDeps {
     readonly log: (line: string) => void;
 }
 
-const SKIP_DETECTION = new Set(['init', 'update']);
+const SKIP_DETECTION = new Set(['update']);
 
 export function defaultCliDeps(): CliDeps {
     return {
@@ -54,7 +53,7 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .name('domain-driver')
-        .description('CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, and NestJS projects')
+        .description('CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, NestJS, and TanStack Start projects')
         .version(deps.current)
         .option('--stack <name>', `Override stack detection (${STACK_NAMES.join(', ')})`)
         .option('--root <dir>', 'Override where feature folders are created, for example src/features')
@@ -180,23 +179,8 @@ export function createProgram(deps: CliDeps): Command {
         });
 
     program
-        .command('init')
-        .description(
-            'Write AGENTS.md, CLAUDE.md, /factory and its agents, and the shared non-Laravel skills into this project'
-        )
-        .action(() => {
-            const results = runInit(process.cwd());
-            for (const result of results) {
-                console.log(`${INIT_ICONS[result.status]} ${result.file} ${result.status}`);
-            }
-            for (const line of factoryNotice(results)) {
-                console.log(line);
-            }
-        });
-
-    program
         .command('update')
-        .description('Update domain-driver with your package manager, then refresh the agent guidance')
+        .description('Update domain-driver with your package manager')
         .option('--dry-run', 'Print the command without running it', false)
         .option('--check', 'Only report whether a newer version exists', false)
         .action(async (options: { dryRun: boolean; check: boolean }) => {

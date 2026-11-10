@@ -9,7 +9,6 @@ const ROOT = path.resolve(path.sep, 'work', 'app');
 const LOCAL_BIN = path.join(ROOT, 'node_modules', 'domain-driver', 'dist', 'index.js');
 const GLOBAL_BIN = path.resolve(path.sep, 'usr', 'local', 'lib', 'node_modules', 'domain-driver', 'dist', 'index.js');
 const NPX_BIN = path.resolve(path.sep, 'home', 'u', '.npm', '_npx', 'x', 'node_modules', 'domain-driver', 'dist', 'index.js');
-const NODE = path.resolve(path.sep, 'usr', 'bin', 'node');
 
 let cacheDir: string;
 
@@ -61,13 +60,12 @@ function harness(overrides: Partial<UpdateDeps> = {}, spawnResults: readonly Spa
         spawn: (command, args, cwd) => {
             spawned.push({ command, args, cwd });
             const result = queue.shift() ?? { status: 0 };
-            if (command !== NODE && result.status === 0 && result.error === undefined) {
+            if (result.status === 0 && result.error === undefined) {
                 files[path.join(ROOT, 'node_modules', 'domain-driver', 'package.json')] = JSON.stringify({ version: installedVersion });
                 files[path.resolve(path.dirname(GLOBAL_BIN), '..', 'package.json')] = JSON.stringify({ version: installedVersion });
             }
             return result;
         },
-        execPath: NODE,
         log: (line) => lines.push(line),
         ...overrides,
     };
@@ -135,13 +133,10 @@ describe('runUpdate', () => {
         expect(h.spawned).toEqual([]);
     });
 
-    it('runs the package manager in the project root and refreshes guidance from the new install', async () => {
+    it('runs only the package manager in the project root', async () => {
         const h = harness();
         await runUpdate({ dryRun: false, check: false }, h.deps);
-        expect(h.spawned).toEqual([
-            { command: 'pnpm', args: ['update', 'domain-driver@latest'], cwd: ROOT },
-            { command: NODE, args: [LOCAL_BIN, 'init'], cwd: ROOT },
-        ]);
+        expect(h.spawned).toEqual([{ command: 'pnpm', args: ['update', 'domain-driver@latest'], cwd: ROOT }]);
         expect(h.lines).toEqual(['✅ domain-driver updated to 0.3.0']);
     });
 
@@ -158,7 +153,7 @@ describe('runUpdate', () => {
         expect(h.lines).toEqual(['✅ domain-driver updated to 0.3.1']);
     });
 
-    it('updates and refreshes only frontend when pnpm hoists the running binary', async () => {
+    it('updates only frontend when pnpm hoists the running binary', async () => {
         const frontend = path.join(ROOT, 'frontend');
         const entry = path.join(frontend, 'node_modules', 'domain-driver', 'dist', 'index.js');
         const bin = path.join(ROOT, 'node_modules', '.pnpm', 'domain-driver@0.2.0', 'node_modules', 'domain-driver', 'dist', 'index.js');
@@ -186,14 +181,11 @@ describe('runUpdate', () => {
             },
         });
         await runUpdate({ dryRun: false, check: false }, h.deps);
-        expect(calls).toEqual([
-            { command: 'pnpm', args: ['update', 'domain-driver@latest'], cwd: frontend },
-            { command: NODE, args: [entry, 'init'], cwd: frontend },
-        ]);
+        expect(calls).toEqual([{ command: 'pnpm', args: ['update', 'domain-driver@latest'], cwd: frontend }]);
         expect(h.lines).toEqual(['✅ domain-driver updated to 0.3.0']);
     });
 
-    it('does not refresh guidance when the installed version cannot be verified', async () => {
+    it('fails when the installed version cannot be verified', async () => {
         const h = harness({ readFile: file => {
             if (file === path.join(ROOT, 'package.json')) return JSON.stringify({ devDependencies: { 'domain-driver': '^0.2.0' } });
             throw new Error('ENOENT');
@@ -203,33 +195,22 @@ describe('runUpdate', () => {
         expect(h.lines.some(line => line.includes('✅'))).toBe(false);
     });
 
-    it('reports a failed guidance refresh without failing the update', async () => {
-        const h = harness({}, [{ status: 0 }, { status: 1 }]);
-        await runUpdate({ dryRun: false, check: false }, h.deps);
-        expect(h.spawned).toHaveLength(2);
-        expect(h.lines).toEqual(['✅ domain-driver updated to 0.3.0', 'ℹ️  Guidance refresh failed; run: domain-driver init']);
-    });
-
     it('continues to @latest when the registry is unreachable', async () => {
         const h = harness({ fetchImpl: registry(null) });
         await runUpdate({ dryRun: false, check: false }, h.deps);
         expect(h.lines[0]).toBe('Could not reach the registry; updating to @latest anyway.');
         expect(h.lines).toContain('✅ domain-driver updated to 0.3.0');
-        expect(h.spawned).toHaveLength(2);
+        expect(h.spawned).toHaveLength(1);
     });
 
-    it('global uses npm -g, hints sudo on failure, and inits only when cwd has a package.json', async () => {
+    it('global uses npm -g and hints sudo on failure', async () => {
         const failing = harness({ binPath: GLOBAL_BIN, cwd: path.resolve(path.sep, 'elsewhere') }, [{ status: 243 }]);
         await expect(runUpdate({ dryRun: false, check: false }, failing.deps)).rejects.toThrow(
             'Update failed (exit 243). Run it yourself: npm install -g domain-driver@latest (you may need sudo)'
         );
         const ok = harness({ binPath: GLOBAL_BIN, cwd: ROOT });
         await runUpdate({ dryRun: false, check: false }, ok.deps);
-        expect(ok.spawned[0]).toEqual({ command: 'npm', args: ['install', '-g', 'domain-driver@latest'], cwd: ROOT });
-        expect(ok.spawned[1]).toEqual({ command: NODE, args: [GLOBAL_BIN, 'init'], cwd: ROOT });
-        const noProject = harness({ binPath: GLOBAL_BIN, cwd: path.resolve(path.sep, 'elsewhere') });
-        await runUpdate({ dryRun: false, check: false }, noProject.deps);
-        expect(noProject.spawned).toHaveLength(1);
+        expect(ok.spawned).toEqual([{ command: 'npm', args: ['install', '-g', 'domain-driver@latest'], cwd: ROOT }]);
     });
 
     it('local failure has no sudo hint and reports a spawn error', async () => {

@@ -30,14 +30,11 @@ export interface UpdateDeps {
     readonly exists: (filePath: string) => boolean;
     readonly realpath: (filePath: string) => string;
     readonly spawn: (command: string, args: readonly string[], cwd: string) => SpawnResult;
-    readonly execPath: string;
     readonly log: (line: string) => void;
 }
 
 const NPX_MESSAGE =
     'Nothing to update: you are running domain-driver through npx, which fetches the requested version each time. Use: npx domain-driver@latest <command>';
-
-const REFRESH_FAILED = 'ℹ️  Guidance refresh failed; run: domain-driver init';
 
 function unknownInstallMessage(root: string): string {
     return (
@@ -71,7 +68,6 @@ export function defaultUpdateDeps(): UpdateDeps {
             const result = spawnSync(command, [...args], { stdio: 'inherit', cwd, shell: process.platform === 'win32' });
             return { status: result.status, error: result.error };
         },
-        execPath: process.execPath,
         log: (line) => console.log(line),
     };
 }
@@ -122,7 +118,6 @@ export async function runUpdate(options: UpdateOptions, deps: UpdateDeps): Promi
         );
     }
     deps.log(isNewer(installed, deps.current) ? `✅ domain-driver updated to ${installed}` : `domain-driver ${installed} is installed.`);
-    refreshGuidance(install, deps, entry);
 }
 
 function commandFor(install: InstallInfo, deps: UpdateDeps): UpdateCommand {
@@ -142,14 +137,6 @@ function runInstall(command: UpdateCommand, install: InstallInfo, deps: UpdateDe
     throw new Error(`Update failed (exit ${code}). Run it yourself: ${command.display}${sudo}`);
 }
 
-// The freshly installed package is run in a new process: this one already has the old modules loaded.
-function refreshGuidance(install: InstallInfo, deps: UpdateDeps, entry: string): void {
-    const root = install.mode === 'local' ? install.root : deps.exists(path.join(deps.cwd, 'package.json')) ? deps.cwd : null;
-    if (root === null) return;
-    const result = deps.spawn(deps.execPath, [entry, 'init'], root);
-    if (result.error !== undefined || result.status !== 0) deps.log(REFRESH_FAILED);
-}
-
 function installedEntry(install: InstallInfo, root: string, deps: UpdateDeps): string {
     if (install.mode !== 'local') return deps.binPath;
     return path.join(root, 'node_modules', 'domain-driver', 'dist', 'index.js');
@@ -164,5 +151,5 @@ function readInstalledVersion(entry: string, deps: UpdateDeps): string {
     } catch {
         // A package-manager success code is insufficient if its installed files cannot be read.
     }
-    throw new Error(`Cannot verify the installed domain-driver version at ${manifest}. Guidance was not refreshed.`);
+    throw new Error(`Cannot verify the installed domain-driver version at ${manifest}.`);
 }
