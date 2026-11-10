@@ -1,7 +1,7 @@
 {
   "name": "domain-driver",
-  "version": "0.8.3",
-  "description": "CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, NestJS, and TanStack Start projects, with per-action files, bespoke actions, and agent guidance",
+  "version": "0.9.0",
+  "description": "CLI scaffolding tool for domain-driven feature folders in Next.js, React, Node, NestJS, and TanStack Start projects, with per-action files and bespoke actions",
   "main": "dist/index.js",
   "bin": {
     "domain-driver": "./dist/index.js"
@@ -11,16 +11,13 @@
     "url": "https://github.com/IsaacHatilima/domain-driver"
   },
   "files": [
-    "dist",
-    "agent-library",
-    "scripts/postinstall.js"
+    "dist"
   ],
   "scripts": {
     "build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "typecheck:tanstack-fixture": "node scripts/typecheck-tanstack-fixture.js",
-    "postinstall": "node ./scripts/postinstall.js"
+    "typecheck:tanstack-fixture": "node scripts/typecheck-tanstack-fixture.js"
   },
   "keywords": [
     "cli",

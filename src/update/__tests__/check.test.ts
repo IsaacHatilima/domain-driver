@@ -44,7 +44,7 @@ describe('shouldCheck', () => {
     });
 
     it.each(['', '0', 'false'])('treats CI=%s and opt-out=%s as unset', (value) => {
-        expect(shouldCheck({ CI: value, DOMAIN_DRIVER_NO_UPDATE_CHECK: value }, true, 'init')).toBe(true);
+        expect(shouldCheck({ CI: value, DOMAIN_DRIVER_NO_UPDATE_CHECK: value }, true, 'make:feature')).toBe(true);
     });
 
     it('skips without a TTY and for the update command', () => {

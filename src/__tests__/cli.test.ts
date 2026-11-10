@@ -75,11 +75,16 @@ describe('createProgram', () => {
         expect(lines).toEqual([STACK_LINE]);
     });
 
-    it('init skips stack detection but still gets the notice', async () => {
+    it('has no init command and writes no agent files', async () => {
         writePackageJson({ express: '1' });
-        await run(cliDeps(), ['init']);
-        expect(lines).toEqual([NOTICE]);
-        expect(projectFileExists('AGENTS.md')).toBe(true);
+        const program = createProgram(cliDeps()).exitOverride().configureOutput({ writeErr: () => undefined });
+        await expect(program.parseAsync(['node', 'domain-driver', 'init'])).rejects.toMatchObject({
+            code: 'commander.unknownCommand',
+        });
+        expect(lines).toEqual([]);
+        for (const file of ['AGENTS.md', 'CLAUDE.md', '.agents', '.claude', '.codex']) {
+            expect(projectFileExists(file)).toBe(false);
+        }
     });
 
     it('update --dry-run prints the command with no stack line and no notice', async () => {
@@ -107,7 +112,6 @@ describe('createProgram', () => {
             spawn: () => {
                 throw new Error('--dry-run must not spawn');
             },
-            execPath: '/usr/bin/node',
             log: (line) => updateLines.push(line),
         };
         await run(cliDeps({ updateDeps: () => updateDeps }), ['update', '--dry-run']);

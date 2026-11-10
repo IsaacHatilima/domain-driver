@@ -191,27 +191,9 @@ const { data, isPending, error } = useListCat();
 const { mutate: createCat } = useCreateCat();
 ```
 
-### `init`
-
-```bash
-domain-driver init
-```
-
-Writes agent guidance into the current project so coding agents scaffold with domain-driver instead of hand-writing layers:
-
-- `AGENTS.md` and `CLAUDE.md` get a section between `<!-- domain-driver:start -->` and `<!-- domain-driver:end -->`. Existing content outside the markers is never touched; the section is created, refreshed in place, or left alone.
-- The non-Laravel skills from [IsaacHatilima/skills](https://github.com/IsaacHatilima/skills), including `javascript-domain-driver`, have one shared copy in `.agents/skills/`. Claude discovers the same files through relative links in `.claude/skills/`. Codex reads `.agents/skills/` directly; `.codex/skills/` is unnecessary. JavaScript projects do not need a separate `.ai/skills/` copy.
-- The [factory](#factory-preview) skill and its agents, for Claude Code and Codex: the skill in `.claude/skills/factory/` and `.agents/skills/factory/`, and one file per agent in `.claude/agents/` and `.codex/agents/`. The tool owns these files and rewrites them when they change; other agents in those folders are left alone. The first time `init` adds them, it says so and links to what the factory needs.
-
-Running `init` twice reports `unchanged`. Re-run it after upgrading domain-driver.
-
-The previous three-copy layout is migrated when each old copy matches the existing shared copy or the delivered version. Divergent edits and unowned files are preserved and reported before any guidance changes; reconcile them before retrying. Skill links require symlink support and never fall back to duplicated files.
-
-Initialization also retires the old `.claude/skills/domain-driver/`, `.claude/skills/domain-factory/`, and `.agents/skills/domain-factory/` directories when their files match the published 0.8.0 installer. Modified files, extra project files, and symlinks in those legacy paths block migration before any project writes. Other tools' skill directories are preserved. The current `factory` command replaces `domain-factory`, and `javascript-domain-driver` replaces the old CLI skill.
+### Generated imports
 
 Generated type references use `import type`, including under Vite's `verbatimModuleSyntax`. In Node ESM projects using NodeNext/Node16 resolution, local imports use runtime `.js` extensions; CommonJS and bundler projects retain their existing import style. Nest DTOs and injected classes remain runtime imports.
-
-**On install.** A local `npm install domain-driver` in a project runs `init` automatically. It does nothing when `CI` is set, for global installs, when there is no `package.json` in the installing project, or when domain-driver installs itself. Files are written to the directory you ran npm install from, which in a workspace is the repository root. Opt out with `npm install --ignore-scripts`, or delete the marked section afterwards.
 
 ---
 
@@ -350,14 +332,14 @@ Every command checks the registry at most once a day and, when a newer release e
 ```
 
 ```bash
-domain-driver update            # detects how it was installed, runs your package manager, refreshes the guidance
+domain-driver update            # detects how it was installed and runs your package manager
 domain-driver update --dry-run  # show the command it would run
 domain-driver update --check    # only report whether a newer version exists
 ```
 
 Local installs use the package manager the project uses (npm, pnpm, yarn, or bun, from the `packageManager` field or the lockfile). Global installs use `npm install -g`. Running through `npx` needs no update: `npx domain-driver@latest` always fetches the newest.
 
-In a workspace, `update` selects the invoking package when its local executable resolves to the running binary. A frontend sharing pnpm's virtual store with the root is updated in `frontend`, using the workspace package manager. After installation, the updater reads the installed version before reporting success and refreshing that package's guidance. If constraints or release-age policies retain an older version, it reports the actual version and stops before refreshing guidance.
+In a workspace, `update` selects the invoking package when its local executable resolves to the running binary. A frontend sharing pnpm's virtual store with the root is updated in `frontend`, using the workspace package manager. After installation, the updater reads the installed version before reporting success. If constraints or release-age policies retain an older version, it reports the actual version and fails.
 
 The check is skipped in CI (any `CI` value other than empty, `0`, or `false`), when output is not a terminal, when `DOMAIN_DRIVER_NO_UPDATE_CHECK` is set (same value rule), or when `NO_UPDATE_NOTIFIER` is set to anything.
 
@@ -365,11 +347,17 @@ The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`)
 
 ---
 
-## Shared skill delivery
+## Upgrading from 0.8.x
 
-Factory and all skill instructions are maintained in [IsaacHatilima/skills](https://github.com/IsaacHatilima/skills). Its main-branch workflow opens update PRs here for factory and every active non-Laravel skill group. The generated snapshot is in `agent-library/`; edit the upstream source rather than these generated files. Each changed delivery bumps `package.json` and `package-lock.json` to the next patch version. Merging that PR into `master` runs the existing build/test/npm publishing workflow and creates its version tag and GitHub release. An unchanged delivery creates neither a PR nor a version bump.
+domain-driver is now only a scaffolding CLI. The `init` command, the install-time postinstall that ran it, and the bundled agent library are gone, and `update` no longer refreshes guidance after installing. Running `domain-driver init` now fails as an unknown command.
 
-`init` installs the delivered files and renders no authored instructions itself. Factory is invoked as `/factory` in Claude Code or `$factory` in Codex. CLI guidance is the `javascript-domain-driver` skill. The legacy source `factory/` and embedded TypeScript skill strings have been removed.
+Nothing is removed from your project. Files that earlier versions wrote stay where they are and keep working, but domain-driver no longer updates them:
+
+- the section between `<!-- domain-driver:start -->` and `<!-- domain-driver:end -->` in `AGENTS.md` and `CLAUDE.md`
+- skills in `.agents/skills/` (`catalog.md`, `factory`, and group-prefixed folders such as `javascript-domain-driver` and `nest-actions`) and their links in `.claude/skills/`
+- the factory agents in `.claude/agents/` and `.codex/agents/`: `approver`, `builder`, `documenter`, `reviewer-code`, `reviewer-security`, `reviewer-ui`, `reviewer-ux`, and `spec-writer`
+
+Delete the ones you don't want. The marked section points at `.agents/skills/javascript-domain-driver/SKILL.md`, so remove the two together. The skills and the factory are maintained in [IsaacHatilima/skills](https://github.com/IsaacHatilima/skills); copy newer versions from there.
 
 ---
 
@@ -436,36 +424,14 @@ npm run test:coverage
 
 ---
 
-## factory (preview)
-
-factory turns a one-sentence feature request into a finished feature using a team of agents, in Claude Code (`/factory`) or Codex (`$factory`). A spec writer maps the project and writes the spec. A builder scaffolds the feature with domain-driver and builds it on its own branch, and four reviewers check security, code, UX and UI in parallel. A documenter then records the feature in `Documentation/`, and an approver either merges the branch or hands it to you. Anything that changes who may do what always goes to a person.
-
-`init` adds it to your project, and it only runs when you start it:
-
-```
-/factory add post comments; the author and the post's owner can delete or archive a comment, everyone else can like and reply
-```
-
-Before the first job, check what it needs:
-
-- **Commands in `AGENTS.md`** (or `CLAUDE.md`): how to set up a fresh checkout, start the dev server on a given port, and run tests, type-check, build and lint. The agents read everything project-specific from there.
-- **Permission to work unattended.** Each job runs in its own git worktree beside your repository. In Claude Code, allow that folder (`/add-dir ../<repo>-factory`) plus git and your project's commands. In Codex, the default sandbox keeps `.git` read-only, so run with full access or allow git with a rule.
-- **The `agent-browser` CLI**, if your project has pages. The builder and the UX and UI reviewers use it.
-
-It is a preview: no job has run end to end yet, so treat your first ones as a trial. The maintained workflow and its model choices are in [skills/agents/factory](https://github.com/IsaacHatilima/skills/tree/main/agents/factory).
-
----
-
 ## Roadmap
 
 - [x] Stack detection for Next.js, React, Node, and NestJS
 - [x] `make:controller` with Express, Fastify, Hono, Nest, and Next route handlers
 - [x] Per-action files in every layer
 - [x] Bespoke actions with make:action
-- [x] Agent guidance with init and a guarded postinstall
 - [x] TanStack Start stack, with server functions and per-action query hooks
 - [x] Per-action hooks on every stack that has them, replacing the single combined hook
-- [x] `/factory`, installed by `init` for Claude Code and Codex
 - [ ] Config file — override stack and feature root per project
 - [ ] Configurable API base URL for the fetch in generated hooks
 - [ ] ORM-aware server repositories
