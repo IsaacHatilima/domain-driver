@@ -100,6 +100,8 @@ The root must be a relative path inside the project. An absolute path or one con
 
 Every layer that has actions gets one file per action: `List`, `Show`, `Create`, `Update`, `Delete`. Saving a cat means `CreateCat.controller.ts`, `CreateCat.service.ts`, `CreateCat.repository.ts`, `CreateCat.schema.ts`, and, on stacks with a hook layer, `CreateCat.hook.ts` exporting `useCreateCat`.
 
+The record itself is described once, by the entity schema `schemas/Cat.schema.ts` (`CatSchema`: `id`, `createdAt`, `updatedAt`, and a comment where its fields go). `types/Cat.types.ts` infers the type from it, `export type Cat = z.infer<typeof CatSchema>`, and hooks parse every response with it, so there is no interface to keep in step with the API by hand.
+
 ---
 
 ## Commands
@@ -115,29 +117,45 @@ domain-driver make:feature users/User -a    # every layer for the detected stack
 
 Feature names must be kebab-case. Without `/Entity`, the entity is the PascalCase feature name (`users` becomes `Users`).
 
+The `.gitkeep` in a layer folder only keeps the empty folder in git. The first time any command writes a file into that folder, the `.gitkeep` is deleted, so it never ends up committed beside real code. Folders nothing has been written into keep theirs.
+
 ### `make:action`
 
 ```bash
 domain-driver make:action users/User findActiveUsers
-domain-driver make:action users/User archiveUser --with-input --returns one
+domain-driver make:action users/User inviteUser --with-input --returns one
+domain-driver make:action users/User archiveUser --on-record --method patch --returns one
+domain-driver make:action users/User renameUser --on-record --method put --with-input --returns one
 ```
 
 Scaffolds a bespoke operation as its own files, so it never lands inside `ShowUser` or `ListUser`. The action name is used as-is for file and class names: `FindActiveUsers.service.ts`, `FindActiveUsersService`, handler `findActiveUsersController`, route `/find-active-users`. Include the noun in the name (`archiveUser`, not `archive`).
 
 | Option | Effect |
 |---|---|
-| `--with-input` | writes `ArchiveUser.schema.ts` (and the Nest DTO), the service takes `data`, the controller is a `POST` with body validation |
+| `--with-input` | writes `InviteUser.schema.ts` (and the Nest DTO), the service takes `data`, the controller validates the body |
 | `--returns list` | `Promise<User[]>` (default) |
 | `--returns one` | `Promise<User>` |
 | `--returns void` | `Promise<void>`, controller responds 204 |
+| `--method <get\|post\|put\|patch\|delete>` | the HTTP method; defaults to `post` with `--with-input` and `get` without. A `get` cannot take `--with-input` |
+| `--on-record` | the action works on one record: route `/:id/<slug>`, and `id` passes through the controller, service, repository and hook, as it does for Show, Update and Delete |
+
+Without `--method` and `--on-record` an action behaves as it always has. With them, an archive or a delete of one record is what it says: `make:action projects/Project archiveProject --on-record --method patch --returns one` gives Nest `@Patch(':id/archive-project')` with `@Param('id') id: string`, the service and repository `handle(id: string): Promise<Project>`, and on the client a mutation hook, `archiveProject(id)`, that sends `PATCH /api/projects/${id}/archive-project` when called.
+
+The hook is a query, fetching on mount, only for a `get` that returns data. Any other method, or a `get` that returns void, is a mutation hook you call from an event handler.
+
+An action answers 200, 204 when it returns void, and 201 when it is a `post` whose name starts with `create` and returns data, like the standard Create. On Nest that means no `@HttpCode` for a create (its `@Post` default is already 201) and `@HttpCode(200)` for any other `post`.
+
+When the feature is the action itself, as in projects that keep one feature per flow (`create-project` holding `createProject`), the route is not repeated: the action answers at the feature's own route, `@Controller('create-project')` with `@Post()`, rather than `/create-project/create-project`. With `--on-record` it answers at `/:id` there.
 
 | Stack | Files written |
 |---|---|
 | `node` | service, repository, controller for the detected framework, plus the line to add above the `/:id` routes in `<feature>.routes.ts` printed |
-| `nest` | injectable service and repository, `@Controller` class, DTO with input, plus the classes to register printed, with the controller listed before `Show<Entity>Controller` |
-| `next-fullstack` | server service and repository, a hook that fetches the endpoint, `app/api/<feature>/<slug>/route.ts` |
-| `next-frontend`, `react` | a hook that fetches `/api/<feature>/<slug>`; the service and repository live behind that API, outside the project |
+| `nest` | injectable service and repository, `@Controller` class, DTO with input, all registered in `<feature>.module.ts`, with the controller ahead of `Show<Entity>Controller` when the module has one |
+| `next-fullstack` | server service and repository, a hook that fetches the endpoint, `app/api/<feature>/<slug>/route.ts` (`app/api/<feature>/[id]/<slug>/route.ts` with `--on-record`) |
+| `next-frontend`, `react` | only a hook that fetches `/api/<feature>/<slug>` (and the schema with `--with-input`); the service and repository live behind that API, outside the project |
 | `tanstack-start` | server service and repository, a hook that calls the server function directly, and a server function (`<Name>.fn.ts`) in place of a route handler |
+
+`domain-driver make:action --help` prints the same per-stack list.
 
 ### `make:controller`
 
@@ -162,7 +180,7 @@ Both generate the server side only, because that is the only side there is. They
 domain-driver make:schema users/User
 ```
 
-Writes `CreateUser.schema.ts` and `UpdateUser.schema.ts`. On Nest it also writes the matching DTO classes derived with `createZodDto` from `nestjs-zod`.
+Writes the entity schema `User.schema.ts` (when it does not exist yet), `CreateUser.schema.ts` and `UpdateUser.schema.ts`. On Nest it also writes the Create and Update DTO classes, derived with `createZodDto` from `nestjs-zod`. The entity schema gets no DTO: it describes what the API returns, not a request body.
 
 ### `make:types`, `make:component`, `make:container`, `make:hook`
 
@@ -173,9 +191,13 @@ domain-driver make:container users/UserContainer
 domain-driver make:hook users/User
 ```
 
+`make:types` writes `User.types.ts` as `export type User = z.infer<typeof UserSchema>`, and writes the entity schema `schemas/User.schema.ts` first when it does not exist. When a command generates code that imports either file and one is missing, it prints the `make:types` line to run.
+
 Component, container, and hook commands fail with a clear message on backend stacks, and `server` components are rejected on React.
 
-`make:hook` writes one file per action instead of a combined hook: `ListUser.hook.ts`, `ShowUser.hook.ts`, `CreateUser.hook.ts`, `UpdateUser.hook.ts`, `DeleteUser.hook.ts`, each exporting one hook (`useListUser`, `useShowUser`, `useCreateUser`, `useUpdateUser`, `useDeleteUser`). There is no combined `useUser.ts`. On `react`, `next-frontend`, and `next-fullstack` these hold plain React state. A query hook keeps one result tagged with the request that produced it and derives `loading` and `error` from that tag, so its effect sets state only in the request's callbacks and passes eslint-plugin-react-hooks 7 (`react-hooks/set-state-in-effect`); a changed id or `refetch()` aborts the previous request and reads as loading at once. On `tanstack-start` they are TanStack Query hooks backed by a generated `<feature>.keys.ts` cache-key module. Generating hooks on this profile prints a one-time reminder to install `@tanstack/react-query`, since TanStack Start does not bundle it.
+`make:container users/UserContainer` lists `User` records through `useListUser` and renders each through the `User` component. It only imports what exists: when `hooks/ListUser.hook.ts` is missing, as it is for a name that is not an entity such as `UserDetailContainer`, the container calls no hook and the command prints the hooks the feature does have, to call from it. When the component is missing, each record renders its `id` and the command prints the `make:component` line.
+
+`make:hook` writes one file per action instead of a combined hook: `ListUser.hook.ts`, `ShowUser.hook.ts`, `CreateUser.hook.ts`, `UpdateUser.hook.ts`, `DeleteUser.hook.ts`, each exporting one hook (`useListUser`, `useShowUser`, `useCreateUser`, `useUpdateUser`, `useDeleteUser`). There is no combined `useUser.ts`. Every hook that reads a record back parses it with the entity schema, `UserSchema.parse(...)` for one and `z.array(UserSchema).parse(...)` for a list, instead of casting the response. On `react`, `next-frontend`, and `next-fullstack` these hold plain React state. A query hook keeps one result tagged with the request that produced it and derives `loading` and `error` from that tag, so its effect sets state only in the request's callbacks and passes eslint-plugin-react-hooks 7 (`react-hooks/set-state-in-effect`); a changed id or `refetch()` aborts the previous request and reads as loading at once. On `tanstack-start` they are TanStack Query hooks backed by a generated `<feature>.keys.ts` cache-key module. Generating hooks on this profile prints a one-time reminder to install `@tanstack/react-query`, since TanStack Start does not bundle it.
 
 Because the five hooks no longer share state, containers wire them together. On `react`, `next-frontend`, and `next-fullstack`, where hooks hold plain state:
 
@@ -211,10 +233,11 @@ src/features/coffee-type/
 ├── services/            (five files)
 ├── repositories/        (five files, database-agnostic stubs)
 ├── schemas/
+│   ├── CoffeeType.schema.ts          the entity schema the type is inferred from
 │   ├── CreateCoffeeType.schema.ts
 │   └── UpdateCoffeeType.schema.ts
 └── types/
-    └── CoffeeType.types.ts
+    └── CoffeeType.types.ts           export type CoffeeType = z.infer<typeof CoffeeTypeSchema>
 ```
 
 Mount the routes with `app.use('/coffee-type', coffeeTypeRoutes)`. Then `make:action coffee-type/CoffeeType findActive` adds `FindActive.controller.ts`, `FindActive.service.ts`, `FindActive.repository.ts`, and prints `router.get('/find-active', findActiveController);` for the routes file.
@@ -253,6 +276,7 @@ src/routes/coffee-type/
 │   ├── services/                (five files)
 │   └── repositories/            (five files, database-agnostic stubs)
 ├── -schemas/
+│   ├── CoffeeType.schema.ts
 │   ├── CreateCoffeeType.schema.ts
 │   └── UpdateCoffeeType.schema.ts
 └── -types/
@@ -275,7 +299,7 @@ When the feature root is itself a module's folder, that module comes first: `--r
 
 The edit is made through the TypeScript compiler API, borrowed from your own project rather than bundled, and applied as a text insertion at AST-computed positions. Your comments, import order and formatting survive untouched — only the two inserted lines are new. Registering the same class twice does nothing.
 
-A bespoke action's controller is inserted **before** `Show<Entity>Controller` rather than appended, because Nest matches routes in declaration order and a custom `GET /actives` would otherwise be swallowed by `GET /:id`.
+A bespoke action's controller is inserted **before** `Show<Entity>Controller` rather than appended, because Nest matches routes in declaration order and a custom `GET /actives` would otherwise be swallowed by `GET /:id`. A module without a Show controller, such as a feature that is one action, simply gets it appended, and the printed by-hand lines only name `Show<Entity>Controller` when the module has it.
 
 ### When it does not edit
 
@@ -318,8 +342,8 @@ Everything for a feature lives in one folder, and every file does one thing.
 - **hooks** — state and side effects, one hook per action, calls services (TanStack Query on TanStack Start, plain React state elsewhere).
 - **containers** — wire hooks into UI.
 - **components** — presentational UI.
-- **schemas** — Zod validation for create and update; the update body never carries the id, it comes from the path.
-- **types** — the entity interface.
+- **schemas** — Zod: the entity schema that responses are parsed with, and validation for create and update; the update body never carries the id, it comes from the path.
+- **types** — the entity type, inferred from the entity schema with `z.infer`.
 
 Server-side repositories throw a clear not-implemented error until you wire your ORM. Compiling code that fails loudly beats a fake store that looks like it works.
 
@@ -348,6 +372,16 @@ The check is skipped in CI (any `CI` value other than empty, `0`, or `false`), w
 The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`); `DOMAIN_DRIVER_CACHE_DIR` overrides it.
 
 ---
+
+## Upgrading from 0.9.x
+
+0.10.0 changes what new scaffolding looks like. Generated files that already exist are never overwritten, so code you have already scaffolded stays as it is.
+
+- **Types are inferred.** `make:types` and `make:schema` write an entity schema, `schemas/<Entity>.schema.ts`, and `types/<Entity>.types.ts` is now `export type <Entity> = z.infer<typeof <Entity>Schema>` instead of an interface. Generated hooks import the entity schema and parse responses with it. A feature scaffolded before 0.10 has the interface and no entity schema, so a hook added to it now would import a file that is not there; the command says so and prints `make:types <feature>/<Entity>`, which adds the schema and leaves your types file alone. Move the interface's fields into the schema and replace the interface with the `z.infer` line when you are ready.
+- **`make:action --method` and `--on-record`.** Without them an action is generated as before, with one exception: a `post` whose name starts with `create` and returns data now answers 201 instead of 200, matching the standard Create.
+- **A feature that is its action** no longer repeats its name in the route: `make:action create-project/Project createProject` in a `create-project` feature routes at `/create-project`, not `/create-project/create-project`. Check clients written against the doubled path.
+- **`.gitkeep` files** are removed from a layer folder once a command writes into it. Ones committed by earlier versions stay until you delete them.
+- **`make:container`** no longer imports a hook or component that does not exist; see `make:container` above.
 
 ## Upgrading from 0.8.x
 
