@@ -301,7 +301,11 @@ describe('a GET that takes input reads it from the query string', () => {
     it('hono validates the parsed query instead of reading a JSON body', () => {
         const ctx = contextFor('node', 'users', { httpFramework: 'hono' });
         const content = renderHonoController(ctx, search, file(ctx));
-        expect(content).toContain('const parsed = SearchUsersSchema.safeParse(c.req.query());');
+        // c.req.query() keeps only a repeated key's first value; queries() keeps them all.
+        expect(content).toContain(`  const query = Object.fromEntries(
+    Object.entries(c.req.queries()).map(([key, values]) => [key, values.length === 1 ? values[0] : values]),
+  );
+  const parsed = SearchUsersSchema.safeParse(query);`);
         expect(content).not.toContain('c.req.json()');
     });
 

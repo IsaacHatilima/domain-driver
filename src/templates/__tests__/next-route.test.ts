@@ -119,9 +119,15 @@ describe('renderActionRoute', () => {
         const content = renderActionRoute(ctx, spec, fromFile);
         expect(content).toContain("import { ListProjectSchema } from '../../../projects/schemas/ListProject.schema';");
         expect(content).toContain('export async function GET(request: Request): Promise<NextResponse> {');
-        expect(content).toContain(
-            'const parsed = ListProjectSchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));'
-        );
+        // A repeated key keeps every value, as an array, the way Next hands a page its searchParams.
+        expect(content).toContain(`  const { searchParams } = new URL(request.url);
+  const query = Object.fromEntries(
+    Array.from(new Set(searchParams.keys()), (key) => {
+      const values = searchParams.getAll(key);
+      return [key, values.length === 1 ? values[0] : values];
+    }),
+  );
+  const parsed = ListProjectSchema.safeParse(query);`);
         expect(content).toContain('return NextResponse.json(await service.handle(parsed.data));');
         expect(content).not.toContain('request.json()');
     });

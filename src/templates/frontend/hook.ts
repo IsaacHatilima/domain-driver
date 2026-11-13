@@ -8,12 +8,6 @@ function payloadType(spec: ActionSpec): string {
     return spec.returns.replace(/^Promise<(.*)>$/, '$1');
 }
 
-/**
- * No `'use client'` directive, deliberately. The directive marks a boundary, and the
- * component that consumes the hook is that boundary. Putting it here as well makes
- * Next's TypeScript plugin treat the exported hook as a component and reject an
- * `onSuccess` callback as a non-serializable prop (TS71007).
- */
 /** The query-string helper a GET with input sends it through, after the imports; nothing otherwise. */
 function queryStringHelper(spec: ActionSpec): string {
     return takesQuery(spec) && spec.schema !== null ? `\n${renderQueryStringHelper(spec.schema)}` : '';
@@ -36,6 +30,12 @@ function requestKey(spec: ActionSpec): { readonly request: string; readonly deps
     return { request, deps: `[${deps.join(', ')}]` };
 }
 
+/**
+ * No `'use client'` directive, deliberately. The directive marks a boundary, and the
+ * component that consumes the hook is that boundary. Putting it here as well makes
+ * Next's TypeScript plugin treat the exported hook as a component and reject an
+ * `onSuccess` callback as a non-serializable prop (TS71007).
+ */
 function header(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string, hooks: string): string {
     const schemaPath = ctx.importLayer(fromFile, 'schema', `${entity}.schema`);
     const imports = [

@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { ActionSpec } from '../templates/actions';
+import { ActionSpec, takesQuery } from '../templates/actions';
 import { RenderContext } from '../templates/context';
 import { CALLER_CHECK, renderServerAction } from '../templates/controllers/next-server-action';
 import { joinWithAnd } from '../utils/text';
@@ -35,8 +35,9 @@ export function hintCallerCheck(files: readonly string[]): void {
 
 /** A read has no action of its own: the page's Server Component calls its service. */
 export function hintServerRead(spec: ActionSpec): void {
+    const input = takesQuery(spec) ? `, with the page's searchParams parsed by ${spec.schema}Schema` : '';
     console.log(
-        `ℹ️  ${spec.name} is a read: call ${spec.name}Service from a Server Component, such as a container. ` +
+        `ℹ️  ${spec.name} is a read: call ${spec.name}Service from a Server Component, such as a container${input}. ` +
             'It gets no Server Action; pass --route for a route handler and fetch hook.'
     );
 }

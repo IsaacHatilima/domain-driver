@@ -219,12 +219,17 @@ describe('make:action on next-fullstack', () => {
         expect(console.warn).toHaveBeenCalledWith('⚠️  Skipping "SearchProjectsContainer.tsx" — already exists');
         makeAction('projects', 'Project', 'exportProjects', { withInput: true, returns: 'void', method: 'get' });
         expect(projectFileExists('app/projects/containers/ExportProjectsContainer.tsx')).toBe(false);
+        expect(logged()).toContain(
+            'ℹ️  ExportProjects is a read: call ExportProjectsService from a Server Component, such as a container, ' +
+                "with the page's searchParams parsed by ExportProjectsSchema. " +
+                'It gets no Server Action; pass --route for a route handler and fetch hook.'
+        );
     });
 
     it('reads the search params in the route handler and sends them from the hook with --route', () => {
         makeAction('projects', 'Project', 'searchProjects', { withInput: true, returns: 'list', method: 'get', route: true });
         expect(readProjectFile('app/api/projects/search-projects/route.ts')).toContain(
-            'const parsed = SearchProjectsSchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));'
+            'const parsed = SearchProjectsSchema.safeParse(query);'
         );
         expect(readProjectFile('app/projects/hooks/SearchProjects.hook.ts')).toContain(
             'fetch(`/api/projects/search-projects${search}`, { signal: controller.signal })'

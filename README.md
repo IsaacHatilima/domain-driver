@@ -209,6 +209,8 @@ export const ListProjectSchema = z.object({
 });
 ```
 
+A key sent more than once reaches the schema as an array on every server stack, and a key sent once as a string, so a list field that may carry one value accepts both, for example `z.union([z.string(), z.array(z.string())])`.
+
 On `tanstack-start` the server function carries the input with its types, so the schema there has no such note. Without `--method`, `--with-input` is still a `post` with a body.
 
 ### `make:controller`
