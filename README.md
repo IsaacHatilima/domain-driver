@@ -149,7 +149,7 @@ When the feature is the action itself, as in projects that keep one feature per 
 
 | Stack | Files written |
 |---|---|
-| `node` | service, repository, controller for the detected framework, plus the line to add above the `/:id` routes in `<feature>.routes.ts` printed |
+| `node` | service, repository, controller for the detected framework, plus the line to add to `<feature>.routes.ts` printed (above the `/:id` routes for a `/<slug>` route, which `/:id` would otherwise swallow) |
 | `nest` | injectable service and repository, `@Controller` class, DTO with input, all registered in `<feature>.module.ts`, with the controller ahead of `Show<Entity>Controller` when the module has one |
 | `next-fullstack` | server service and repository, a hook that fetches the endpoint, `app/api/<feature>/<slug>/route.ts` (`app/api/<feature>/[id]/<slug>/route.ts` with `--on-record`) |
 | `next-frontend`, `react` | only a hook that fetches `/api/<feature>/<slug>` (and the schema with `--with-input`); the service and repository live behind that API, outside the project |

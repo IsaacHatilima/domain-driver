@@ -64,7 +64,7 @@ describe('make:action on one record', () => {
         expect(readProjectFile('src/features/projects/services/ArchiveProject.service.ts')).toContain('async handle(id: string): Promise<Project> {');
         expect(readProjectFile('src/features/projects/repositories/ArchiveProject.repository.ts')).toContain('async handle(id: string): Promise<Project> {');
         expect(logged()).toContain(
-            "ℹ️  Add to projects.routes.ts above the '/:id' routes: router.patch('/:id/archive-project', archiveProjectController);"
+            "ℹ️  Add to projects.routes.ts: router.patch('/:id/archive-project', archiveProjectController);"
         );
     });
 
@@ -103,7 +103,7 @@ describe('make:action in a feature that is the action itself', () => {
         mkdir('src/features/create-project');
         makeAction('create-project', 'Project', 'createProject', { withInput: true, returns: 'one' });
         expect(logged()).toContain(
-            "ℹ️  Add to create-project.routes.ts above the '/:id' routes: router.post('/', createProjectController);"
+            "ℹ️  Add to create-project.routes.ts: router.post('/', createProjectController);"
         );
     });
 });

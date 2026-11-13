@@ -88,6 +88,14 @@ function nextRouteSegments(spec: ActionSpec): string {
     return spec.path.slice(1).replace(':id', '[id]');
 }
 
+/**
+ * Only a literal `/<slug>` route can be swallowed by `/:id`, so only that line says where it goes.
+ * The root route and `/:id/<slug>` cannot be mistaken for `/:id`.
+ */
+function routePlacement(spec: ActionSpec): string {
+    return spec.path === '/' || spec.path.startsWith('/:id') ? '' : " above the '/:id' routes";
+}
+
 function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): boolean {
     if (ctx.profile.name === 'next-fullstack') {
         const routeDir = path.join(apiRouteDir(ctx.stack, ctx.feature), nextRouteSegments(spec));
@@ -103,7 +111,7 @@ function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): 
 
     const line = ctx.profile.name === 'node' ? renderNodeRouteLine(ctx, spec, entity) : null;
     if (wroteController && line !== null) {
-        console.log(`ℹ️  Add to ${ctx.feature}.routes.ts above the '/:id' routes: ${line}`);
+        console.log(`ℹ️  Add to ${ctx.feature}.routes.ts${routePlacement(spec)}: ${line}`);
     }
 
     return wroteController;
