@@ -75,7 +75,7 @@ describe('make:feature -a per stack', () => {
         expect(projectFileExists('app/coffee-type/repositories')).toBe(false);
         // The hook is what calls the API now, in place of the deleted client repository.
         const hook = readProjectFile('app/coffee-type/hooks/ListCoffeeType.hook.ts');
-        expect(hook).toContain("const response = await fetch('/api/coffee-type');");
+        expect(hook).toContain("fetch('/api/coffee-type', { signal: controller.signal })");
         expect(hook).toContain("if (!response.ok) throw new Error('Failed to fetch CoffeeType list');");
         assertImportsResolve('app', null);
     });
@@ -101,7 +101,7 @@ describe('make:feature -a per stack', () => {
         // page -> hook -> API -> service -> repository. There is no client-side half.
         expect(projectFileExists('app/coffee-type/client')).toBe(false);
         const query = readProjectFile('app/coffee-type/hooks/ListCoffeeType.hook.ts');
-        expect(query).toContain("const response = await fetch('/api/coffee-type');");
+        expect(query).toContain("fetch('/api/coffee-type', { signal: controller.signal })");
         // Deliberately absent: it makes Next's TS plugin reject the onSuccess callback (TS71007).
         expect(query).not.toContain("'use client'");
         const mutation = readProjectFile('app/coffee-type/hooks/CreateCoffeeType.hook.ts');
@@ -140,7 +140,7 @@ describe('make:feature -a per stack', () => {
         expect(projectFileExists('src/features/coffee-type/services')).toBe(false);
         expect(projectFileExists('src/features/coffee-type/repositories')).toBe(false);
         const hook = readProjectFile('src/features/coffee-type/hooks/ListCoffeeType.hook.ts');
-        expect(hook).toContain("const response = await fetch('/api/coffee-type');");
+        expect(hook).toContain("fetch('/api/coffee-type', { signal: controller.signal })");
         assertImportsResolve('src/features', null);
     });
 
@@ -256,7 +256,7 @@ describe('make:action after make:feature -a per stack', () => {
         expect(files.some((file) => file.startsWith('coffee-type/client/'))).toBe(false);
         // The hook fetches the action's own route; the old client repository did this.
         expect(readProjectFile('app/coffee-type/hooks/FindActiveCoffeeTypes.hook.ts')).toContain(
-            "const response = await fetch('/api/coffee-type/find-active-coffee-types');"
+            "fetch('/api/coffee-type/find-active-coffee-types', { signal: controller.signal })"
         );
         assertImportsResolve('app', null);
     });

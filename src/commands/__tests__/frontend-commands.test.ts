@@ -66,9 +66,9 @@ describe('on next-frontend', () => {
         const content = readProjectFile('app/cat/hooks/ListCat.hook.ts');
         expect(content).toContain('export function useListCat()');
         expect(content).toContain("import type { Cat } from '../types/Cat.types';");
-        expect(content).toContain("const response = await fetch('/api/cat');");
+        expect(content).toContain("fetch('/api/cat', { signal: controller.signal })");
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat list');");
-        expect(content).toContain('setData((await response.json()) as Cat[]);');
+        expect(content).toContain('return (await response.json()) as Cat[];');
         expect(content).not.toContain('Service');
     });
 
@@ -151,8 +151,8 @@ describe('on react', () => {
 
         const list = readProjectFile('src/features/cat/hooks/ListCat.hook.ts');
         expect(list).toContain('export function useListCat()');
-        expect(list).toContain("const response = await fetch('/api/cat');");
-        expect(list).toContain('setData((await response.json()) as Cat[]);');
+        expect(list).toContain("fetch('/api/cat', { signal: controller.signal })");
+        expect(list).toContain('return (await response.json()) as Cat[];');
         expect(list).not.toContain('Service');
 
         const create = readProjectFile('src/features/cat/hooks/CreateCat.hook.ts');

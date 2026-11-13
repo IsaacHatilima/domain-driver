@@ -122,7 +122,7 @@ describe('make:action on next-fullstack', () => {
         expect(projectFileExists('app/users/server/services/FindActiveUsers.service.ts')).toBe(true);
         expect(projectFileExists('app/users/server/repositories/FindActiveUsers.repository.ts')).toBe(true);
         expect(readProjectFile('app/api/users/find-active-users/route.ts')).toContain('export async function GET(): Promise<NextResponse> {');
-        expect(readProjectFile('app/users/hooks/FindActiveUsers.hook.ts')).toContain("fetch('/api/users/find-active-users')");
+        expect(readProjectFile('app/users/hooks/FindActiveUsers.hook.ts')).toContain("fetch('/api/users/find-active-users', { signal: controller.signal })");
         expect(projectFileExists('app/users/client')).toBe(false);
     });
 });
@@ -132,7 +132,7 @@ describe('make:action on react', () => {
         writePackageJson({ react: '1' });
         mkdir('src/features/users');
         makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
-        expect(readProjectFile('src/features/users/hooks/FindActiveUsers.hook.ts')).toContain("fetch('/api/users/find-active-users')");
+        expect(readProjectFile('src/features/users/hooks/FindActiveUsers.hook.ts')).toContain("fetch('/api/users/find-active-users', { signal: controller.signal })");
         expect(projectFileExists('src/features/users/services')).toBe(false);
         expect(projectFileExists('src/features/users/repositories')).toBe(false);
         expect(projectFileExists('src/features/users/controllers')).toBe(false);
@@ -162,7 +162,7 @@ describe('make:action writes a hook', () => {
         makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
         const content = readProjectFile('src/features/users/hooks/FindActiveUsers.hook.ts');
         expect(content).toContain('export function useFindActiveUsers()');
-        expect(content).toContain('return { data, loading, error, refetch };');
+        expect(content).toContain('loading: result?.request !== request,');
     });
 
     it('writes a Query hook for a custom action on tanstack-start', () => {

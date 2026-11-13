@@ -21,38 +21,55 @@ function header(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: 
 ${domain.join('\n')}${domain.length > 0 ? '\n' : ''}`;
 }
 
+/**
+ * The query hook keeps one result, tagged with the request that produced it. `loading`
+ * and `error` are derived from that tag, so the effect only sets state in the request's
+ * promise callbacks: eslint-plugin-react-hooks 7 rejects a synchronous `setState` in an
+ * effect (`react-hooks/set-state-in-effect`), and a changed id or a `refetch()` still
+ * reads as loading straight away. The cleanup aborts the superseded request, so a late
+ * response never overwrites a newer one.
+ */
 function renderQuery(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {
     const type = payloadType(spec);
     const isList = type.endsWith('[]');
-    const stateType = isList ? type : `${type} | null`;
-    const initial = isList ? '[]' : 'null';
-    const deps = spec.usesId ? '[id]' : '[]';
+    const dataType = isList ? type : `${type} | null`;
+    const empty = isList ? '[]' : 'null';
+    const request = spec.usesId ? '`${id}:${attempt}`' : 'String(attempt)';
+    const deps = spec.usesId ? '[id, request]' : '[request]';
 
     return `${header(ctx, spec, entity, fromFile, 'useState, useEffect, useCallback')}
-export function use${spec.name}(${spec.params}) {
-  const [data, setData] = useState<${stateType}>(${initial});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+type ${spec.name}Result = { request: string; data: ${dataType}; error: string | null };
 
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(${fetchCall(spec, ctx.feature, '      ')});
-      if (!response.ok) throw new Error('${spec.failure}');
-      setData((await response.json()) as ${type});
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '${spec.failure}');
-    } finally {
-      setLoading(false);
-    }
-  }, ${deps});
+export function use${spec.name}(${spec.params}) {
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<${spec.name}Result | null>(null);
+  const request = ${request};
 
   useEffect(() => {
-    void refetch();
-  }, [refetch]);
+    const controller = new AbortController();
+    fetch(${fetchCall(spec, ctx.feature, '    ')}, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('${spec.failure}');
+        return (await response.json()) as ${type};
+      })
+      .then((data) => {
+        if (!controller.signal.aborted) setResult({ request, data, error: null });
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        setResult({ request, data: ${empty}, error: err instanceof Error ? err.message : '${spec.failure}' });
+      });
+    return () => controller.abort();
+  }, ${deps});
 
-  return { data, loading, error, refetch };
+  const refetch = useCallback(() => setAttempt((count) => count + 1), []);
+
+  return {
+    data: result?.data ?? ${empty},
+    loading: result?.request !== request,
+    error: result?.request === request ? result.error : null,
+    refetch,
+  };
 }
 `;
 }
