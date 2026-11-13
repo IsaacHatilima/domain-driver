@@ -4,6 +4,10 @@ import { fileExists } from '../utils/fs';
 /**
  * Probes the conventional locations for a Nest root module. A project that keeps it
  * anywhere else names it with the `domainDriver.rootModule` key instead of being guessed at.
+ *
+ * A feature root that is itself a module's folder, such as `src/billing` holding
+ * `billing.module.ts`, comes first: projects that group features into areas scaffold with
+ * `--root src/<area>`, and the area's module is the one that imports them.
  */
 export function findRootModule(cwd: string, featureRoot: string, configured: string | null): string | null {
     if (configured !== null) {
@@ -13,7 +17,12 @@ export function findRootModule(cwd: string, featureRoot: string, configured: str
 
     // Most specific first: a monorepo's stray root-level src/app.module.ts must not win over
     // the one sitting beside the feature root it actually belongs to.
-    const candidates = [path.join(path.dirname(featureRoot), 'app.module.ts'), 'src/app.module.ts', 'app.module.ts'];
+    const candidates = [
+        path.join(featureRoot, `${path.basename(featureRoot)}.module.ts`),
+        path.join(path.dirname(featureRoot), 'app.module.ts'),
+        'src/app.module.ts',
+        'app.module.ts',
+    ];
     for (const candidate of candidates) {
         const target = path.join(cwd, candidate);
         if (fileExists(target)) return target;

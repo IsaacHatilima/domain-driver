@@ -271,6 +271,8 @@ On NestJS, generated classes are wired into the module files that have to know a
 ✅ Registered AssetsModule in src/app.module.ts
 ```
 
+When the feature root is itself a module's folder, that module comes first: `--root src/billing make:feature invoices` registers `InvoicesModule` in `src/billing/billing.module.ts` when that file exists. Projects that group features into areas scaffold each one straight into its area this way.
+
 The edit is made through the TypeScript compiler API, borrowed from your own project rather than bundled, and applied as a text insertion at AST-computed positions. Your comments, import order and formatting survive untouched — only the two inserted lines are new. Registering the same class twice does nothing.
 
 A bespoke action's controller is inserted **before** `Show<Entity>Controller` rather than appended, because Nest matches routes in declaration order and a custom `GET /actives` would otherwise be swallowed by `GET /:id`.
