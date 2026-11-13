@@ -172,7 +172,7 @@ describe('renderHook', () => {
         expect(content).toContain('export function useShowCat(id: string)');
         expect(content).toContain('type ShowCatResult = { request: string; data: Cat | null; error: string | null };');
         expect(content).toContain('const request = `${id}:${attempt}`;');
-        expect(content).toContain('fetch(`/api/cat/${id}`, { signal: controller.signal })');
+        expect(content).toContain('fetch(`/api/cat/${encodeURIComponent(id)}`, { signal: controller.signal })');
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat');");
         expect(content).toContain('return CatSchema.parse(await response.json());');
         expect(content).not.toContain("from 'zod'");
@@ -189,7 +189,7 @@ describe('renderHook', () => {
         expect(content).toContain('const { onSuccess } = options;');
         expect(content).toContain('const updateCat = useCallback(async (id: string, data: UpdateCat) => {');
         expect(content).toContain("import type { UpdateCat } from '../schemas/UpdateCat.schema';");
-        expect(content).toContain(`      const response = await fetch(\`/api/cat/\${id}\`, {
+        expect(content).toContain(`      const response = await fetch(\`/api/cat/\${encodeURIComponent(id)}\`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -208,7 +208,7 @@ describe('renderHook', () => {
         const content = renderHook(ctx, standardAction('Delete', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/DeleteCat.hook.ts'));
 
         expect(content).toContain('options: { onSuccess?: () => void } = {}');
-        expect(content).toContain(`      const response = await fetch(\`/api/cat/\${id}\`, {
+        expect(content).toContain(`      const response = await fetch(\`/api/cat/\${encodeURIComponent(id)}\`, {
         method: 'DELETE',
       });`);
         expect(content).toContain("if (!response.ok) throw new Error('Failed to delete Cat');");
@@ -239,7 +239,7 @@ describe('renderHook', () => {
 
         expect(content).toContain('export function useArchiveProject(options: { onSuccess?: (result: Project) => void } = {})');
         expect(content).toContain('const archiveProject = useCallback(async (id: string) => {');
-        expect(content).toContain(`      const response = await fetch(\`/api/projects/\${id}/archive-project\`, {
+        expect(content).toContain(`      const response = await fetch(\`/api/projects/\${encodeURIComponent(id)}/archive-project\`, {
         method: 'PATCH',
       });`);
         expect(content).toContain('return { archiveProject, loading, error };');
@@ -263,8 +263,24 @@ describe('renderHook', () => {
 
         expect(content).toContain('export function useProjectHistory(id: string)');
         expect(content).toContain('const request = `${id}:${attempt}`;');
-        expect(content).toContain('fetch(`/api/projects/${id}/project-history`, { signal: controller.signal })');
+        expect(content).toContain('fetch(`/api/projects/${encodeURIComponent(id)}/project-history`, { signal: controller.signal })');
         expect(content).toContain('}, [id, request]);');
+    });
+
+    it('encodes the id in every URL, so a slash or ? in it cannot change the route', () => {
+        const ctx = contextFor('react', 'projects');
+        const specs = [
+            standardAction('Show', 'Project'),
+            standardAction('Update', 'Project'),
+            standardAction('Delete', 'Project'),
+            customAction('Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true }),
+            customAction('Project', 'projectHistory', { withInput: false, returns: 'list', onRecord: true }),
+        ];
+        for (const spec of specs) {
+            const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, `hooks/${spec.name}.hook.ts`));
+            expect(content, spec.name).toContain('/api/projects/${encodeURIComponent(id)}');
+            expect(content, spec.name).not.toContain('/api/projects/${id}');
+        }
     });
 
     it('omits the client directive on Next, so the TS plugin does not read the hook as a component', () => {

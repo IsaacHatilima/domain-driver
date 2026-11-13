@@ -4,10 +4,13 @@ import { ActionSpec } from '../actions';
  * Renders the `fetch(...)` arguments for an action. Hooks own the call to the API:
  * the service and the repository live behind that API, on the server, so there is
  * nothing for the browser to layer on top of a request.
+ *
+ * The id is encoded: it comes from outside the hook, and a `/`, `?` or `#` in it would
+ * otherwise send the request to a different route.
  */
 function fetchUrl(spec: ActionSpec, base: string): string {
     if (!spec.path.includes(':id')) return `'${base}${spec.path === '/' ? '' : spec.path}'`;
-    return `\`${base}${spec.path.replace(':id', '${id}')}\``;
+    return `\`${base}${spec.path.replace(':id', '${encodeURIComponent(id)}')}\``;
 }
 
 export function fetchCall(spec: ActionSpec, feature: string, indent: string): string {

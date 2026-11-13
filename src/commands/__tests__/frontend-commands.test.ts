@@ -102,7 +102,7 @@ describe('on next-frontend', () => {
         expect(content).not.toContain('Service');
 
         const remove = readProjectFile('app/cat/hooks/DeleteCat.hook.ts');
-        expect(remove).toContain('const response = await fetch(`/api/cat/${id}`, {');
+        expect(remove).toContain('const response = await fetch(`/api/cat/${encodeURIComponent(id)}`, {');
         expect(remove).toContain("method: 'DELETE',");
         expect(remove).toContain('onSuccess?.();');
         expect(remove).not.toContain('Service');

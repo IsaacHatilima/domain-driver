@@ -109,7 +109,7 @@ describe('renderHook requests the API', () => {
         const ctx = contextFor('react', 'cat');
         const fromFile = path.join(ctx.featureDir, 'hooks', 'ShowCat.hook.ts');
         const content = renderHook(ctx, standardAction('Show', 'Cat'), 'Cat', fromFile);
-        expect(content).toContain('fetch(`/api/cat/${id}`, { signal: controller.signal })');
+        expect(content).toContain('fetch(`/api/cat/${encodeURIComponent(id)}`, { signal: controller.signal })');
     });
 });
 
