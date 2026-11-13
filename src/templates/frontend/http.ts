@@ -1,4 +1,4 @@
-import { ActionSpec } from '../actions';
+import { ActionSpec, inputArg } from '../actions';
 
 /**
  * Renders the `fetch(...)` arguments for an action. Hooks own the call to the API:
@@ -8,14 +8,20 @@ import { ActionSpec } from '../actions';
  * The id is encoded: it comes from outside the hook, and a `/`, `?` or `#` in it would
  * otherwise send the request to a different route.
  */
-function fetchUrl(spec: ActionSpec, base: string): string {
-    if (!spec.path.includes(':id')) return `'${base}${spec.path === '/' ? '' : spec.path}'`;
-    return `\`${base}${spec.path.replace(':id', '${encodeURIComponent(id)}')}\``;
+function fetchUrl(spec: ActionSpec, base: string, search: string | null): string {
+    const route = `${base}${spec.path === '/' ? '' : spec.path}`;
+    if (!route.includes(':id') && search === null) return `'${route}'`;
+    const tail = search === null ? '' : `\${${search}}`;
+    return `\`${route.replace(':id', '${encodeURIComponent(id)}')}${tail}\``;
 }
 
-export function fetchCall(spec: ActionSpec, feature: string, indent: string): string {
+/**
+ * `search` is the expression holding the query string a GET with input sends, `?...` or empty. A
+ * GET has no body, so that is the only place its input goes.
+ */
+export function fetchCall(spec: ActionSpec, feature: string, indent: string, search: string | null = null): string {
     const base = `/api/${feature}`;
-    const url = fetchUrl(spec, base);
+    const url = fetchUrl(spec, base, search);
     if (spec.method === 'get') return url;
 
     const method = spec.method.toUpperCase();
@@ -31,11 +37,31 @@ ${indent}  body: JSON.stringify(data),
 ${indent}}`;
 }
 
+/**
+ * The helper a hook for a GET with input sends that input with: one search param per defined value,
+ * an array as repeated keys, and an empty string rather than a bare `?` when there is nothing to send.
+ */
+export function renderQueryStringHelper(schema: string): string {
+    return `/** The input as a query string: every defined value as a string, an array as repeated keys. */
+function toQueryString(query: ${schema}): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined) continue;
+    for (const item of Array.isArray(value) ? value : [value]) params.append(key, String(item));
+  }
+  const search = params.toString();
+  return search === '' ? '' : \`?\${search}\`;
+}
+`;
+}
+
 /** The arguments a generated TanStack Start server function is called with. */
 export function serverFnCall(spec: ActionSpec): string {
-    if (spec.usesId && spec.schema !== null) return '({ data: { id, data } })';
+    const input = inputArg(spec);
+    const payload = input === 'data' ? 'data' : `data: ${input}`;
+    if (spec.usesId && spec.schema !== null) return `({ data: { id, ${payload} } })`;
     if (spec.usesId) return '({ data: id })';
-    if (spec.schema !== null) return '({ data })';
+    if (spec.schema !== null) return `({ ${payload} })`;
     return '()';
 }
 

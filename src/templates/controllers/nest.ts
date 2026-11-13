@@ -1,4 +1,4 @@
-import { ActionSpec, HttpMethod } from '../actions';
+import { ActionSpec, HttpMethod, inputArg, takesQuery } from '../actions';
 import { RenderContext } from '../context';
 import { nestRoute, NestRoute } from './nest-route';
 import { serviceImport } from './shape';
@@ -32,11 +32,21 @@ function nestDecorator(spec: ActionSpec, target: NestRoute): NestDecorator {
     const commonImports = [
         'Controller',
         decoratorName,
-        ...(spec.schema !== null ? ['Body'] : []),
+        ...(spec.schema !== null ? [inputDecorator(spec)] : []),
         ...(spec.usesId ? ['Param'] : []),
         ...(needsHttpCode ? ['HttpCode'] : []),
     ].sort();
     return { decorator, commonImports };
+}
+
+/** A GET's input is its query string, validated by the same DTO a body would be. */
+function inputDecorator(spec: ActionSpec): 'Query' | 'Body' {
+    return takesQuery(spec) ? 'Query' : 'Body';
+}
+
+/** The DTO-typed parameter and the name it is passed on as: `query` for a GET, `body` otherwise. */
+function inputParameter(spec: ActionSpec): string {
+    return inputArg(spec) === 'query' ? 'query' : 'body';
 }
 
 export function renderNestController(
@@ -60,10 +70,14 @@ export function renderNestController(
         serviceImport(ctx, fromFile, spec),
     ].join('\n');
 
-    const params = [spec.usesId ? "@Param('id') id: string" : null, dto !== null ? `@Body() body: ${dto}` : null]
+    const input = inputParameter(spec);
+    const params = [
+        spec.usesId ? "@Param('id') id: string" : null,
+        dto !== null ? `@${inputDecorator(spec)}() ${input}: ${dto}` : null,
+    ]
         .filter((param): param is string => param !== null)
         .join(', ');
-    const args = [spec.usesId ? 'id' : null, dto !== null ? 'body' : null]
+    const args = [spec.usesId ? 'id' : null, dto !== null ? input : null]
         .filter((arg): arg is string => arg !== null)
         .join(', ');
 

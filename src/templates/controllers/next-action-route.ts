@@ -1,4 +1,4 @@
-import { ActionSpec } from '../actions';
+import { ActionSpec, takesQuery } from '../actions';
 import { RenderContext } from '../context';
 import { callArgs, schemaImport, serviceImport } from './shape';
 
@@ -11,11 +11,30 @@ function parameters(spec: ActionSpec): string {
     return spec.schema !== null ? request : '';
 }
 
+/**
+ * A GET carries its input in the URL's search params, read the way Next hands a page its
+ * searchParams: a repeated key as an array, any other key as a string. `Object.fromEntries` on the
+ * params alone would keep only a repeated key's last value. Every other method sends a JSON body.
+ */
+const READ_QUERY = `  const { searchParams } = new URL(request.url);
+  const query = Object.fromEntries(
+    Array.from(new Set(searchParams.keys()), (key) => {
+      const values = searchParams.getAll(key);
+      return [key, values.length === 1 ? values[0] : values];
+    }),
+  );
+`;
+
+function input(spec: ActionSpec): string {
+    return takesQuery(spec) ? 'query' : 'await request.json()';
+}
+
 function body(spec: ActionSpec): string {
     const id = spec.usesId ? '  const { id } = await params;\n' : '';
+    const read = takesQuery(spec) ? READ_QUERY : '';
     const validate =
         spec.schema !== null
-            ? `  const parsed = ${spec.schema}Schema.safeParse(await request.json());
+            ? `${read}  const parsed = ${spec.schema}Schema.safeParse(${input(spec)});
   if (!parsed.success) {
     return NextResponse.json({ errors: parsed.error.flatten() }, { status: 400 });
   }

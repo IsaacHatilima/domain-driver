@@ -111,6 +111,22 @@ The record itself is described once, by the entity schema `schemas/Cat.schema.ts
 
 Every layer command takes one target, `<feature>/<Name>`: the feature folder on the left, the name used inside the files on the right. `users/User` reads as "User inside users".
 
+A layer command creates the folders it writes into, the feature's own folder included, so a folder that only shares types needs no `make:feature` first:
+
+```bash
+domain-driver --root src/projects make:types shared/Project
+```
+
+```
+✅ Feature folder "shared" created at /app/src/projects/shared
+```
+
+The folder is created at the first write, so a command that refuses before writing leaves nothing behind. On Nest, `make:controller`, `make:service`, `make:repository` and `make:action` are the exception: their classes only work once the feature's module provides them, and `make:feature` is what writes that module and registers it. When the feature does not exist they name the command to run first, with the same `--root` and `--stack`:
+
+```
+❌ Feature "list-projects" does not exist, and make:action registers its classes in the feature's module, which make:feature writes and registers. Run first: domain-driver --root src/projects make:feature list-projects
+```
+
 ### `make:feature`
 
 ```bash
@@ -131,17 +147,18 @@ domain-driver make:action users/User findActiveUsers
 domain-driver make:action users/User inviteUser --with-input --returns one
 domain-driver make:action users/User archiveUser --on-record --method patch --returns one
 domain-driver make:action users/User renameUser --on-record --method put --with-input --returns one
+domain-driver make:action projects/Project listProject --with-input --method get --returns list
 ```
 
 Scaffolds a bespoke operation as its own files, so it never lands inside `ShowUser` or `ListUser`. The action name is used as-is for file and class names: `FindActiveUsers.service.ts`, `FindActiveUsersService`, handler `findActiveUsersController`, route `/find-active-users`. Include the noun in the name (`archiveUser`, not `archive`).
 
 | Option | Effect |
 |---|---|
-| `--with-input` | writes `InviteUser.schema.ts` (and the Nest DTO), the service takes `data`, the controller validates the body |
+| `--with-input` | writes `InviteUser.schema.ts` (and the Nest DTO), the service takes `data`, the controller validates the body; on a `get` the input is the query string instead, see [A read that takes query input](#a-read-that-takes-query-input) |
 | `--returns list` | `Promise<User[]>` (default) |
 | `--returns one` | `Promise<User>` |
 | `--returns void` | `Promise<void>`, controller responds 204 |
-| `--method <get\|post\|put\|patch\|delete>` | the HTTP method; defaults to `post` with `--with-input` and `get` without. A `get` cannot take `--with-input` |
+| `--method <get\|post\|put\|patch\|delete>` | the HTTP method; defaults to `post` with `--with-input` and `get` without. A `get` with `--with-input` reads its input from the query string |
 | `--on-record` | the action works on one record: route `/:id/<slug>`, and `id` passes through the controller, service, repository and hook, as it does for Show, Update and Delete |
 | `--route` | `next-fullstack` only: a route handler and fetch hook instead of a Server Action, for callers outside the app such as webhooks or a mobile client |
 
@@ -157,11 +174,44 @@ When the feature is the action itself, as in projects that keep one feature per 
 |---|---|
 | `node` | service, repository, controller for the detected framework, plus the line to add to `<feature>.routes.ts` printed (above the `/:id` routes for a `/<slug>` route, which `/:id` would otherwise swallow) |
 | `nest` | injectable service and repository, `@Controller` class, DTO with input, all registered in `<feature>.module.ts`, with the controller ahead of `Show<Entity>Controller` when the module has one |
-| `next-fullstack` | server service and repository; a write (any method but `get`) also gets `server/actions/<Name>.action.ts`, and a read gets nothing more, since a Server Component calls its service. With `--route`: a hook that fetches the endpoint and `app/api/<feature>/<slug>/route.ts` (`app/api/<feature>/[id]/<slug>/route.ts` with `--on-record`) instead |
+| `next-fullstack` | server service and repository; a write (any method but `get`) also gets `server/actions/<Name>.action.ts`, and a read gets nothing more, since a Server Component calls its service. A read with `--with-input` also gets `containers/<Name>Container.tsx`, which parses the page's `searchParams`. With `--route`: a hook that fetches the endpoint and `app/api/<feature>/<slug>/route.ts` (`app/api/<feature>/[id]/<slug>/route.ts` with `--on-record`) instead |
 | `next-frontend`, `react` | only a hook that fetches `/api/<feature>/<slug>` (and the schema with `--with-input`); the service and repository live behind that API, outside the project |
 | `tanstack-start` | server service and repository, a hook that calls the server function directly, and a server function (`<Name>.fn.ts`) in place of a route handler |
 
 `domain-driver make:action --help` prints the same per-stack list.
+
+#### A read that takes query input
+
+A `get` has no body, so `--method get --with-input` takes its input from the query string, as a paginated list does with `limit` and a cursor:
+
+```bash
+domain-driver --root src/projects make:action list-projects/Project listProject --with-input --method get --returns list
+```
+
+The input is called `query` in every layer, and the service and repository take it parsed: `handle(query: ListProject): Promise<Project[]>`.
+
+| Stack | How the query arrives |
+|---|---|
+| `nest` | `@Get()` with `@Query() query: ListProjectDto`, the same `createZodDto` DTO a body uses, so `ZodValidationPipe` validates it |
+| `node` | Express validates `req.query`, Fastify `request.query`, Hono `c.req.query()`; the framework-agnostic controller takes `query: unknown` and parses it |
+| `react`, `next-frontend`, `next-fullstack --route` | the hook sends the input as search params, `/api/<feature>/<slug>?limit=10`, with no body: each defined value as a string, an array as repeated keys, undefined values left out. The query hook takes the input as an argument and refetches when one of its values changes; the route handler validates `new URL(request.url).searchParams` |
+| `next-fullstack` | `containers/ListProjectContainer.tsx`, an async Server Component that takes the page's `searchParams` prop (a Promise in Next 16), parses it with `ListProjectSchema`, and passes the result to the service. An invalid query string renders a message rather than throwing. Render it from the page: `<ListProjectContainer searchParams={searchParams} />` |
+| `tanstack-start` | a GET server function with the schema as its validator; the query hook passes the input as `data` and keys the cache on it |
+
+Query values arrive as strings, so the generated schema says so and how to read the rest. It adds no fields:
+
+```ts
+export const ListProjectSchema = z.object({
+  // add listProject fields here
+  // They are read from the query string, so every value arrives as a string:
+  // use z.coerce.number() for a number, and z.stringbool() for a boolean
+  // (z.coerce.boolean() turns any non-empty string, "false" included, into true).
+});
+```
+
+A key sent more than once reaches the schema as an array on every server stack, and a key sent once as a string, so a list field that may carry one value accepts both, for example `z.union([z.string(), z.array(z.string())])`.
+
+On `tanstack-start` the server function carries the input with its types, so the schema there has no such note. Without `--method`, `--with-input` is still a `post` with a body.
 
 ### `make:controller`
 
@@ -268,7 +318,7 @@ app/projects/
 └── types/
 ```
 
-**Reads** (List, Show, a custom GET) get the service and the repository. The container is an async Server Component: it awaits `connection()` so the page renders per request, calls `service.handle()`, and passes the records to the client component. Without `connection()`, `next build` would prerender the page and run the repository at build time.
+**Reads** (List, Show, a custom GET) get the service and the repository. The container is an async Server Component: it awaits `connection()` so the page renders per request, calls `service.handle()`, and passes the records to the client component. Without `connection()`, `next build` would prerender the page and run the repository at build time. A custom GET with `--with-input` also gets its own container, which parses the page's `searchParams` and hands them to the service; see [A read that takes query input](#a-read-that-takes-query-input).
 
 **Writes** (Create, Update, Delete, any custom action whose method is not `get`) get `server/actions/<Action><Entity>.action.ts`, one action per file. Each starts with `'use server'` and exports one `<action><Entity>Action(previous, formData)` for `useActionState`, returning a typed state, `idle`, `invalid` with field errors, or `saved`. It validates the form with the feature's schema (`safeParse`), returns a failed validation as state, calls the service's `handle()`, then `revalidatePath` on the feature's page. On one record (`Update`, `Delete`, `--on-record`) the id comes from the form's `id` field and is validated with the entity schema's own `id`.
 
@@ -470,6 +520,13 @@ The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`)
 
 ---
 
+## Upgrading from 0.11.x
+
+0.12.0 adds to what the CLI accepts and changes no file it generated before. Generated files that already exist are never overwritten.
+
+- **A `get` can take input.** `make:action --method get --with-input` used to fail with "A GET action cannot take a request body"; it now reads the input from the query string on every stack. See [A read that takes query input](#a-read-that-takes-query-input). Without `--method`, `--with-input` is still a `post`, so existing commands generate what they did. A controller you rewrote by hand from `@Post()` + `@HttpCode(200)` + `@Body()` to `@Get()` + `@Query()` matches what is now generated.
+- **Layer commands create the feature's folder.** `make:types`, `make:schema`, `make:component`, `make:container`, `make:hook`, and on stacks without modules `make:service`, `make:repository`, `make:controller` and `make:action`, no longer fail with "Feature "shared" does not exist" when the folder is missing; they create it. On Nest the four commands that register classes still need the feature, and the command they print now keeps `--root` and `--stack`, which the old `make:feature` line dropped.
+
 ## Upgrading from 0.10.x
 
 0.11.0 changes what new scaffolding looks like on `next-fullstack`, in Nest areas, and in projects that use Prettier. Generated files that already exist are never overwritten.
@@ -581,6 +638,7 @@ npm run test:coverage
 - [x] Server Actions and Server Component reads on Next.js full-stack
 - [x] Nest routes under the area prefix
 - [x] Generated files formatted with the project's own Prettier
+- [x] GET actions that take their input from the query string
 - [ ] Config file — override stack and feature root per project
 - [ ] Configurable API base URL for the fetch in generated hooks
 - [ ] ORM-aware server repositories

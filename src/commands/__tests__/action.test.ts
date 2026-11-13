@@ -77,13 +77,73 @@ describe('make:action on one record', () => {
         expect(projectFileExists('app/api/projects/:id')).toBe(false);
     });
 
-    it('rejects a GET with a body before writing anything', () => {
+});
+
+describe('make:action --method get --with-input', () => {
+    const listProject = { withInput: true, returns: 'list', method: 'get' } as const;
+
+    it('writes a schema that reads the query string and a query hook that sends it as search params on react', () => {
         writePackageJson({ react: '1' });
-        mkdir('src/features/users');
-        expect(() => makeAction('users', 'User', 'searchUsers', { withInput: true, returns: 'list', method: 'get' })).toThrow(
-            'A GET action cannot take a request body.'
+        mkdir('src/features/projects');
+        makeAction('projects', 'Project', 'listProject', listProject);
+        const schema = readProjectFile('src/features/projects/schemas/ListProject.schema.ts');
+        expect(schema).toContain('// They are read from the query string, so every value arrives as a string:');
+        expect(schema).toContain('z.coerce.number()');
+        const hook = readProjectFile('src/features/projects/hooks/ListProject.hook.ts');
+        expect(hook).toContain('export function useListProject(query: ListProject) {');
+        expect(hook).toContain('new URLSearchParams()');
+        expect(hook).toContain('fetch(`/api/projects/list-project${search}`, { signal: controller.signal })');
+        expect(hook).not.toContain('body:');
+    });
+
+    it('answers @Get() with @Query() in the projects area on nest', () => {
+        writePackageJson({ '@nestjs/core': '1', 'nestjs-zod': '1' }, {}, { domainDriver: { featureRoot: 'src/projects' } });
+        mkdir('src/projects/list-projects');
+        fs.writeFileSync(path.join(project.dir, 'src/projects/projects.module.ts'), 'export class ProjectsModule {}\n');
+        makeAction('list-projects', 'Project', 'listProject', listProject);
+        const controller = readProjectFile('src/projects/list-projects/controllers/ListProject.controller.ts');
+        expect(controller).toContain("@Controller('projects')");
+        expect(controller).toContain('  @Get()\n  handle(@Query() query: ListProjectDto): Promise<Project[]> {');
+        expect(controller).not.toContain('HttpCode');
+        expect(controller).not.toContain('@Body()');
+        expect(readProjectFile('src/projects/list-projects/dto/ListProject.dto.ts')).toContain('createZodDto(ListProjectSchema)');
+        expect(readProjectFile('src/projects/list-projects/services/ListProject.service.ts')).toContain(
+            'async handle(query: ListProject): Promise<Project[]> {'
         );
-        expect(listFiles('src/features/users')).toEqual([]);
+    });
+
+    it('validates req.query on express and prints a GET route line', () => {
+        writePackageJson({ express: '1' });
+        mkdir('src/features/projects');
+        makeAction('projects', 'Project', 'listProject', listProject);
+        expect(readProjectFile('src/features/projects/controllers/ListProject.controller.ts')).toContain(
+            'const parsed = ListProjectSchema.safeParse(req.query);'
+        );
+        expect(logged()).toContain(
+            "ℹ️  Add to projects.routes.ts above the '/:id' routes: router.get('/list-project', listProjectController);"
+        );
+    });
+
+    it('keeps a GET server function with the schema as its validator on tanstack-start, without the strings comment', () => {
+        writePackageJson({ '@tanstack/react-start': '1', react: '1' });
+        mkdir('src/routes/projects');
+        makeAction('projects', 'Project', 'listProject', listProject);
+        const fn = readProjectFile('src/routes/projects/-server/functions/ListProject.fn.ts');
+        expect(fn).toContain("createServerFn({ method: 'GET' })\n  .validator(ListProjectSchema)");
+        expect(readProjectFile('src/routes/projects/-hooks/ListProject.hook.ts')).toContain(
+            'export function useListProject(query: ListProject) {'
+        );
+        expect(readProjectFile('src/routes/projects/-schemas/ListProject.schema.ts')).not.toContain('query string');
+    });
+
+    it('still posts --with-input without --method', () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/projects');
+        makeAction('projects', 'Project', 'importProjects', { withInput: true, returns: 'list' });
+        const hook = readProjectFile('src/features/projects/hooks/ImportProjects.hook.ts');
+        expect(hook).toContain("method: 'POST',");
+        expect(hook).toContain('body: JSON.stringify(data),');
+        expect(readProjectFile('src/features/projects/schemas/ImportProjects.schema.ts')).not.toContain('query string');
     });
 });
 

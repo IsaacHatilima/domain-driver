@@ -285,6 +285,56 @@ describe('renderHook', () => {
         }
     });
 
+    it('sends the input of a GET as search params and refetches when it changes', () => {
+        const ctx = contextFor('react', 'projects');
+        const spec = customAction('Project', 'listProject', { withInput: true, returns: 'list', method: 'get' });
+        const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, 'hooks/ListProject.hook.ts'));
+
+        expect(content).toContain("import type { ListProject } from '../schemas/ListProject.schema';");
+        expect(content).toContain('export function useListProject(query: ListProject) {');
+        expect(content).toContain(`function toQueryString(query: ListProject): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined) continue;
+    for (const item of Array.isArray(value) ? value : [value]) params.append(key, String(item));
+  }
+  const search = params.toString();
+  return search === '' ? '' : \`?\${search}\`;
+}`);
+        expect(content).toContain('const search = toQueryString(query);');
+        expect(content).toContain('const request = `${search}:${attempt}`;');
+        expect(content).toContain('fetch(`/api/projects/list-project${search}`, { signal: controller.signal })');
+        expect(content).toContain('}, [search, request]);');
+        expect(content).not.toContain('body:');
+        expect(content).not.toContain('method:');
+        expect(content).not.toContain('JSON.stringify');
+    });
+
+    it('keys a GET with input on one record on both the id and the query', () => {
+        const ctx = contextFor('react', 'projects');
+        const spec = customAction('Project', 'projectHistory', { withInput: true, returns: 'list', method: 'get', onRecord: true });
+        const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, 'hooks/ProjectHistory.hook.ts'));
+
+        expect(content).toContain('export function useProjectHistory(id: string, query: ProjectHistory) {');
+        expect(content).toContain('const request = `${id}:${search}:${attempt}`;');
+        expect(content).toContain(
+            'fetch(`/api/projects/${encodeURIComponent(id)}/project-history${search}`, { signal: controller.signal })'
+        );
+        expect(content).toContain('}, [id, search, request]);');
+    });
+
+    it('sends the input of a void GET as search params when called', () => {
+        const ctx = contextFor('react', 'projects');
+        const spec = customAction('Project', 'exportProjects', { withInput: true, returns: 'void', method: 'get' });
+        const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, 'hooks/ExportProjects.hook.ts'));
+
+        expect(content).toContain('const exportProjects = useCallback(async (query: ExportProjects) => {');
+        expect(content).toContain('const response = await fetch(`/api/projects/export-projects${toQueryString(query)}`);');
+        expect(content).toContain('function toQueryString(query: ExportProjects): string {');
+        expect(content).not.toContain('body:');
+        expect(content).not.toContain('useEffect');
+    });
+
     it('omits the client directive on Next, so the TS plugin does not read the hook as a component', () => {
         const ctx = contextFor('next-frontend', 'cat');
         const content = renderHook(ctx, standardAction('List', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/ListCat.hook.ts'));

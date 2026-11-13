@@ -41,6 +41,8 @@ const CUSTOM_ACTIONS = Object.freeze([
     ['archiveCat', { withInput: false, returns: 'one', method: 'patch', onRecord: true }],
     ['renameCat', { withInput: true, returns: 'one', method: 'put', onRecord: true }],
     ['catHistory', { withInput: false, returns: 'list', onRecord: true }],
+    // A GET that takes input: a GET server function validating it, and a query keyed on it.
+    ['searchCats', { withInput: true, returns: 'list', method: 'get' }],
 ]);
 
 // The profile's own floor (see the design doc's Risks section), not
@@ -165,7 +167,8 @@ async function scaffoldFeature(dir) {
         const { makeAction } = require(path.join(REPO_ROOT, 'dist', 'commands', 'action.js'));
         await makeFeature(FEATURE, true, ENTITY);
         // Bespoke actions on one record: a mutation without a body, one with a body, and a
-        // query keyed under the record, so their hooks and server functions compile too.
+        // query keyed under the record; and a GET that takes input. Their hooks and server
+        // functions compile too.
         for (const [name, options] of CUSTOM_ACTIONS) makeAction(FEATURE, ENTITY, name, options);
     } finally {
         process.chdir(originalCwd);

@@ -7,7 +7,7 @@ import { apiRouteDir } from '../utils/paths';
 import { hintMissingEntity } from './entity';
 import { hintReactQuery } from './hints';
 import { ensureQueryKeys, hookRenderer } from './hook-renderer';
-import { ensureLayerDir, requireFeature } from './resolve';
+import { ensureLayerDir, openFeature } from './resolve';
 import { writeSpecFiles } from './write';
 
 const OLD_HOOK_NAME_PATTERN = /^use[A-Z]/;
@@ -33,7 +33,7 @@ function hintMissingRoutes(ctx: RenderContext, entity: string): void {
 }
 
 export function makeHook(feature: string, entity: string): boolean {
-    const ctx = requireFeature(feature);
+    const ctx = openFeature(feature, 'make:hook');
     assertLayer(ctx.profile, 'hook', 'make:hook');
     rejectOldHookName(feature, entity);
 

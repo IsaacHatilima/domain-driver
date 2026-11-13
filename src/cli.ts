@@ -42,12 +42,14 @@ const ACTION_FILES_HELP = `
 Files per stack:
   react, next-frontend   hook only; the service and repository live behind the API, outside the project
   next-fullstack         service, repository; a write also gets server/actions/<Name>.action.ts, and a read
-                         is called from a Server Component. With --route: hook and route handler at
-                         app/api/<feature>/<slug>/route.ts instead
+                         is called from a Server Component (a get with --with-input gets
+                         containers/<Name>Container.tsx, which parses the page's searchParams). With
+                         --route: hook and route handler at app/api/<feature>/<slug>/route.ts instead
   tanstack-start         hook, service, repository, server function (<Name>.fn.ts)
   node                   service, repository, controller; prints the line for <feature>.routes.ts
   nest                   service, repository, controller, and a DTO with --with-input; registered in <feature>.module.ts
---with-input also writes <Name>.schema.ts on every stack.`;
+--with-input also writes <Name>.schema.ts on every stack. With --method get the input is the query
+string: the controller validates it, and the hook sends it as search params.`;
 
 const NO_FORMAT_HELP = "Leave the files as generated instead of formatting them with the project's Prettier";
 
@@ -201,7 +203,11 @@ export function createProgram(deps: CliDeps): Command {
     program
         .command('make:action <target> <action>')
         .description("Scaffold a bespoke action as its own file in each of the stack's layers (<feature>/<Entity> <actionName>)")
-        .option('--with-input', 'The action takes a request body validated by a Zod schema', false)
+        .option(
+            '--with-input',
+            'The action takes input validated by a Zod schema: the request body, or the query string with --method get',
+            false
+        )
         .option('--returns <kind>', 'list, one, or void', 'list')
         .option('--method <method>', 'get, post, put, patch, or delete (default: post with --with-input, otherwise get)')
         .option('--on-record', 'The action takes the record id: route /:id/<slug>, with id passed through every layer', false)

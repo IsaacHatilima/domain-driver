@@ -51,6 +51,14 @@ describe('renderServerFn', () => {
         expect(content).toContain('.handler(async ({ data }) => service.handle(data));');
     });
 
+    it('keeps a GET with input a GET and validates the input', () => {
+        const spec = customAction('Cat', 'searchCats', { withInput: true, returns: 'list', method: 'get' });
+        const content = renderServerFn(ctx, spec, 'Cat', file('SearchCats'));
+        expect(content).toContain("import { SearchCatsSchema } from '../../-schemas/SearchCats.schema';");
+        expect(content).toContain("export const searchCats = createServerFn({ method: 'GET' })\n  .validator(SearchCatsSchema)");
+        expect(content).toContain('.handler(async ({ data }) => service.handle(data));');
+    });
+
     it('handles a custom GET action with no input', () => {
         const spec = customAction('Cat', 'findActiveCats', { withInput: false, returns: 'list' });
         const content = renderServerFn(ctx, spec, 'Cat', file('FindActiveCats'));

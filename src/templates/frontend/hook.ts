@@ -1,11 +1,33 @@
 import { lowerFirst } from '../../utils/naming';
-import { ActionSpec, isQueryAction } from '../actions';
+import { ActionSpec, isQueryAction, takesQuery } from '../actions';
 import { RenderContext } from '../context';
 import { domainImports } from '../signatures';
-import { fetchCall, parseResponse, responseSchemaImports } from './http';
+import { fetchCall, parseResponse, renderQueryStringHelper, responseSchemaImports } from './http';
 
 function payloadType(spec: ActionSpec): string {
     return spec.returns.replace(/^Promise<(.*)>$/, '$1');
+}
+
+/** The query-string helper a GET with input sends it through, after the imports; nothing otherwise. */
+function queryStringHelper(spec: ActionSpec): string {
+    return takesQuery(spec) && spec.schema !== null ? `\n${renderQueryStringHelper(spec.schema)}` : '';
+}
+
+/**
+ * What one request is, for the query hook to tell a stale result from the current one: the id, the
+ * query string and the attempt. The query string is a string, so an input object rebuilt on every
+ * render refetches only when one of its values changes.
+ */
+function requestKey(spec: ActionSpec): { readonly request: string; readonly deps: string } {
+    const query = takesQuery(spec);
+    const parts = [spec.usesId ? '${id}' : null, query ? '${search}' : null].filter(
+        (part): part is string => part !== null
+    );
+    const request = parts.length === 0 ? 'String(attempt)' : `\`${[...parts, '${attempt}'].join(':')}\``;
+    const deps = [spec.usesId ? 'id' : null, query ? 'search' : null, 'request'].filter(
+        (dep): dep is string => dep !== null
+    );
+    return { request, deps: `[${deps.join(', ')}]` };
 }
 
 /**
@@ -37,20 +59,21 @@ function renderQuery(ctx: RenderContext, spec: ActionSpec, entity: string, fromF
     const isList = type.endsWith('[]');
     const dataType = isList ? type : `${type} | null`;
     const empty = isList ? '[]' : 'null';
-    const request = spec.usesId ? '`${id}:${attempt}`' : 'String(attempt)';
-    const deps = spec.usesId ? '[id, request]' : '[request]';
+    const { request, deps } = requestKey(spec);
+    const query = takesQuery(spec);
+    const search = query ? '  const search = toQueryString(query);\n' : '';
 
     return `${header(ctx, spec, entity, fromFile, 'useState, useEffect, useCallback')}
 type ${spec.name}Result = { request: string; data: ${dataType}; error: string | null };
-
+${queryStringHelper(spec)}
 export function use${spec.name}(${spec.params}) {
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<${spec.name}Result | null>(null);
-  const request = ${request};
+${search}  const request = ${request};
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(${fetchCall(spec, ctx.feature, '    ')}, { signal: controller.signal })
+    fetch(${fetchCall(spec, ctx.feature, '    ', query ? 'search' : null)}, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('${spec.failure}');
         return ${parseResponse(spec, entity, 'await response.json()')};
@@ -82,7 +105,8 @@ function renderMutation(ctx: RenderContext, spec: ActionSpec, entity: string, fr
     const returnsValue = spec.usesEntityType;
     const type = payloadType(spec);
     const callbackType = returnsValue ? `(result: ${type}) => void` : '() => void';
-    const request = `      const response = await fetch(${fetchCall(spec, ctx.feature, '      ')});
+    const search = takesQuery(spec) ? 'toQueryString(query)' : null;
+    const request = `      const response = await fetch(${fetchCall(spec, ctx.feature, '      ', search)});
       if (!response.ok) throw new Error('${spec.failure}');`;
     const body = returnsValue
         ? `${request}
@@ -96,7 +120,7 @@ function renderMutation(ctx: RenderContext, spec: ActionSpec, entity: string, fr
       return null;`
         : `      setError(err instanceof Error ? err.message : '${spec.failure}');`;
 
-    return `${header(ctx, spec, entity, fromFile, 'useState, useCallback')}
+    return `${header(ctx, spec, entity, fromFile, 'useState, useCallback')}${queryStringHelper(spec)}
 export function use${spec.name}(options: { onSuccess?: ${callbackType} } = {}) {
   const { onSuccess } = options;
   const [loading, setLoading] = useState(false);

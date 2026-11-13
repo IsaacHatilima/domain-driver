@@ -1,5 +1,5 @@
 import { lowerFirst } from '../../utils/naming';
-import { Action, ActionSpec, standardAction } from '../actions';
+import { Action, ActionSpec, standardAction, takesQuery } from '../actions';
 import { RenderContext } from '../context';
 import { callArgs, controllerImports, schemaImport, serviceImport } from './shape';
 
@@ -10,9 +10,17 @@ export function renderHonoController(ctx: RenderContext, spec: ActionSpec, fromF
         serviceImport(ctx, fromFile, spec),
     ].join('\n');
     const contextType = spec.usesId ? `Context<{}, '${spec.path}'>` : 'Context';
+    // c.req.query() keeps only a repeated key's first value, so the query is read through queries():
+    // a repeated key as an array, as Express and Fastify parse it, and any other key as a string.
+    const query = takesQuery(spec)
+        ? `  const query = Object.fromEntries(
+    Object.entries(c.req.queries()).map(([key, values]) => [key, values.length === 1 ? values[0] : values]),
+  );
+`
+        : '';
     const validate =
         spec.schema !== null
-            ? `  const parsed = ${spec.schema}Schema.safeParse(await c.req.json());
+            ? `${query}  const parsed = ${spec.schema}Schema.safeParse(${takesQuery(spec) ? 'query' : 'await c.req.json()'});
   if (!parsed.success) return c.json({ errors: parsed.error.flatten() }, 400);
 `
             : '';

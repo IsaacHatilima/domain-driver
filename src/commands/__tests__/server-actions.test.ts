@@ -187,6 +187,56 @@ describe('make:action on next-fullstack', () => {
         );
     });
 
+    it('reads a GET with input from the page searchParams in a container that hands them to the service', () => {
+        makeAction('projects', 'Project', 'searchProjects', { withInput: true, returns: 'list', method: 'get' });
+        const files = listFiles('app');
+        expect(files).toContain('projects/schemas/SearchProjects.schema.ts');
+        expect(files).toContain('projects/server/services/SearchProjects.service.ts');
+        expect(files).toContain('projects/server/repositories/SearchProjects.repository.ts');
+        expect(files).toContain('projects/containers/SearchProjectsContainer.tsx');
+        expect(files).not.toContain('projects/server/actions/SearchProjects.action.ts');
+        expect(files.some((file) => file.startsWith('api/'))).toBe(false);
+        expect(readProjectFile('app/projects/server/services/SearchProjects.service.ts')).toContain(
+            'async handle(query: SearchProjects): Promise<Project[]> {'
+        );
+        const container = readProjectFile('app/projects/containers/SearchProjectsContainer.tsx');
+        expect(container).toContain('export default async function SearchProjectsContainer({ searchParams }: SearchProjectsContainerProps) {');
+        expect(container).toContain('const parsed = SearchProjectsSchema.safeParse(await searchParams);');
+        expect(container).toContain('const data = await service.handle(parsed.data);');
+        expect(container).toContain('<Project key={item.id} {...item} />');
+        expect(logged()).toContain(
+            "ℹ️  SearchProjects is a read that takes its input from the query string: SearchProjectsContainer parses the page's searchParams " +
+                'with SearchProjectsSchema and calls SearchProjectsService. Render it from the page with the page\'s own prop: ' +
+                '<SearchProjectsContainer searchParams={searchParams} />'
+        );
+        assertImportsResolve('app');
+    });
+
+    it('keeps a container that exists, and writes none for a void GET with input', () => {
+        makeAction('projects', 'Project', 'searchProjects', { withInput: true, returns: 'list', method: 'get' });
+        vi.mocked(console.warn).mockClear();
+        makeAction('projects', 'Project', 'searchProjects', { withInput: true, returns: 'list', method: 'get' });
+        expect(console.warn).toHaveBeenCalledWith('⚠️  Skipping "SearchProjectsContainer.tsx" — already exists');
+        makeAction('projects', 'Project', 'exportProjects', { withInput: true, returns: 'void', method: 'get' });
+        expect(projectFileExists('app/projects/containers/ExportProjectsContainer.tsx')).toBe(false);
+        expect(logged()).toContain(
+            'ℹ️  ExportProjects is a read: call ExportProjectsService from a Server Component, such as a container, ' +
+                "with the page's searchParams parsed by ExportProjectsSchema. " +
+                'It gets no Server Action; pass --route for a route handler and fetch hook.'
+        );
+    });
+
+    it('reads the search params in the route handler and sends them from the hook with --route', () => {
+        makeAction('projects', 'Project', 'searchProjects', { withInput: true, returns: 'list', method: 'get', route: true });
+        expect(readProjectFile('app/api/projects/search-projects/route.ts')).toContain(
+            'const parsed = SearchProjectsSchema.safeParse(query);'
+        );
+        expect(readProjectFile('app/projects/hooks/SearchProjects.hook.ts')).toContain(
+            'fetch(`/api/projects/search-projects${search}`, { signal: controller.signal })'
+        );
+        expect(projectFileExists('app/projects/containers/SearchProjectsContainer.tsx')).toBe(false);
+    });
+
     it('writes the route handler and fetch hook with --route', () => {
         makeAction('projects', 'Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true, route: true });
         expect(readProjectFile('app/api/projects/[id]/archive-project/route.ts')).toContain('export async function PATCH(');

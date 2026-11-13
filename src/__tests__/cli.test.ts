@@ -5,7 +5,7 @@ import * as path from 'path';
 import { CliDeps, createProgram } from '../cli';
 import { UpdateDeps } from '../commands/update';
 import { FetchLike } from '../update/registry';
-import { createTempProject, mkdir, projectFileExists, writePackageJson, TempProject } from './helpers/project';
+import { createTempProject, mkdir, projectFileExists, resetCaches, writePackageJson, TempProject } from './helpers/project';
 
 const NOTICE = 'ℹ️  domain-driver 9.9.9 is available (you have 0.3.0). Run: domain-driver update';
 const STACK_LINE = 'Stack: node (detected), http: express, root: src/features';
@@ -101,6 +101,56 @@ describe('createProgram', () => {
         const hook = fs.readFileSync(path.join(project.dir, 'src/features/projects/hooks/ArchiveProject.hook.ts'), 'utf-8');
         expect(hook).toContain('const archiveProject = useCallback(async (id: string) => {');
         expect(hook).toContain("method: 'PATCH',");
+    });
+
+    it('make:action takes --with-input on a get and reads the input from the query string', async () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/projects');
+        await run(cliDeps({ isTTY: false }), [
+            'make:action',
+            'projects/Project',
+            'listProject',
+            '--with-input',
+            '--method',
+            'get',
+            '--returns',
+            'list',
+        ]);
+        const hook = fs.readFileSync(path.join(project.dir, 'src/features/projects/hooks/ListProject.hook.ts'), 'utf-8');
+        expect(hook).toContain('export function useListProject(query: ListProject) {');
+        expect(hook).toContain('new URLSearchParams()');
+    });
+
+    it('make:action help says a get takes its input from the query string', () => {
+        const help = fullHelp('make:action').replace(/\s+/g, ' ');
+        expect(help).toContain('the query string with --method get');
+        expect(help).not.toContain('A GET cannot');
+    });
+
+    it('make:types --root creates the area folder it writes into, as src/projects/shared needs', async () => {
+        writePackageJson({ '@nestjs/core': '1', 'nestjs-zod': '1' });
+        mkdir('src/projects');
+        fs.writeFileSync(path.join(project.dir, 'src/projects/projects.module.ts'), 'export class ProjectsModule {}\n');
+        await run(cliDeps({ isTTY: false }), ['--root', 'src/projects', 'make:types', 'shared/Project']);
+        expect(projectFileExists('src/projects/shared/types/Project.types.ts')).toBe(true);
+        expect(projectFileExists('src/projects/shared/schemas/Project.schema.ts')).toBe(true);
+        resetCaches();
+        await run(cliDeps({ isTTY: false }), ['--root', 'src/projects', 'make:schema', 'shared/Project']);
+        expect(projectFileExists('src/projects/shared/dto/CreateProject.dto.ts')).toBe(true);
+    });
+
+    it('make:service --root on nest names make:feature with the same --root when the feature is missing', async () => {
+        writePackageJson({ '@nestjs/core': '1', 'nestjs-zod': '1' });
+        mkdir('src/projects');
+        fs.writeFileSync(path.join(project.dir, 'src/projects/projects.module.ts'), 'export class ProjectsModule {}\n');
+        await expect(
+            run(cliDeps({ isTTY: false }), ['--root', 'src/projects', 'make:service', 'shared/Project'])
+        ).rejects.toThrow('Run first: domain-driver --root src/projects make:feature shared');
+        resetCaches();
+        await expect(
+            run(cliDeps({ isTTY: false }), ['--stack', 'nest', '--root', 'src/projects', 'make:repository', 'shared/Project'])
+        ).rejects.toThrow('Run first: domain-driver --stack nest --root src/projects make:feature shared');
+        expect(projectFileExists('src/projects/shared')).toBe(false);
     });
 
     it('make:action rejects an unknown --method', async () => {

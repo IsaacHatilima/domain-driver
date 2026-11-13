@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { actionCase, customAction, HTTP_METHODS, isQueryAction, standardAction, standardActions, RETURN_KINDS } from '../actions';
+import { actionCase, customAction, HTTP_METHODS, isQueryAction, standardAction, standardActions, RETURN_KINDS, takesQuery } from '../actions';
 
 describe('actionCase', () => {
     it('normalises camelCase and PascalCase', () => {
@@ -237,10 +237,29 @@ describe('customAction --method', () => {
         expect(customAction('User', 'importUsers', { withInput: true, returns: 'list', method: 'put' }).method).toBe('put');
     });
 
-    it('rejects a GET that takes a request body', () => {
-        expect(() => customAction('User', 'searchUsers', { withInput: true, returns: 'list', method: 'get' })).toThrow(
-            'A GET action cannot take a request body. Drop --with-input, or pick --method post, put, patch, or delete.'
-        );
+    it('takes the input of a GET from the query string, named query in every layer', () => {
+        const spec = customAction('Project', 'listProject', { withInput: true, returns: 'list', method: 'get' });
+        expect(spec.method).toBe('get');
+        expect(spec.schema).toBe('ListProject');
+        expect(spec.params).toBe('query: ListProject');
+        expect(spec.args).toBe('query');
+        expect(spec.status).toBe(200);
+        expect(takesQuery(spec)).toBe(true);
+        expect(isQueryAction(spec)).toBe(true);
+    });
+
+    it('puts the id ahead of the query on one record', () => {
+        const spec = customAction('Project', 'projectHistory', { withInput: true, returns: 'list', method: 'get', onRecord: true });
+        expect(spec.params).toBe('id: string, query: ProjectHistory');
+        expect(spec.args).toBe('id, query');
+    });
+
+    it('keeps a body for every other method, and for input without --method', () => {
+        expect(takesQuery(customAction('User', 'notifyUsers', { withInput: true, returns: 'void' }))).toBe(false);
+        expect(takesQuery(customAction('User', 'importUsers', { withInput: true, returns: 'list', method: 'put' }))).toBe(false);
+        expect(takesQuery(customAction('User', 'findActiveUsers', { withInput: false, returns: 'list' }))).toBe(false);
+        expect(takesQuery(standardAction('Create', 'User'))).toBe(false);
+        expect(customAction('User', 'notifyUsers', { withInput: true, returns: 'void' }).params).toBe('data: NotifyUsers');
     });
 });
 

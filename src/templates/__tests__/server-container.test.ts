@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
-import { renderServerContainer } from '../frontend/server-container';
+import { renderQueryContainer, renderServerContainer } from '../frontend/server-container';
+import { customAction } from '../actions';
 import { contextFor } from '../../__tests__/helpers/context';
 import { createTempProject, TempProject } from '../../__tests__/helpers/project';
 
@@ -72,5 +73,48 @@ export default async function ProjectContainer() {
         });
         expect(content).not.toContain("'use client'");
         expect(content).not.toContain('useList');
+    });
+});
+
+describe('renderQueryContainer', () => {
+    it('parses the page searchParams with the schema and passes the result to the service', () => {
+        const spec = customAction('Project', 'listProject', { withInput: true, returns: 'list', method: 'get' });
+        const content = renderQueryContainer(ctx(), spec, 'Project', containerFile('ListProjectContainer'), { component: true });
+        expect(content).toBe(`import { connection } from 'next/server';
+import Project from '../components/client/Project';
+import { ListProjectSchema } from '../schemas/ListProject.schema';
+import { ListProjectService } from '../server/services/ListProject.service';
+
+const service = new ListProjectService();
+
+type ListProjectContainerProps = {
+  /** The page's own searchParams prop, passed through as Next gives it. */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function ListProjectContainer({ searchParams }: ListProjectContainerProps) {
+  // Read on every request, not once at build time.
+  await connection();
+  const parsed = ListProjectSchema.safeParse(await searchParams);
+  if (!parsed.success) return <div>Invalid search parameters</div>;
+  const data = await service.handle(parsed.data);
+
+  return (
+    <div>
+      {data.map((item) => (
+        <Project key={item.id} {...item} />
+      ))}
+    </div>
+  );
+}
+`);
+    });
+
+    it('renders one record, without the component when it does not exist', () => {
+        const spec = customAction('Project', 'findProject', { withInput: true, returns: 'one', method: 'get' });
+        const content = renderQueryContainer(ctx(), spec, 'Project', containerFile('FindProjectContainer'), { component: false });
+        expect(content).not.toContain('components/');
+        expect(content).toContain('const data = await service.handle(parsed.data);');
+        expect(content).toContain('return <div>{data.id}</div>;');
     });
 });

@@ -6,7 +6,7 @@ import { RenderContext } from '../templates/context';
 import { ContainerWiring, renderContainer } from '../templates/frontend/container';
 import { renderServerContainer, ServerContainerWiring } from '../templates/frontend/server-container';
 import { fileExists, writeFileSafe } from '../utils/fs';
-import { ensureLayerDir, requireFeature } from './resolve';
+import { ensureLayerDir, openFeature } from './resolve';
 
 const HOOK_FILE = /^(.+)\.hook\.tsx?$/;
 const SERVICE_FILE = /^(.+)\.service\.ts$/;
@@ -115,7 +115,7 @@ function writeContainer(ctx: RenderContext, name: string, entity: string, filePa
  * neither rather than an import of a file that does not exist, and the hint names what the feature has.
  */
 export function makeContainer(feature: string, name: string, pascalName?: string): void {
-    const ctx = requireFeature(feature);
+    const ctx = openFeature(feature, 'make:container');
     assertLayer(ctx.profile, 'container', 'make:container');
 
     const filePath = path.join(ensureLayerDir(ctx, 'container'), `${name}.tsx`);
