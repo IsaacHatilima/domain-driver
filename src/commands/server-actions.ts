@@ -2,6 +2,7 @@ import * as path from 'path';
 import { ActionSpec } from '../templates/actions';
 import { RenderContext } from '../templates/context';
 import { CALLER_CHECK, renderServerAction } from '../templates/controllers/next-server-action';
+import { joinWithAnd } from '../utils/text';
 import { ensureLayerDir } from './resolve';
 import { writeIfAbsent } from './write';
 
@@ -18,12 +19,6 @@ export function usesServerActions(ctx: RenderContext, options: DeliveryOptions):
     return ctx.profile.serverActions && options.route !== true;
 }
 
-/** `a`, `a and b`, `a, b and c`. */
-function joinNames(names: readonly string[]): string {
-    if (names.length <= 1) return names.join('');
-    return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}
-
 function relative(file: string): string {
     return path.relative(process.cwd(), file).split(path.sep).join('/');
 }
@@ -32,7 +27,7 @@ function relative(file: string): string {
 export function hintCallerCheck(files: readonly string[]): void {
     if (files.length === 0) return;
     console.log(
-        `ℹ️  Server Actions fail closed until they check the caller. In ${joinNames(files.map(relative))}, ` +
+        `ℹ️  Server Actions fail closed until they check the caller. In ${joinWithAnd(files.map(relative))}, ` +
             `replace "${CALLER_CHECK}" with your session check (for example: const { user } = await requireSession();) ` +
             'and delete requireCaller().'
     );

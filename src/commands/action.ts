@@ -15,6 +15,7 @@ import { apiRouteDir } from '../utils/paths';
 import { controllerRenderer, controllerSuffix } from './controller-renderer';
 import { hintMissingEntity } from './entity';
 import { hintNestjsZod, hintReactQuery, hintRouteIgnored } from './hints';
+import { hintNestRoute } from './nest-routes';
 import { ensureQueryKeys, hookRenderer } from './hook-renderer';
 import { ensureLayerDir, requireFeature } from './resolve';
 import { DeliveryOptions, hintCallerCheck, hintServerRead, usesServerActions, writeServerActions } from './server-actions';
@@ -131,6 +132,7 @@ function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): 
     if (wroteController && line !== null) {
         console.log(`ℹ️  Add to ${ctx.feature}.routes.ts${routePlacement(spec)}: ${line}`);
     }
+    if (wroteController) hintNestRoute(ctx, spec, entity);
 
     return wroteController;
 }

@@ -27,3 +27,22 @@ export function toKebabCase(name: string): string {
         .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
         .toLowerCase();
 }
+
+/** English plural of a PascalCase or lower-case noun, enough to match `Project` with a `projects` folder. */
+export function pluralize(word: string): string {
+    if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
+    if (/(s|x|z|ch|sh)$/i.test(word)) return `${word}es`;
+    return `${word}s`;
+}
+
+/**
+ * A PascalCase name without its entity, plural or singular, as a whole word: `ArchiveProject` is
+ * `Archive` and `FindActiveProjects` is `FindActive`. A name without the entity is returned as is.
+ */
+export function stripEntity(name: string, entity: string): string {
+    for (const noun of [pluralize(entity), entity]) {
+        const match = new RegExp(`${noun}(?=[A-Z0-9]|$)`).exec(name);
+        if (match !== null) return `${name.slice(0, match.index)}${name.slice(match.index + noun.length)}`;
+    }
+    return name;
+}

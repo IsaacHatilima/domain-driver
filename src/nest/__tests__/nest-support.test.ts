@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { loadTypeScript } from '../typescript';
+import { findArea } from '../area';
 import { findRootModule } from '../root-module';
 import { createTempProject, TempProject } from '../../__tests__/helpers/project';
 
@@ -79,5 +80,25 @@ describe('findRootModule', () => {
 
     it('returns null when nothing is found', () => {
         expect(findRootModule(process.cwd(), 'src/features', null)).toBeNull();
+    });
+});
+
+describe('findArea', () => {
+    it('names the area when the feature root holds its own module', () => {
+        touch('src/projects/projects.module.ts');
+        expect(findArea(process.cwd(), 'src/projects')).toBe('projects');
+    });
+
+    it('is null for a feature root without that module', () => {
+        touch('src/app.module.ts');
+        expect(findArea(process.cwd(), 'src')).toBeNull();
+        expect(findArea(process.cwd(), 'src/projects')).toBeNull();
+    });
+
+    it('is the same module the feature module registers in', () => {
+        touch('src/app.module.ts');
+        touch('src/auth/auth.module.ts');
+        expect(findRootModule(process.cwd(), 'src/auth', null)).toBe(path.join(process.cwd(), 'src/auth/auth.module.ts'));
+        expect(findArea(process.cwd(), 'src/auth')).toBe('auth');
     });
 });

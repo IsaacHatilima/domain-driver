@@ -9,6 +9,7 @@ import { mkdirSafe } from '../utils/fs';
 import { apiRouteDir } from '../utils/paths';
 import { controllerRenderer, controllerSuffix } from './controller-renderer';
 import { hintRouteIgnored } from './hints';
+import { hintNestRoutes } from './nest-routes';
 import { ensureLayerDir, requireFeature } from './resolve';
 import { DeliveryOptions, hintCallerCheck, usesServerActions, writeServerActions } from './server-actions';
 import { writeSpecFiles, writeIfAbsent } from './write';
@@ -32,7 +33,10 @@ export function makeController(feature: string, name: string, options: DeliveryO
         render(ctx, spec, name, filePath)
     );
     const label = ctx.profile.name === 'tanstack-start' ? 'Server functions' : 'Controllers';
-    if (written > 0) console.log(`✅ ${label} for "${name}" created at ${dir}`);
+    if (written > 0) {
+        console.log(`✅ ${label} for "${name}" created at ${dir}`);
+        hintNestRoutes(ctx, standardActions(name), name);
+    }
 
     const wroteRoutes = ctx.profile.name === 'node' ? writeNodeRoutes(ctx, name) : false;
     return written > 0 || wroteRoutes;
