@@ -28,7 +28,10 @@ function existsInFeature(ctx: RenderContext, relative: string): boolean {
 }
 
 function wiringFor(ctx: RenderContext, entity: string): ContainerWiring {
-    return { listHook: existsInFeature(ctx, listHookPath(ctx, entity)), component: existsInFeature(ctx, componentPath(ctx, entity)) };
+    return {
+        listHook: existsInFeature(ctx, listHookPath(ctx, entity)),
+        component: existsInFeature(ctx, componentPath(ctx, entity)),
+    };
 }
 
 function serverWiringFor(ctx: RenderContext, entity: string): ServerContainerWiring {
