@@ -1,5 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { recordWrite } from '../format/written';
+import { replaceFile } from '../utils/fs';
 import { resolveImport } from '../utils/imports';
 import { ModuleProperty, registerInModule } from './register';
 import { loadTypeScript } from './typescript';
@@ -56,24 +58,17 @@ export function applyRegistrations(moduleFile: string, entries: readonly Entry[]
 }
 
 /**
- * Writes through a sibling temp file and renames. `writeFileSync` truncates before writing, so a
- * failure partway through would leave the file that boots the application cut in half.
- * A same-directory rename is atomic, which makes that outcome unreachable.
+ * Replaces the module atomically: a failure partway through must not leave the file that boots
+ * the application cut in half. The edit is recorded so the run formats the module afterwards.
  */
 function write(moduleFile: string, source: string): boolean {
-    const temporary = `${moduleFile}.domain-driver.tmp`;
     try {
-        fs.writeFileSync(temporary, source);
-        fs.renameSync(temporary, moduleFile);
-        return true;
+        replaceFile(moduleFile, source);
     } catch {
-        try {
-            fs.rmSync(temporary, { force: true });
-        } catch {
-            // The temp file is already gone, or unremovable for the same reason the write failed.
-        }
         return false;
     }
+    recordWrite(moduleFile);
+    return true;
 }
 
 function explain(moduleFile: string, entries: readonly Entry[], reason: string): void {

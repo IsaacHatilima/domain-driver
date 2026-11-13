@@ -4,6 +4,7 @@ import * as path from 'path';
 import { resetStackCache } from '../../stack/detect';
 import { resetAliasCache } from '../../utils/alias';
 import { resetHints } from '../../commands/hints';
+import { takeWrittenFiles } from '../../format/written';
 
 export interface TempProject {
     readonly dir: string;
@@ -14,6 +15,7 @@ export function resetCaches(): void {
     resetStackCache();
     resetAliasCache();
     resetHints();
+    takeWrittenFiles();
 }
 
 export function createTempProject(prefix: string): TempProject {
