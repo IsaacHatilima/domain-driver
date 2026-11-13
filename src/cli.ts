@@ -15,6 +15,8 @@ import { makeService } from './commands/service';
 import { parseFeatureTarget, parseTarget } from './commands/target';
 import { makeTypes } from './commands/types';
 import { runUpdate, defaultUpdateDeps, UpdateDeps } from './commands/update';
+import { formatWrittenFiles } from './format/format-files';
+import { takeWrittenFiles } from './format/written';
 import { describeStack, detectStack } from './stack/detect';
 import { STACK_NAMES } from './stack/types';
 import { actionCase } from './templates/actions';
@@ -39,17 +41,25 @@ const SKIP_DETECTION = new Set(['update']);
 const ACTION_FILES_HELP = `
 Files per stack:
   react, next-frontend   hook only; the service and repository live behind the API, outside the project
-  next-fullstack         hook, service, repository, route handler at app/api/<feature>/<slug>/route.ts
+  next-fullstack         service, repository; a write also gets server/actions/<Name>.action.ts, and a read
+                         is called from a Server Component. With --route: hook and route handler at
+                         app/api/<feature>/<slug>/route.ts instead
   tanstack-start         hook, service, repository, server function (<Name>.fn.ts)
   node                   service, repository, controller; prints the line for <feature>.routes.ts
   nest                   service, repository, controller, and a DTO with --with-input; registered in <feature>.module.ts
 --with-input also writes <Name>.schema.ts on every stack.`;
+
+const NO_FORMAT_HELP = "Leave the files as generated instead of formatting them with the project's Prettier";
+
+const ROUTE_HELP =
+    'next-fullstack: a route handler and fetch hook, for callers outside the app such as webhooks or a mobile client, instead of Server Actions';
 
 interface MakeActionOptions {
     readonly withInput: boolean;
     readonly returns: string;
     readonly method?: string;
     readonly onRecord: boolean;
+    readonly route: boolean;
 }
 
 export function defaultCliDeps(): CliDeps {
@@ -79,6 +89,7 @@ export function createProgram(deps: CliDeps): Command {
     let pendingNotice: Promise<string | null> = Promise.resolve(null);
 
     program.hook('preAction', (_thisCommand, actionCommand) => {
+        takeWrittenFiles();
         const name = actionCommand.name();
         if (shouldCheck(deps.env, deps.isTTY, name)) {
             pendingNotice = checkForUpdate({
@@ -98,7 +109,11 @@ export function createProgram(deps: CliDeps): Command {
         deps.log(describeStack(detectStack({ stack, root, autoRegister })));
     });
 
-    program.hook('postAction', async () => {
+    program.hook('postAction', async (_thisCommand, actionCommand) => {
+        const written = takeWrittenFiles();
+        if (actionCommand.opts<{ format?: boolean }>().format !== false) {
+            await formatWrittenFiles(process.cwd(), written);
+        }
         const notice = await pendingNotice;
         if (notice !== null) deps.log(notice);
     });
@@ -107,15 +122,18 @@ export function createProgram(deps: CliDeps): Command {
         .command('make:feature <target>')
         .description('Scaffold a feature folder for the detected stack (<feature> or <feature>/<Entity>)')
         .option('-a, --all', "Scaffold every layer's files, not just the folders")
-        .action(async (target: string, options: { all?: boolean }) => {
+        .option('--route', ROUTE_HELP, false)
+        .option('--no-format', NO_FORMAT_HELP)
+        .action(async (target: string, options: { all?: boolean; route: boolean }) => {
             const { feature, entity } = parseFeatureTarget(target);
-            await makeFeature(feature, options.all ?? false, entity ?? undefined);
+            await makeFeature(feature, options.all ?? false, entity ?? undefined, { route: options.route });
         });
 
     program
         .command('make:component <target>')
         .description('Scaffold a component inside an existing feature (<feature>/<Name>); react, next-frontend, next-fullstack, tanstack-start')
         .argument('[type]', 'Component type: client or server', 'client')
+        .option('--no-format', NO_FORMAT_HELP)
         .action((target: string, type: string) => {
             const { feature, name } = parseTarget(target);
             makeComponent(feature, name, parseComponentType(type));
@@ -124,8 +142,9 @@ export function createProgram(deps: CliDeps): Command {
     program
         .command('make:container <target>')
         .description(
-            'Scaffold a container (<feature>/<Entity>Container): it lists records through useList<Entity> when that hook exists, and calls no hook otherwise'
+            'Scaffold a container (<feature>/<Entity>Container): it lists records through useList<Entity> when that hook exists; on next-fullstack it is otherwise an async Server Component over List<Entity>Service'
         )
+        .option('--no-format', NO_FORMAT_HELP)
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             makeContainer(feature, name);
@@ -134,8 +153,9 @@ export function createProgram(deps: CliDeps): Command {
     program
         .command('make:hook <target>')
         .description(
-            'Scaffold one hook file per action, List to Delete, that calls the API (<feature>/<Entity>); react, next-frontend, next-fullstack, tanstack-start'
+            'Scaffold one hook file per action, List to Delete, that calls the API (<feature>/<Entity>); react, next-frontend, next-fullstack, tanstack-start (on next-fullstack, for a feature served by route handlers)'
         )
+        .option('--no-format', NO_FORMAT_HELP)
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             makeHook(feature, name);
@@ -146,6 +166,7 @@ export function createProgram(deps: CliDeps): Command {
         .description(
             'Scaffold one server-side service per action (<feature>/<Entity>); node, nest, next-fullstack, tanstack-start'
         )
+        .option('--no-format', NO_FORMAT_HELP)
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             const wrote = makeService(feature, name);
@@ -157,6 +178,7 @@ export function createProgram(deps: CliDeps): Command {
         .description(
             'Scaffold one server-side repository per action (<feature>/<Entity>); node, nest, next-fullstack, tanstack-start'
         )
+        .option('--no-format', NO_FORMAT_HELP)
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             const wrote = makeRepository(feature, name);
@@ -166,11 +188,13 @@ export function createProgram(deps: CliDeps): Command {
     program
         .command('make:controller <target>')
         .description(
-            'Scaffold one controller per action: Node and Nest controllers, Next route handlers, TanStack Start server functions (<feature>/<Entity>); not on react or next-frontend'
+            'Scaffold one controller per action: Node and Nest controllers, Next Server Actions for Create, Update and Delete (route handlers with --route), TanStack Start server functions (<feature>/<Entity>); not on react or next-frontend'
         )
-        .action((target: string) => {
+        .option('--route', ROUTE_HELP, false)
+        .option('--no-format', NO_FORMAT_HELP)
+        .action((target: string, options: { route: boolean }) => {
             const { feature, name } = parseTarget(target);
-            const wrote = makeController(feature, name);
+            const wrote = makeController(feature, name, { route: options.route });
             if (wrote) registerClasses(requireFeature(feature), 'controller', standardActionNames(name));
         });
 
@@ -181,7 +205,9 @@ export function createProgram(deps: CliDeps): Command {
         .option('--returns <kind>', 'list, one, or void', 'list')
         .option('--method <method>', 'get, post, put, patch, or delete (default: post with --with-input, otherwise get)')
         .option('--on-record', 'The action takes the record id: route /:id/<slug>, with id passed through every layer', false)
+        .option('--route', ROUTE_HELP, false)
         .addHelpText('after', ACTION_FILES_HELP)
+        .option('--no-format', NO_FORMAT_HELP)
         .action((target: string, action: string, options: MakeActionOptions) => {
             const { feature, name } = parseTarget(target);
             const returns = parseReturns(options.returns);
@@ -191,6 +217,7 @@ export function createProgram(deps: CliDeps): Command {
                 returns,
                 method,
                 onRecord: options.onRecord,
+                route: options.route,
             });
             if (wrote) {
                 const { pascal } = actionCase(action);
@@ -203,6 +230,7 @@ export function createProgram(deps: CliDeps): Command {
         .description(
             'Scaffold the entity schema and the Create and Update Zod schemas, plus Create and Update DTOs on Nest (<feature>/<Entity>)'
         )
+        .option('--no-format', NO_FORMAT_HELP)
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             makeSchema(feature, name);
@@ -213,6 +241,7 @@ export function createProgram(deps: CliDeps): Command {
         .description(
             'Scaffold the entity type, inferred with z.infer from the entity schema, which it writes when missing (<feature>/<Entity>)'
         )
+        .option('--no-format', NO_FORMAT_HELP)
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             makeTypes(feature, name);

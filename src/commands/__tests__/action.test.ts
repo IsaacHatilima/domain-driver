@@ -68,11 +68,11 @@ describe('make:action on one record', () => {
         );
     });
 
-    it('writes the route handler under [id] on next-fullstack', () => {
+    it('writes the route handler under [id] on next-fullstack with --route', () => {
         writePackageJson({ next: '1' });
         mkdir('app/api');
         mkdir('app/projects');
-        makeAction('projects', 'Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        makeAction('projects', 'Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true, route: true });
         expect(readProjectFile('app/api/projects/[id]/archive-project/route.ts')).toContain('export async function PATCH(');
         expect(projectFileExists('app/api/projects/:id')).toBe(false);
     });
@@ -196,11 +196,11 @@ describe('make:action on nest', () => {
 });
 
 describe('make:action on next-fullstack', () => {
-    it('writes the server side, a route handler at the slug and a hook that fetches it', () => {
+    it('writes the server side, a route handler at the slug and a hook that fetches it with --route', () => {
         writePackageJson({ next: '1' });
         mkdir('app/api');
         mkdir('app/users');
-        makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
+        makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list', route: true });
         expect(projectFileExists('app/users/server/services/FindActiveUsers.service.ts')).toBe(true);
         expect(projectFileExists('app/users/server/repositories/FindActiveUsers.repository.ts')).toBe(true);
         expect(readProjectFile('app/api/users/find-active-users/route.ts')).toContain('export async function GET(): Promise<NextResponse> {');

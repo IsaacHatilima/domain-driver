@@ -1,5 +1,6 @@
 import * as path from 'path';
 import { fileExists } from '../utils/fs';
+import { areaModulePath } from './area';
 
 /**
  * Probes the conventional locations for a Nest root module. A project that keeps it
@@ -18,7 +19,7 @@ export function findRootModule(cwd: string, featureRoot: string, configured: str
     // Most specific first: a monorepo's stray root-level src/app.module.ts must not win over
     // the one sitting beside the feature root it actually belongs to.
     const candidates = [
-        path.join(featureRoot, `${path.basename(featureRoot)}.module.ts`),
+        areaModulePath(featureRoot),
         path.join(path.dirname(featureRoot), 'app.module.ts'),
         'src/app.module.ts',
         'app.module.ts',

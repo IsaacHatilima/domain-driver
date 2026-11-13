@@ -22,6 +22,7 @@ const LAYER_COMMANDS: Readonly<Partial<Record<Layer, string>>> = Object.freeze({
     serverService: 'make:service',
     serverRepository: 'make:repository',
     controller: 'make:controller',
+    serverAction: 'make:controller',
     schema: 'make:schema',
     dto: 'make:schema',
     types: 'make:types',
@@ -43,6 +44,17 @@ export function layerDir(profile: StackProfile, layer: Layer): string {
     return dir;
 }
 
+/**
+ * The folders `make:feature` creates. A Server Actions feature served by route handlers instead
+ * (`--route`) has fetch hooks where its actions would be.
+ */
+export function featureFolders(profile: StackProfile, route: boolean): readonly string[] {
+    if (!profile.serverActions || !route) return profile.folders;
+    const actions = layerDir(profile, 'serverAction');
+    const hooks = layerDir(profile, 'hook');
+    return profile.folders.map((folder) => (folder === actions ? hooks : folder));
+}
+
 export function componentDir(profile: StackProfile, type: 'client' | 'server'): string {
     const base = layerDir(profile, 'component');
     return profile.serverComponents ? `${base}/${type}` : base;
@@ -61,7 +73,7 @@ export function availableCommands(profile: StackProfile): readonly string[] {
  */
 function hintFor(profile: StackProfile, layer: Layer): string {
     if (profile.name === 'next-frontend' && layer === 'controller') {
-        return ' Create an app/api directory or pass --stack next-fullstack to enable route handlers.';
+        return ' This app has no server side: add its database client (drizzle-orm, prisma, pg, ...), create app/api, or pass --stack next-fullstack.';
     }
     if (layer === 'serverService' || layer === 'serverRepository') {
         return ` Services and repositories live behind the API, and the ${profile.name} stack has no server side. Its hooks call the API directly.`;

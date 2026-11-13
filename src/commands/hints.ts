@@ -2,10 +2,19 @@ import { DetectedStack, StackProfile } from '../stack/types';
 
 let nestjsZodHinted = false;
 let reactQueryHinted = false;
+let routeIgnoredHinted = false;
 
 export function resetHints(): void {
     nestjsZodHinted = false;
     reactQueryHinted = false;
+    routeIgnoredHinted = false;
+}
+
+/** `--route` chooses between Server Actions and route handlers, a choice only next-fullstack has. */
+export function hintRouteIgnored(profile: StackProfile, route: boolean | undefined): void {
+    if (route !== true || profile.serverActions || routeIgnoredHinted) return;
+    routeIgnoredHinted = true;
+    console.log(`ℹ️  --route only changes next-fullstack output; the ${profile.name} stack is unchanged.`);
 }
 
 export function hintNestjsZod(stack: DetectedStack): void {

@@ -1,5 +1,6 @@
 import { ActionSpec, HttpMethod } from '../actions';
 import { RenderContext } from '../context';
+import { nestRoute, NestRoute } from './nest-route';
 import { serviceImport } from './shape';
 
 const METHOD_DECORATORS: Readonly<Record<HttpMethod, string>> = Object.freeze({
@@ -18,16 +19,15 @@ const NEST_DEFAULT_STATUS: Readonly<Record<HttpMethod, number>> = Object.freeze(
     delete: 200,
 });
 
-interface NestRoute {
+interface NestDecorator {
     readonly decorator: string;
     readonly commonImports: readonly string[];
 }
 
-function nestRoute(spec: ActionSpec): NestRoute {
-    const decoratorName = METHOD_DECORATORS[spec.method];
-    const routePath = spec.path === '/' ? '' : spec.path.slice(1);
-    const route = `@${decoratorName}(${routePath ? `'${routePath}'` : ''})`;
-    const needsHttpCode = spec.status !== NEST_DEFAULT_STATUS[spec.method];
+function nestDecorator(spec: ActionSpec, target: NestRoute): NestDecorator {
+    const decoratorName = METHOD_DECORATORS[target.method];
+    const route = `@${decoratorName}(${target.path ? `'${target.path}'` : ''})`;
+    const needsHttpCode = spec.status !== NEST_DEFAULT_STATUS[target.method];
     const decorator = needsHttpCode ? `${route}\n  @HttpCode(${spec.status})` : route;
     const commonImports = [
         'Controller',
@@ -45,7 +45,8 @@ export function renderNestController(
     entity: string,
     fromFile: string
 ): string {
-    const route = nestRoute(spec);
+    const target = nestRoute(ctx, spec, entity);
+    const route = nestDecorator(spec, target);
     const dto = spec.schema !== null ? `${spec.schema}Dto` : null;
 
     const imports = [
@@ -68,7 +69,7 @@ export function renderNestController(
 
     return `${imports}
 
-@Controller('${ctx.feature}')
+@Controller('${target.prefix}')
 export class ${spec.name}Controller {
   constructor(private readonly service: ${spec.name}Service) {}
 

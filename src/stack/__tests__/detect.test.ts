@@ -31,6 +31,61 @@ describe('detectStack rules', () => {
         expect(detectStack().stack).toBe('next-frontend');
     });
 
+    // A Server Actions app has no app/api, so a data dependency beside next marks it full-stack.
+    it.each([
+        'drizzle-orm',
+        '@prisma/client',
+        'prisma',
+        'pg',
+        'postgres',
+        'mysql2',
+        'better-sqlite3',
+        '@libsql/client',
+        'kysely',
+        'mongoose',
+    ])('detects next-fullstack from next beside %s, with no api directory', (dependency) => {
+        writePackageJson({ next: '1', react: '1', [dependency]: '1' });
+        expect(detectStack().stack).toBe('next-fullstack');
+    });
+
+    it('detects next-fullstack from a server data dependency in devDependencies', () => {
+        writePackageJson({ next: '1' }, { prisma: '1' });
+        expect(detectStack().stack).toBe('next-fullstack');
+    });
+
+    it.each(['app/projects/server', 'src/app/projects/server/actions', 'app/server', 'src/app/(admin)/billing/server'])(
+        'detects next-fullstack when %s exists',
+        (dir) => {
+            writePackageJson({ next: '1', react: '1' });
+            mkdir(dir);
+            expect(detectStack().stack).toBe('next-fullstack');
+        }
+    );
+
+    it('ignores a server folder outside the app directory', () => {
+        writePackageJson({ next: '1', react: '1' });
+        mkdir('src/server');
+        mkdir('app/projects/components');
+        expect(detectStack().stack).toBe('next-frontend');
+    });
+
+    it('ignores a file named server inside the app directory', () => {
+        writePackageJson({ next: '1', react: '1' });
+        mkdir('app/projects');
+        fs.writeFileSync('app/projects/server', '');
+        expect(detectStack().stack).toBe('next-frontend');
+    });
+
+    it('lets --stack override a data dependency', () => {
+        writePackageJson({ next: '1', 'drizzle-orm': '1' });
+        expect(detectStack({ stack: 'next-frontend' }).stack).toBe('next-frontend');
+    });
+
+    it('does not treat a data dependency without next as next-fullstack', () => {
+        writePackageJson({ react: '1', pg: '1' });
+        expect(detectStack().stack).toBe('react');
+    });
+
     it('detects react when react is present and next is absent', () => {
         writePackageJson({ react: '1' });
         expect(detectStack().stack).toBe('react');

@@ -82,10 +82,10 @@ describe('make:feature -a per stack', () => {
         assertImportsResolve('app', null);
     });
 
-    it('next-fullstack with relative imports', async () => {
+    it('next-fullstack with --route and relative imports', async () => {
         writePackageJson({ next: '1' });
         mkdir('app/api');
-        await makeFeature('coffee-type', true);
+        await makeFeature('coffee-type', true, undefined, { route: true });
         expect(listFiles('app')).toEqual(
             [
                 'api/coffee-type/[id]/route.ts',
@@ -115,13 +115,47 @@ describe('make:feature -a per stack', () => {
         assertImportsResolve('app', null);
     });
 
-    it('next-fullstack with a root alias under src/app', async () => {
+    it('next-fullstack with --route and a root alias under src/app', async () => {
         writePackageJson({ next: '1' });
         writeTsconfig({ '@/*': ['./src/*'] });
         mkdir('src/app/api');
-        await makeFeature('coffee-type', true);
+        await makeFeature('coffee-type', true, undefined, { route: true });
         const route = fs.readFileSync(path.join(process.cwd(), 'src/app/api/coffee-type/route.ts'), 'utf-8');
         expect(route).toContain("from '@/app/coffee-type/server/services/ListCoffeeType.service'");
+        assertImportsResolve('src/app', { prefix: '@/', root: 'src' });
+    });
+
+    it('next-fullstack with Server Actions', async () => {
+        writePackageJson({ next: '1' });
+        mkdir('app/api');
+        await makeFeature('coffee-type', true);
+        expect(listFiles('app')).toEqual(
+            [
+                'coffee-type/components/client/CoffeeType.tsx',
+                'coffee-type/containers/CoffeeTypeContainer.tsx',
+                'coffee-type/page.tsx',
+                ...schemas('coffee-type/schemas'),
+                ...['Create', 'Update', 'Delete'].map((action) => `coffee-type/server/actions/${action}CoffeeType.action.ts`),
+                ...perAction('coffee-type/server/repositories', 'repository'),
+                ...perAction('coffee-type/server/services', 'service'),
+                'coffee-type/types/CoffeeType.types.ts',
+            ].sort()
+        );
+        // page -> Server Component container -> service -> repository, and form -> Server Action -> service.
+        expect(readProjectFile('app/coffee-type/containers/CoffeeTypeContainer.tsx')).toContain(
+            "import { ListCoffeeTypeService } from '../server/services/ListCoffeeType.service';"
+        );
+        assertImportsResolve('app', null);
+    });
+
+    it('next-fullstack with Server Actions and a root alias under src/app', async () => {
+        writePackageJson({ next: '1', 'drizzle-orm': '1' });
+        writeTsconfig({ '@/*': ['./src/*'] });
+        mkdir('src/app');
+        await makeFeature('coffee-type', true);
+        const action = readProjectFile('src/app/coffee-type/server/actions/CreateCoffeeType.action.ts');
+        expect(action).toContain("from '@/app/coffee-type/server/services/CreateCoffeeType.service'");
+        expect(action).toContain("revalidatePath('/coffee-type');");
         assertImportsResolve('src/app', { prefix: '@/', root: 'src' });
     });
 
@@ -247,10 +281,12 @@ describe('make:action after make:feature -a per stack', () => {
         assertImportsResolve('src', null);
     });
 
-    it('next-fullstack', async () => {
+    it('next-fullstack with --route', async () => {
         writePackageJson({ next: '1' });
         mkdir('app/api');
-        await scaffold();
+        await makeFeature('coffee-type', true, 'CoffeeType', { route: true });
+        makeAction('coffee-type', 'CoffeeType', 'findActiveCoffeeTypes', { withInput: false, returns: 'list', route: true });
+        makeAction('coffee-type', 'CoffeeType', 'archiveCoffeeType', { withInput: true, returns: 'one', route: true });
         const files = listFiles('app');
         expect(files).toContain('api/coffee-type/find-active-coffee-types/route.ts');
         expect(files).toContain('api/coffee-type/archive-coffee-type/route.ts');
@@ -262,6 +298,20 @@ describe('make:action after make:feature -a per stack', () => {
         expect(readProjectFile('app/coffee-type/hooks/FindActiveCoffeeTypes.hook.ts')).toContain(
             "fetch('/api/coffee-type/find-active-coffee-types', { signal: controller.signal })"
         );
+        assertImportsResolve('app', null);
+    });
+
+    it('next-fullstack with Server Actions', async () => {
+        writePackageJson({ next: '1' });
+        mkdir('app/api');
+        await scaffold();
+        const files = listFiles('app');
+        // A write is a Server Action; a read is only the service and repository a Server Component calls.
+        expect(files).toContain('coffee-type/server/actions/ArchiveCoffeeType.action.ts');
+        expect(files).toContain('coffee-type/server/services/FindActiveCoffeeTypes.service.ts');
+        expect(files).not.toContain('coffee-type/server/actions/FindActiveCoffeeTypes.action.ts');
+        expect(files.some((file) => file.startsWith('api/'))).toBe(false);
+        expect(files.some((file) => file.includes('/hooks/'))).toBe(false);
         assertImportsResolve('app', null);
     });
 
