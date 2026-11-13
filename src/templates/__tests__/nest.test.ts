@@ -94,6 +94,14 @@ export class CoffeeTypeModule {}
 `);
     });
 
+    it('names the module after the feature folder, not the entity', () => {
+        const flow = contextFor('nest', 'create-project');
+        const content = renderModule(flow, 'Project', path.join(flow.featureDir, 'create-project.module.ts'), true);
+        expect(content).toContain('export class CreateProjectModule {}');
+        expect(content).not.toContain('class ProjectModule');
+        expect(content).toContain("import { ListProjectController } from './controllers/ListProject.controller';");
+    });
+
     it('registers five controllers and ten providers when populated', () => {
         const content = renderModule(ctx(), 'CoffeeType', moduleFile(), true);
         expect(content).toContain("import { ListCoffeeTypeController } from './controllers/ListCoffeeType.controller';");

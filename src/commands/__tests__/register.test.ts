@@ -53,8 +53,22 @@ describe('nest registration commands', () => {
         await makeFeature('assets', false, 'Asset');
 
         const root = read('src/app.module.ts');
-        expect(root).toContain("import { AssetModule } from './assets/assets.module';");
-        expect(root).toContain('imports: [\n    AssetModule,\n  ],');
+        expect(root).toContain("import { AssetsModule } from './assets/assets.module';");
+        expect(root).toContain('imports: [\n    AssetsModule,\n  ],');
+    });
+
+    it('gives flow features of one entity distinct module names, and registers each', async () => {
+        await nestProject();
+        await makeFeature('create-project', false, 'Project');
+        await makeFeature('archive-project', true, 'Project');
+
+        expect(read('src/create-project/create-project.module.ts')).toContain('export class CreateProjectModule {}');
+        expect(read('src/archive-project/archive-project.module.ts')).toContain('export class ArchiveProjectModule {}');
+        const root = read('src/app.module.ts');
+        expect(root).toContain("import { CreateProjectModule } from './create-project/create-project.module';");
+        expect(root).toContain("import { ArchiveProjectModule } from './archive-project/archive-project.module';");
+        expect(root).toContain('imports: [\n    CreateProjectModule,\n    ArchiveProjectModule,\n  ],');
+        expect(root).not.toContain('ProjectModule,\n    ProjectModule');
     });
 
     it('registers generated controllers in the feature module', async () => {
@@ -97,7 +111,18 @@ describe('nest registration commands', () => {
         expect(hint).not.toContain('ShowProjectController');
     });
 
-    it('says so rather than going silent when the feature module is missing', async () => {
+    it('names the folder-named module when there is no root module to register it in', async () => {
+        writePackageJson({ '@nestjs/core': '1' });
+        linkTypeScript();
+        const logged: string[] = [];
+        vi.mocked(console.log).mockImplementation((line: unknown) => {
+            logged.push(String(line));
+        });
+        await makeFeature('create-project', false, 'Project');
+        expect(logged.join('\n')).toContain('No root module found, so CreateProjectModule was not registered.');
+    });
+
+        it('says so rather than going silent when the feature module is missing', async () => {
         await nestProject();
         await makeFeature('assets', false, 'Asset');
         makeController('assets', 'Asset');
@@ -117,7 +142,7 @@ describe('nest registration commands', () => {
         await makeFeature('assets', false, 'Asset');
         const ctx = requireFeature('assets');
 
-        expect(() => registerFeatureModule(ctx, 'Asset')).not.toThrow();
+        expect(() => registerFeatureModule(ctx)).not.toThrow();
         expect(() => registerClasses(ctx, 'controller', ['ListAsset'])).not.toThrow();
         expect(fs.existsSync(path.join(process.cwd(), 'src', 'app.module.ts'))).toBe(false);
     });

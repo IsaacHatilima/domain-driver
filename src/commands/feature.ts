@@ -30,7 +30,7 @@ export async function makeFeature(name: string, all: boolean = false, entityName
 
     if (all) scaffoldLayers(ctx, entity);
     writeEntryFile(ctx, entity, all);
-    registerFeatureModule(ctx, entity);
+    registerFeatureModule(ctx);
 
     if (all) console.log(`✅ All files scaffolded for "${name}"`);
 }
