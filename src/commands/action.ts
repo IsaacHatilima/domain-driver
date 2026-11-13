@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { hasLayer, layerDir } from '../stack/registry';
-import { ActionSpec, customAction, CustomActionOptions, RETURN_KINDS, ReturnKind } from '../templates/actions';
+import { ActionSpec, customAction, CustomActionOptions, HTTP_METHODS, HttpMethod, RETURN_KINDS, ReturnKind } from '../templates/actions';
 import { renderServerRepository } from '../templates/backend/server-repository';
 import { RenderContext } from '../templates/context';
 import { renderActionRoute } from '../templates/controllers/next-action-route';
@@ -22,6 +22,12 @@ export function parseReturns(value: string): ReturnKind {
     throw new Error(`Invalid --returns "${value}". Use list, one, or void.`);
 }
 
+export function parseMethod(value: string): HttpMethod {
+    const method = value.toLowerCase();
+    if ((HTTP_METHODS as readonly string[]).includes(method)) return method as HttpMethod;
+    throw new Error(`Invalid --method "${value}". Use get, post, put, patch, or delete.`);
+}
+
 export function makeAction(
     feature: string,
     entity: string,
@@ -29,7 +35,7 @@ export function makeAction(
     options: CustomActionOptions
 ): boolean {
     const ctx = requireFeature(feature);
-    const spec = customAction(entity, actionName, options);
+    const spec = customAction(entity, actionName, options, feature);
 
     hintMissingTypes(ctx, entity);
     let wroteAny = false;
@@ -82,9 +88,14 @@ function writeHook(ctx: RenderContext, spec: ActionSpec, entity: string): boolea
     return wrote;
 }
 
+/** The action's folder under `app/api/<feature>`: Next names a dynamic segment `[id]`, not `:id`. */
+function nextRouteSegments(spec: ActionSpec): string {
+    return spec.path.slice(1).replace(':id', '[id]');
+}
+
 function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): boolean {
     if (ctx.profile.name === 'next-fullstack') {
-        const routeDir = path.join(apiRouteDir(ctx.stack, ctx.feature), spec.path.slice(1));
+        const routeDir = path.join(apiRouteDir(ctx.stack, ctx.feature), nextRouteSegments(spec));
         mkdirSafe(routeDir);
         const routeFile = path.join(routeDir, 'route.ts');
         return writeIfAbsent(routeFile, () => renderActionRoute(ctx, spec, routeFile));

@@ -43,6 +43,14 @@ describe('renderServerFn', () => {
         expect(content).toContain("createServerFn({ method: 'POST' })");
     });
 
+    it('posts a PATCH on one record and validates the id', () => {
+        const spec = customAction('Cat', 'archiveCat', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        const content = renderServerFn(ctx, spec, 'Cat', file('ArchiveCat'));
+        expect(content).toContain("export const archiveCat = createServerFn({ method: 'POST' })");
+        expect(content).toContain('.validator(z.string())');
+        expect(content).toContain('.handler(async ({ data }) => service.handle(data));');
+    });
+
     it('handles a custom GET action with no input', () => {
         const spec = customAction('Cat', 'findActiveCats', { withInput: false, returns: 'list' });
         const content = renderServerFn(ctx, spec, 'Cat', file('FindActiveCats'));

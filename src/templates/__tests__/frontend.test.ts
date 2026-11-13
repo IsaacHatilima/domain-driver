@@ -195,6 +195,41 @@ describe('renderHook', () => {
         expect(content).not.toContain('useState<void');
     });
 
+    it('renders a non-GET action on one record as a mutation that sends the id in the path', () => {
+        const ctx = contextFor('react', 'projects');
+        const spec = customAction('Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, 'hooks/ArchiveProject.hook.ts'));
+
+        expect(content).toContain('export function useArchiveProject(options: { onSuccess?: (result: Project) => void } = {})');
+        expect(content).toContain('const archiveProject = useCallback(async (id: string) => {');
+        expect(content).toContain(`      const response = await fetch(\`/api/projects/\${id}/archive-project\`, {
+        method: 'PATCH',
+      });`);
+        expect(content).toContain('return { archiveProject, loading, error };');
+        expect(content).not.toContain('useEffect');
+    });
+
+    it('renders a non-GET action without input as a mutation, never a query that fires on mount', () => {
+        const ctx = contextFor('react', 'projects');
+        const spec = customAction('Project', 'syncProjects', { withInput: false, returns: 'list', method: 'post' });
+        const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, 'hooks/SyncProjects.hook.ts'));
+
+        expect(content).toContain('const syncProjects = useCallback(async () => {');
+        expect(content).toContain("method: 'POST',");
+        expect(content).not.toContain('useEffect');
+    });
+
+    it('renders a GET on one record as a query keyed on the id', () => {
+        const ctx = contextFor('react', 'projects');
+        const spec = customAction('Project', 'projectHistory', { withInput: false, returns: 'list', onRecord: true });
+        const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, 'hooks/ProjectHistory.hook.ts'));
+
+        expect(content).toContain('export function useProjectHistory(id: string)');
+        expect(content).toContain('const request = `${id}:${attempt}`;');
+        expect(content).toContain('fetch(`/api/projects/${id}/project-history`, { signal: controller.signal })');
+        expect(content).toContain('}, [id, request]);');
+    });
+
     it('omits the client directive on Next, so the TS plugin does not read the hook as a component', () => {
         const ctx = contextFor('next-frontend', 'cat');
         const content = renderHook(ctx, standardAction('List', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/ListCat.hook.ts'));

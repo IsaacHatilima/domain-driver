@@ -1,7 +1,7 @@
 // src/cli.ts
 import { Command } from 'commander';
 import * as os from 'os';
-import { makeAction, parseReturns } from './commands/action';
+import { makeAction, parseMethod, parseReturns } from './commands/action';
 import { makeComponent, parseComponentType } from './commands/component';
 import { makeContainer } from './commands/container';
 import { makeController } from './commands/controller';
@@ -34,6 +34,13 @@ export interface CliDeps {
 }
 
 const SKIP_DETECTION = new Set(['update']);
+
+interface MakeActionOptions {
+    readonly withInput: boolean;
+    readonly returns: string;
+    readonly method?: string;
+    readonly onRecord: boolean;
+}
 
 export function defaultCliDeps(): CliDeps {
     return {
@@ -152,10 +159,18 @@ export function createProgram(deps: CliDeps): Command {
         .description('Scaffold a bespoke action as its own service, repository, and controller (<feature>/<Entity> <actionName>)')
         .option('--with-input', 'The action takes a request body validated by a Zod schema', false)
         .option('--returns <kind>', 'list, one, or void', 'list')
-        .action((target: string, action: string, options: { withInput: boolean; returns: string }) => {
+        .option('--method <method>', 'get, post, put, patch, or delete (default: post with --with-input, otherwise get)')
+        .option('--on-record', 'The action takes the record id: route /:id/<slug>, with id passed through every layer', false)
+        .action((target: string, action: string, options: MakeActionOptions) => {
             const { feature, name } = parseTarget(target);
             const returns = parseReturns(options.returns);
-            const wrote = makeAction(feature, name, action, { withInput: options.withInput, returns });
+            const method = options.method === undefined ? undefined : parseMethod(options.method);
+            const wrote = makeAction(feature, name, action, {
+                withInput: options.withInput,
+                returns,
+                method,
+                onRecord: options.onRecord,
+            });
             if (wrote) {
                 const { pascal } = actionCase(action);
                 registerCustomAction(requireFeature(feature), pascal, name);

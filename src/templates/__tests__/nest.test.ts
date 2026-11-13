@@ -132,4 +132,52 @@ describe('renderNestController for custom actions', () => {
         expect(content).toContain("@Get('purge')\n  @HttpCode(204)");
         expect(content).not.toContain('types/CoffeeType.types');
     });
+
+    it('PATCH on one record takes the id from the path', () => {
+        const spec = customAction('CoffeeType', 'archiveCoffeeType', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        const content = renderNestController(ctx(), spec, 'CoffeeType', controllerFile('Archive'));
+        expect(content).toContain("import { Controller, Param, Patch } from '@nestjs/common';");
+        expect(content).toContain("@Controller('coffee-type')");
+        expect(content).toContain("@Patch(':id/archive-coffee-type')\n  handle(@Param('id') id: string): Promise<CoffeeType> {");
+        expect(content).toContain('return this.service.handle(id);');
+        expect(content).not.toContain('HttpCode');
+    });
+
+    it('PUT on one record takes the id and the body', () => {
+        const spec = customAction('CoffeeType', 'renameCoffeeType', { withInput: true, returns: 'one', method: 'put', onRecord: true });
+        const content = renderNestController(ctx(), spec, 'CoffeeType', controllerFile('Rename'));
+        expect(content).toContain("@Put(':id/rename-coffee-type')");
+        expect(content).toContain(
+            "handle(@Param('id') id: string, @Body() body: RenameCoffeeTypeDto): Promise<CoffeeType> {"
+        );
+        expect(content).toContain('return this.service.handle(id, body);');
+    });
+
+    it('DELETE on one record returning void sets 204', () => {
+        const spec = customAction('CoffeeType', 'purgeCoffeeType', { withInput: false, returns: 'void', method: 'delete', onRecord: true });
+        const content = renderNestController(ctx(), spec, 'CoffeeType', controllerFile('Purge'));
+        expect(content).toContain("@Delete(':id/purge-coffee-type')\n  @HttpCode(204)");
+    });
+});
+
+describe('renderNestController in a feature that is the action itself', () => {
+    const flow = () => contextFor('nest', 'create-project');
+    const file = (name: string): string => path.join(flow().featureDir, 'controllers', `${name}.controller.ts`);
+
+    it('does not repeat the feature in the route, and a create answers 201', () => {
+        const spec = customAction('Project', 'createProject', { withInput: true, returns: 'one' }, 'create-project');
+        const content = renderNestController(flow(), spec, 'Project', file('CreateProject'));
+        expect(content).toContain("@Controller('create-project')");
+        expect(content).toContain('@Post()\n  handle(@Body() body: CreateProjectDto): Promise<Project> {');
+        expect(content).not.toContain("@Post('create-project')");
+        expect(content).not.toContain('HttpCode');
+    });
+
+    it('routes a record action at :id', () => {
+        const archive = contextFor('nest', 'archive-project');
+        const spec = customAction('Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true }, 'archive-project');
+        const content = renderNestController(archive, spec, 'Project', path.join(archive.featureDir, 'controllers', 'ArchiveProject.controller.ts'));
+        expect(content).toContain("@Controller('archive-project')");
+        expect(content).toContain("@Patch(':id')");
+    });
 });

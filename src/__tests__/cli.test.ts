@@ -75,6 +75,33 @@ describe('createProgram', () => {
         expect(lines).toEqual([STACK_LINE]);
     });
 
+    it('make:action passes --method and --on-record through', async () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/projects');
+        await run(cliDeps({ isTTY: false }), [
+            'make:action',
+            'projects/Project',
+            'archiveProject',
+            '--on-record',
+            '--method',
+            'patch',
+            '--returns',
+            'one',
+        ]);
+        const hook = fs.readFileSync(path.join(project.dir, 'src/features/projects/hooks/ArchiveProject.hook.ts'), 'utf-8');
+        expect(hook).toContain('const archiveProject = useCallback(async (id: string) => {');
+        expect(hook).toContain("method: 'PATCH',");
+    });
+
+    it('make:action rejects an unknown --method', async () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/projects');
+        await expect(
+            run(cliDeps({ isTTY: false }), ['make:action', 'projects/Project', 'archiveProject', '--method', 'fetch'])
+        ).rejects.toThrow('Invalid --method "fetch". Use get, post, put, patch, or delete.');
+        expect(projectFileExists('src/features/projects/hooks')).toBe(false);
+    });
+
     it('has no init command and writes no agent files', async () => {
         writePackageJson({ express: '1' });
         const program = createProgram(cliDeps()).exitOverride().configureOutput({ writeErr: () => undefined });

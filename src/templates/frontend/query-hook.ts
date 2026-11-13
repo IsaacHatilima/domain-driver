@@ -22,19 +22,18 @@ import { ${keysConstant(ctx.feature)} } from '${keysPath}';
 }
 
 /**
- * A custom GET action (e.g. `FindActiveCats`) has `usesId: false`, just like List. Testing
- * only `usesId` would give it the exact same key as List's `all` — one cache entry shared by
- * two hooks, with whichever observer mounts last winning the `queryFn`. `spec.path === '/'`
- * is what actually distinguishes List from a custom action, so it is the second branch.
- * The `[...all, name]` spread (rather than a bare `[feature, name]`) is deliberate: TanStack
- * Query invalidates by key prefix, so a Create mutation invalidating `keys.all` still
- * invalidates this custom list for free.
+ * List keys on `all` and Show on `detail(id)`. A custom GET action (e.g. `FindActiveCats`, or
+ * `CatHistory` on one record) must not reuse either: one cache entry shared by two hooks lets
+ * whichever observer mounts last win the `queryFn`. Neither `usesId` nor the path tells them
+ * apart, because a custom action routed at its feature's root has List's path, so the spec's
+ * `custom` flag decides. The `[...base, name]` spread (rather than a bare `[feature, name]`) is
+ * deliberate: TanStack Query invalidates by key prefix, so a mutation invalidating `keys.all`
+ * or `keys.detail(id)` still invalidates this custom query for free.
  */
 function queryKey(ctx: RenderContext, spec: ActionSpec): string {
     const keys = keysConstant(ctx.feature);
-    if (spec.usesId) return `${keys}.detail(id)`;
-    if (spec.path === '/') return `${keys}.all`;
-    return `[...${keys}.all, '${spec.name}']`;
+    const base = spec.usesId ? `${keys}.detail(id)` : `${keys}.all`;
+    return spec.custom ? `[...${base}, '${spec.name}']` : base;
 }
 
 function renderQuery(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {

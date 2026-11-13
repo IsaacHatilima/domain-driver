@@ -78,6 +78,35 @@ describe('renderQueryHook', () => {
         expect(customContent).not.toContain('queryKey: catKeys.detail(id),');
     });
 
+    it('keys a GET on one record under its detail key, apart from Show', () => {
+        const spec = customAction('Cat', 'catHistory', { withInput: false, returns: 'list', onRecord: true });
+        const content = renderQueryHook(ctx, spec, 'Cat', file('CatHistory'));
+
+        expect(content).toContain('export function useCatHistory(id: string)');
+        expect(content).toContain("queryKey: [...catKeys.detail(id), 'CatHistory'],");
+        expect(content).not.toContain('queryKey: catKeys.detail(id),');
+    });
+
+    it('keeps a distinct key for a custom GET routed at the feature root', () => {
+        const flow = contextFor('tanstack-start', 'active-cats');
+        const spec = customAction('Cat', 'activeCats', { withInput: false, returns: 'list' }, 'active-cats');
+        const content = renderQueryHook(flow, spec, 'Cat', path.join(flow.featureDir, '-hooks/ActiveCats.hook.ts'));
+
+        expect(spec.path).toBe('/');
+        expect(content).toContain("queryKey: [...activeCatsKeys.all, 'ActiveCats'],");
+    });
+
+    it('renders a PATCH on one record as a mutation that invalidates the record', () => {
+        const spec = customAction('Cat', 'archiveCat', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        const content = renderQueryHook(ctx, spec, 'Cat', file('ArchiveCat'));
+
+        expect(content).toContain('export function useArchiveCat() {');
+        expect(content).toContain('mutationFn: (id: string)');
+        expect(content).toContain('archiveCat({ data: id })');
+        expect(content).toContain('onSuccess: (_result, id) => {');
+        expect(content).toContain('void queryClient.invalidateQueries({ queryKey: catKeys.detail(id) });');
+    });
+
     it('renders a void custom action as a mutation, not an auto-firing query', () => {
         const spec = customAction('Cat', 'purgeCats', { withInput: false, returns: 'void' });
         const content = renderQueryHook(ctx, spec, 'Cat', file('PurgeCats'));

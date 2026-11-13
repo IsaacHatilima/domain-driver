@@ -1,15 +1,18 @@
 import { ActionSpec } from '../actions';
 import { RenderContext } from '../context';
-import { schemaImport, serviceImport } from './shape';
+import { callArgs, schemaImport, serviceImport } from './shape';
 
-export function renderActionRoute(ctx: RenderContext, spec: ActionSpec, fromFile: string): string {
-    const imports = [
-        "import { NextResponse } from 'next/server';",
-        ...(spec.schema !== null ? [schemaImport(ctx, fromFile, spec.schema)] : []),
-        serviceImport(ctx, fromFile, spec),
-    ].join('\n');
-    const method = spec.method.toUpperCase();
-    const requestParam = spec.schema !== null ? 'request: Request' : '';
+const ROUTE_CONTEXT = 'type RouteContext = { params: Promise<{ id: string }> };';
+
+/** The handler's parameters: the request when there is a body, and the route context on a record. */
+function parameters(spec: ActionSpec): string {
+    const request = spec.schema !== null ? 'request: Request' : '_request: Request';
+    if (spec.usesId) return `${request}, { params }: RouteContext`;
+    return spec.schema !== null ? request : '';
+}
+
+function body(spec: ActionSpec): string {
+    const id = spec.usesId ? '  const { id } = await params;\n' : '';
     const validate =
         spec.schema !== null
             ? `  const parsed = ${spec.schema}Schema.safeParse(await request.json());
@@ -18,26 +21,31 @@ export function renderActionRoute(ctx: RenderContext, spec: ActionSpec, fromFile
   }
 `
             : '';
-    const args = spec.schema !== null ? 'parsed.data' : '';
-
+    const args = callArgs(spec, 'id', 'parsed.data');
     if (spec.status === 204) {
-        return `${imports}
-
-const service = new ${spec.name}Service();
-
-export async function ${method}(${requestParam}): Promise<Response> {
-${validate}  await service.handle(${args});
-  return new Response(null, { status: 204 });
-}
-`;
+        return `${id}${validate}  await service.handle(${args});
+  return new Response(null, { status: 204 });`;
     }
+    const status = spec.status === 200 ? '' : `, { status: ${spec.status} }`;
+    return `${id}${validate}  return NextResponse.json(await service.handle(${args})${status});`;
+}
+
+export function renderActionRoute(ctx: RenderContext, spec: ActionSpec, fromFile: string): string {
+    const imports = [
+        "import { NextResponse } from 'next/server';",
+        ...(spec.schema !== null ? [schemaImport(ctx, fromFile, spec.schema)] : []),
+        serviceImport(ctx, fromFile, spec),
+    ].join('\n');
+    const method = spec.method.toUpperCase();
+    const returns = spec.status === 204 ? 'Promise<Response>' : 'Promise<NextResponse>';
+    const routeContext = spec.usesId ? `\n${ROUTE_CONTEXT}\n` : '';
 
     return `${imports}
 
 const service = new ${spec.name}Service();
-
-export async function ${method}(${requestParam}): Promise<NextResponse> {
-${validate}  return NextResponse.json(await service.handle(${args}));
+${routeContext}
+export async function ${method}(${parameters(spec)}): ${returns} {
+${body(spec)}
 }
 `;
 }
