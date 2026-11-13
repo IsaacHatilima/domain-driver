@@ -68,7 +68,7 @@ describe('on next-frontend', () => {
         expect(content).toContain("import type { Cat } from '../types/Cat.types';");
         expect(content).toContain("fetch('/api/cat', { signal: controller.signal })");
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat list');");
-        expect(content).toContain('return (await response.json()) as Cat[];');
+        expect(content).toContain('return z.array(CatSchema).parse(await response.json());');
         expect(content).not.toContain('Service');
     });
 
@@ -95,7 +95,7 @@ describe('on next-frontend', () => {
         expect(content).toContain("headers: { 'Content-Type': 'application/json' },");
         expect(content).toContain('body: JSON.stringify(data),');
         expect(content).toContain("if (!response.ok) throw new Error('Failed to create Cat');");
-        expect(content).toContain('const result = (await response.json()) as Cat;');
+        expect(content).toContain('const result = CatSchema.parse(await response.json());');
         expect(content).toContain('onSuccess?.(result);');
         expect(content).not.toContain('Service');
 
@@ -104,6 +104,12 @@ describe('on next-frontend', () => {
         expect(remove).toContain("method: 'DELETE',");
         expect(remove).toContain('onSuccess?.();');
         expect(remove).not.toContain('Service');
+    });
+
+    it('make:hook points at make:types when the entity schema the hooks parse with is missing', () => {
+        makeHook('cat', 'Cat');
+        const logged = vi.mocked(console.log).mock.calls.map(([message]) => String(message));
+        expect(logged).toContain('ℹ️  types/Cat.types.ts and schemas/Cat.schema.ts not found. Run: domain-driver make:types cat/Cat');
     });
 
     it('make:hook skips existing files without throwing', () => {
@@ -152,7 +158,7 @@ describe('on react', () => {
         const list = readProjectFile('src/features/cat/hooks/ListCat.hook.ts');
         expect(list).toContain('export function useListCat()');
         expect(list).toContain("fetch('/api/cat', { signal: controller.signal })");
-        expect(list).toContain('return (await response.json()) as Cat[];');
+        expect(list).toContain('return z.array(CatSchema).parse(await response.json());');
         expect(list).not.toContain('Service');
 
         const create = readProjectFile('src/features/cat/hooks/CreateCat.hook.ts');

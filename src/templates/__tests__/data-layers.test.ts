@@ -152,7 +152,7 @@ describe('custom action specs through the data templates', () => {
         expect(content).toContain('data: User[]; error: string | null };');
         expect(content).toContain("fetch('/api/users/find-active-users', { signal: controller.signal })");
         expect(content).toContain("if (!response.ok) throw new Error('Failed to findActiveUsers User');");
-        expect(content).toContain('return (await response.json()) as User[];');
+        expect(content).toContain('return z.array(UserSchema).parse(await response.json());');
     });
 
     it('the hook POSTs a body and reads nothing back for void', () => {
@@ -167,6 +167,7 @@ describe('custom action specs through the data templates', () => {
         expect(content).toContain('body: JSON.stringify(data),');
         expect(content).toContain('onSuccess?.();');
         expect(content).not.toContain('response.json()');
+        expect(content).not.toContain('UserSchema');
     });
 
     it('server repository and service use the action name without the entity', () => {
@@ -192,7 +193,7 @@ describe('serverFnCall', () => {
     it('is called from the hook, with no repository and no fetch in between', () => {
         const content = renderQueryHook(ctx, standardAction('List', 'Cat'), 'Cat', file('ListCat'));
         expect(content).toContain("import { listCat } from '../-server/functions/ListCat.fn';");
-        expect(content).toContain('=> listCat(),');
+        expect(content).toContain('parse(await listCat()),');
         expect(content).not.toContain('fetch(');
         expect(content).not.toContain('Service');
         expect(content).not.toContain('Repository');

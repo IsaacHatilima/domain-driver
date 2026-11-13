@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
 import { makeAction, parseMethod, parseReturns } from '../action';
 import { makeTypes } from '../types';
 import {
@@ -126,11 +128,20 @@ describe('make:action on node with express', () => {
 
     it('hints when the types file is missing and stays quiet when it exists', () => {
         makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
-        expect(logged()).toContain('ℹ️  types/User.types.ts not found. Run: domain-driver make:types users/User');
+        expect(logged()).toContain(
+            'ℹ️  types/User.types.ts and schemas/User.schema.ts not found. Run: domain-driver make:types users/User'
+        );
         vi.mocked(console.log).mockClear();
         makeTypes('users', 'User');
         makeAction('users', 'User', 'countUsers', { withInput: false, returns: 'one' });
-        expect(logged().some((line) => line.includes('types/User.types.ts not found'))).toBe(false);
+        expect(logged().some((line) => line.includes('not found'))).toBe(false);
+    });
+
+    it('names only the entity schema when the types file predates it', () => {
+        mkdir('src/features/users/types');
+        fs.writeFileSync(path.join(process.cwd(), 'src/features/users/types/User.types.ts'), 'export interface User { id: string }\n');
+        makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
+        expect(logged()).toContain('ℹ️  schemas/User.schema.ts not found. Run: domain-driver make:types users/User');
     });
 
     it('writes a schema with --with-input and a 204 controller for void', () => {

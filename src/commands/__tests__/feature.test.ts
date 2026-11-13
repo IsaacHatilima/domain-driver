@@ -102,6 +102,7 @@ describe('make:feature on next-frontend', () => {
         expect(files).toContain('hooks/ListCoffeeType.hook.ts');
         expect(files).toContain('hooks/DeleteCoffeeType.hook.ts');
         expect(files).toContain('schemas/UpdateCoffeeType.schema.ts');
+        expect(files).toContain('schemas/CoffeeType.schema.ts');
         expect(files).toContain('types/CoffeeType.types.ts');
         expect(readProjectFile('app/coffee-type/page.tsx')).toContain(
             "import CoffeeTypeContainer from './containers/CoffeeTypeContainer';"
@@ -124,7 +125,7 @@ describe('make:feature on next-frontend', () => {
         const hook = readProjectFile('app/coffee-type/hooks/ListCoffeeType.hook.ts');
         expect(hook).toContain("fetch('/api/coffee-type', { signal: controller.signal })");
         expect(hook).toContain("if (!response.ok) throw new Error('Failed to fetch CoffeeType list');");
-        expect(hook).toContain('return (await response.json()) as CoffeeType[];');
+        expect(hook).toContain('return z.array(CoffeeTypeSchema).parse(await response.json());');
         expect(hook).not.toContain('Service');
         expect(hook).not.toContain("'use client'");
     });
@@ -136,7 +137,7 @@ describe('make:feature on next-frontend', () => {
         expect(hook).toContain("method: 'POST',");
         expect(hook).toContain("headers: { 'Content-Type': 'application/json' },");
         expect(hook).toContain('body: JSON.stringify(data),');
-        expect(hook).toContain('const result = (await response.json()) as CoffeeType;');
+        expect(hook).toContain('const result = CoffeeTypeSchema.parse(await response.json());');
         expect(hook).toContain('onSuccess?.(result);');
         expect(hook).not.toContain('Service');
     });
@@ -276,7 +277,7 @@ describe('make:feature on tanstack-start', () => {
         await makeFeature('cat', true, 'Cat');
         const hook = readProjectFile('src/routes/cat/-hooks/ListCat.hook.ts');
         expect(hook).toContain("import { listCat } from '../-server/functions/ListCat.fn';");
-        expect(hook).toContain('queryFn: (): Promise<Cat[]> => listCat(),');
+        expect(hook).toContain('queryFn: async (): Promise<Cat[]> => z.array(CatSchema).parse(await listCat()),');
         expect(hook).not.toContain('Service');
     });
 });

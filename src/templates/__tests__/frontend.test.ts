@@ -110,11 +110,14 @@ describe('renderHook', () => {
 
         expect(content).toContain('export function useListCat()');
         expect(content).toContain("import type { Cat } from '../types/Cat.types';");
+        expect(content).toContain("import { z } from 'zod';");
+        expect(content).toContain("import { CatSchema } from '../schemas/Cat.schema';");
         expect(content).toContain('type ListCatResult = { request: string; data: Cat[]; error: string | null };');
         expect(content).toContain('const request = String(attempt);');
         expect(content).toContain("fetch('/api/cat', { signal: controller.signal })");
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat list');");
-        expect(content).toContain('return (await response.json()) as Cat[];');
+        expect(content).toContain('return z.array(CatSchema).parse(await response.json());');
+        expect(content).not.toContain(' as Cat');
         expect(content).toContain('}, [request]);');
         expect(content).toContain('return () => controller.abort();');
         expect(content).toContain('data: result?.data ?? [],');
@@ -131,6 +134,8 @@ describe('renderHook', () => {
         expect(synchronous.join('\n')).not.toMatch(/set[A-Z]/);
         expect(content).not.toContain('void refetch();');
         expect(content).not.toContain('setLoading');
+        // The response is parsed inside the request chain, before any state is set.
+        expect(effect).toContain('return z.array(CatSchema).parse(await response.json());');
     });
 
     it('renders a detail query hook keyed on the id', () => {
@@ -142,7 +147,9 @@ describe('renderHook', () => {
         expect(content).toContain('const request = `${id}:${attempt}`;');
         expect(content).toContain('fetch(`/api/cat/${id}`, { signal: controller.signal })');
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat');");
-        expect(content).toContain('return (await response.json()) as Cat;');
+        expect(content).toContain('return CatSchema.parse(await response.json());');
+        expect(content).not.toContain("from 'zod'");
+        expect(content).not.toContain(' as Cat');
         expect(content).toContain('}, [id, request]);');
         expect(content).toContain('data: result?.data ?? null,');
     });
@@ -161,7 +168,8 @@ describe('renderHook', () => {
         body: JSON.stringify(data),
       });`);
         expect(content).toContain("if (!response.ok) throw new Error('Failed to update Cat');");
-        expect(content).toContain('const result = (await response.json()) as Cat;');
+        expect(content).toContain('const result = CatSchema.parse(await response.json());');
+        expect(content).toContain("import { CatSchema } from '../schemas/Cat.schema';");
         expect(content).toContain('onSuccess?.(result);');
         expect(content).toContain('}, [onSuccess]);');
         expect(content).toContain('return { updateCat, loading, error };');
@@ -180,6 +188,8 @@ describe('renderHook', () => {
         expect(content).toContain('onSuccess?.();');
         expect(content).not.toContain('JSON.stringify');
         expect(content).not.toContain('const result =');
+        expect(content).not.toContain('CatSchema');
+        expect(content).not.toContain("from 'zod'");
     });
 
     it('renders a void custom action as a callable mutation, not an auto-fetching query', () => {
@@ -246,9 +256,10 @@ describe('renderHook', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });`);
-        expect(content).toContain('const result = (await response.json()) as Cat;');
+        expect(content).toContain('const result = CatSchema.parse(await response.json());');
         expect(content).toContain("import type { Cat } from '../types/Cat.types';");
         expect(content).toContain("import type { CreateCat } from '../schemas/CreateCat.schema';");
+        expect(content).toContain("import { CatSchema } from '../schemas/Cat.schema';");
         expect(content).not.toContain('service');
         expect(content).not.toContain('Service');
         expect(content).not.toContain('repositories');

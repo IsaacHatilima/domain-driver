@@ -2,7 +2,7 @@ import { lowerFirst } from '../../utils/naming';
 import { ActionSpec, isQueryAction } from '../actions';
 import { RenderContext } from '../context';
 import { domainImports } from '../signatures';
-import { fetchCall } from './http';
+import { fetchCall, parseResponse, responseSchemaImports } from './http';
 
 function payloadType(spec: ActionSpec): string {
     return spec.returns.replace(/^Promise<(.*)>$/, '$1');
@@ -15,10 +15,13 @@ function payloadType(spec: ActionSpec): string {
  * `onSuccess` callback as a non-serializable prop (TS71007).
  */
 function header(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string, hooks: string): string {
-    const domain = domainImports(ctx, fromFile, spec, entity);
-
-    return `import { ${hooks} } from 'react';
-${domain.join('\n')}${domain.length > 0 ? '\n' : ''}`;
+    const schemaPath = ctx.importLayer(fromFile, 'schema', `${entity}.schema`);
+    const imports = [
+        `import { ${hooks} } from 'react';`,
+        ...responseSchemaImports(spec, entity, schemaPath),
+        ...domainImports(ctx, fromFile, spec, entity),
+    ];
+    return `${imports.join('\n')}\n`;
 }
 
 /**
@@ -50,7 +53,7 @@ export function use${spec.name}(${spec.params}) {
     fetch(${fetchCall(spec, ctx.feature, '    ')}, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('${spec.failure}');
-        return (await response.json()) as ${type};
+        return ${parseResponse(spec, entity, 'await response.json()')};
       })
       .then((data) => {
         if (!controller.signal.aborted) setResult({ request, data, error: null });
@@ -83,7 +86,7 @@ function renderMutation(ctx: RenderContext, spec: ActionSpec, entity: string, fr
       if (!response.ok) throw new Error('${spec.failure}');`;
     const body = returnsValue
         ? `${request}
-      const result = (await response.json()) as ${type};
+      const result = ${parseResponse(spec, entity, 'await response.json()')};
       onSuccess?.(result);
       return result;`
         : `${request}

@@ -22,7 +22,9 @@ describe('renderQueryHook', () => {
         const content = renderQueryHook(ctx, standardAction('List', 'Cat'), 'Cat', file('ListCat'));
         expect(content).toContain("import { useQuery } from '@tanstack/react-query';");
         expect(content).toContain('queryKey: catKeys.all,');
-        expect(content).toContain('queryFn: (): Promise<Cat[]> => listCat(),');
+        expect(content).toContain('queryFn: async (): Promise<Cat[]> => z.array(CatSchema).parse(await listCat()),');
+        expect(content).toContain("import { z } from 'zod';");
+        expect(content).toContain("import { CatSchema } from '../-schemas/Cat.schema';");
         expect(content).toContain("import { listCat } from '../-server/functions/ListCat.fn';");
         expect(content).not.toContain('Service');
         expect(content).not.toContain('useMutation');
@@ -32,12 +34,14 @@ describe('renderQueryHook', () => {
         const content = renderQueryHook(ctx, standardAction('Show', 'Cat'), 'Cat', file('ShowCat'));
         expect(content).toContain('export function useShowCat(id: string)');
         expect(content).toContain('queryKey: catKeys.detail(id),');
+        expect(content).toContain('queryFn: async (): Promise<Cat> => CatSchema.parse(await showCat({ data: id })),');
+        expect(content).not.toContain("from 'zod'");
     });
 
     it('renders a create mutation that invalidates the list', () => {
         const content = renderQueryHook(ctx, standardAction('Create', 'Cat'), 'Cat', file('CreateCat'));
         expect(content).toContain("import { useMutation, useQueryClient } from '@tanstack/react-query';");
-        expect(content).toContain('mutationFn: (data: CreateCat): Promise<Cat> => createCat({ data }),');
+        expect(content).toContain('mutationFn: async (data: CreateCat): Promise<Cat> => CatSchema.parse(await createCat({ data })),');
         expect(content).not.toContain('Service');
         expect(content).toContain('void queryClient.invalidateQueries({ queryKey: catKeys.all });');
     });
@@ -45,7 +49,7 @@ describe('renderQueryHook', () => {
     it('wraps a two-argument mutation in one object and invalidates both keys', () => {
         const content = renderQueryHook(ctx, standardAction('Update', 'Cat'), 'Cat', file('UpdateCat'));
         expect(content).toContain(
-            'mutationFn: ({ id, data }: { id: string; data: UpdateCat }): Promise<Cat> => updateCat({ data: { id, data } }),'
+            'mutationFn: async ({ id, data }: { id: string; data: UpdateCat }): Promise<Cat> =>\n      CatSchema.parse(await updateCat({ data: { id, data } })),'
         );
         expect(content).toContain('onSuccess: (_result, { id }) => {');
         expect(content).toContain('void queryClient.invalidateQueries({ queryKey: catKeys.detail(id) });');
@@ -54,6 +58,7 @@ describe('renderQueryHook', () => {
     it('passes the id straight through for a delete mutation', () => {
         const content = renderQueryHook(ctx, standardAction('Delete', 'Cat'), 'Cat', file('DeleteCat'));
         expect(content).toContain('mutationFn: (id: string): Promise<void> => deleteCat({ data: id }),');
+        expect(content).not.toContain('CatSchema');
         expect(content).toContain('onSuccess: (_result, id) => {');
     });
 
@@ -101,8 +106,9 @@ describe('renderQueryHook', () => {
         const content = renderQueryHook(ctx, spec, 'Cat', file('ArchiveCat'));
 
         expect(content).toContain('export function useArchiveCat() {');
-        expect(content).toContain('mutationFn: (id: string)');
-        expect(content).toContain('archiveCat({ data: id })');
+        expect(content).toContain(
+            'mutationFn: async (id: string): Promise<Cat> => CatSchema.parse(await archiveCat({ data: id })),'
+        );
         expect(content).toContain('onSuccess: (_result, id) => {');
         expect(content).toContain('void queryClient.invalidateQueries({ queryKey: catKeys.detail(id) });');
     });

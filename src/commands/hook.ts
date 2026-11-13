@@ -1,5 +1,6 @@
 import { assertLayer } from '../stack/registry';
 import { standardActions } from '../templates/actions';
+import { hintMissingEntity } from './entity';
 import { hintReactQuery } from './hints';
 import { ensureQueryKeys, hookRenderer } from './hook-renderer';
 import { ensureLayerDir, requireFeature } from './resolve';
@@ -28,6 +29,7 @@ export function makeHook(feature: string, entity: string): boolean {
     );
     if (written > 0) {
         console.log(`✅ Hooks for "${entity}" created at ${dir}`);
+        hintMissingEntity(ctx, entity);
         hintReactQuery(ctx.profile);
     }
     return written > 0;

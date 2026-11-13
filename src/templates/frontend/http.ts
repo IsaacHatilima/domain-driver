@@ -35,3 +35,26 @@ export function serverFnCall(spec: ActionSpec): string {
     if (spec.schema !== null) return '({ data })';
     return '()';
 }
+
+/** Whether the action answers with a list of records, which parses with `z.array(...)`. */
+export function returnsList(spec: ActionSpec): boolean {
+    return spec.returns.endsWith('[]>');
+}
+
+/**
+ * The expression that turns an untrusted response body into the entity: the entity schema for one
+ * record, `z.array` of it for a list. A cast would let a response the API changed flow on unchecked.
+ */
+export function parseResponse(spec: ActionSpec, entity: string, value: string): string {
+    const schema = `${entity}Schema`;
+    return returnsList(spec) ? `z.array(${schema}).parse(${value})` : `${schema}.parse(${value})`;
+}
+
+/** The imports `parseResponse` needs, none when the action returns nothing to parse. */
+export function responseSchemaImports(spec: ActionSpec, entity: string, schemaPath: string): readonly string[] {
+    if (!spec.usesEntityType) return [];
+    return [
+        ...(returnsList(spec) ? ["import { z } from 'zod';"] : []),
+        `import { ${entity}Schema } from '${schemaPath}';`,
+    ];
+}

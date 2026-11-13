@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { hasLayer, layerDir } from '../stack/registry';
+import { hasLayer } from '../stack/registry';
 import { ActionSpec, customAction, CustomActionOptions, HTTP_METHODS, HttpMethod, RETURN_KINDS, ReturnKind } from '../templates/actions';
 import { renderServerRepository } from '../templates/backend/server-repository';
 import { RenderContext } from '../templates/context';
@@ -8,10 +8,11 @@ import { renderNodeRouteLine } from '../templates/controllers/node';
 import { renderDto } from '../templates/nest/dto';
 import { renderService } from '../templates/service';
 import { renderSchema } from '../templates/shared/schema';
-import { fileExists, mkdirSafe } from '../utils/fs';
+import { mkdirSafe } from '../utils/fs';
 import { lowerFirst } from '../utils/naming';
 import { apiRouteDir } from '../utils/paths';
 import { controllerRenderer, controllerSuffix } from './controller-renderer';
+import { hintMissingEntity } from './entity';
 import { hintNestjsZod, hintReactQuery } from './hints';
 import { ensureQueryKeys, hookRenderer } from './hook-renderer';
 import { ensureLayerDir, requireFeature } from './resolve';
@@ -37,7 +38,7 @@ export function makeAction(
     const ctx = requireFeature(feature);
     const spec = customAction(entity, actionName, options, feature);
 
-    hintMissingTypes(ctx, entity);
+    hintMissingEntity(ctx, entity);
     let wroteAny = false;
     if (spec.schema !== null) wroteAny = writeInput(ctx, spec) || wroteAny;
     if (hasLayer(ctx.profile, 'serverRepository')) wroteAny = writeServerSide(ctx, spec, entity) || wroteAny;
@@ -46,12 +47,6 @@ export function makeAction(
 
     if (wroteAny) console.log(`✅ Action "${spec.name}" scaffolded in "${feature}"`);
     return wroteAny;
-}
-
-function hintMissingTypes(ctx: RenderContext, entity: string): void {
-    const typesFile = path.join(ctx.featureDir, layerDir(ctx.profile, 'types'), `${entity}.types.ts`);
-    if (fileExists(typesFile)) return;
-    console.log(`ℹ️  types/${entity}.types.ts not found. Run: domain-driver make:types ${ctx.feature}/${entity}`);
 }
 
 function writeInput(ctx: RenderContext, spec: ActionSpec): boolean {
