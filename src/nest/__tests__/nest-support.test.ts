@@ -57,6 +57,14 @@ describe('findRootModule', () => {
         );
     });
 
+    it("registers in the area's module when the feature root is an area folder", () => {
+        touch('src/app.module.ts');
+        touch('src/billing/billing.module.ts');
+        expect(findRootModule(process.cwd(), 'src/billing', null)).toBe(
+            path.join(process.cwd(), 'src/billing/billing.module.ts')
+        );
+    });
+
     it('uses the configured path when given', () => {
         touch('src/core/root.module.ts');
         touch('src/app.module.ts');
