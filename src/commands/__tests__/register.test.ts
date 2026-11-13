@@ -81,6 +81,22 @@ describe('nest registration commands', () => {
         expect(custom).toBeLessThan(show);
     });
 
+    it('prints a hint without Show<Entity>Controller for a feature that is the action itself', async () => {
+        writePackageJson({ '@nestjs/core': '1' }, {}, { domainDriver: { autoRegister: false } });
+        await makeFeature('archive-project', false, 'ArchiveProject');
+        const logged: string[] = [];
+        vi.mocked(console.log).mockImplementation((line: unknown) => {
+            logged.push(String(line));
+        });
+        makeAction('archive-project', 'Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        registerCustomAction(requireFeature('archive-project'), 'ArchiveProject', 'Project');
+
+        const hint = logged.join('\n');
+        expect(hint).toContain('controllers: [ ..., ArchiveProjectController ]');
+        expect(hint).toContain('providers: [ ..., ArchiveProjectService, ArchiveProjectRepository ]');
+        expect(hint).not.toContain('ShowProjectController');
+    });
+
     it('says so rather than going silent when the feature module is missing', async () => {
         await nestProject();
         await makeFeature('assets', false, 'Asset');

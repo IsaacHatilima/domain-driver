@@ -78,6 +78,7 @@ function write(moduleFile: string, source: string): boolean {
 
 function explain(moduleFile: string, entries: readonly Entry[], reason: string): void {
     if (entries.length === 0) return;
+    const source = readModule(moduleFile);
     console.log(`ℹ️  Did not edit ${relative(moduleFile)} (${reason}). Add by hand:`);
     for (const entry of entries) {
         console.log(`     import { ${entry.identifier} } from '${resolveImport(moduleFile, entry.definedIn)}';`);
@@ -88,13 +89,27 @@ function explain(moduleFile: string, entries: readonly Entry[], reason: string):
         byProperty.set(entry.property, [...(byProperty.get(entry.property) ?? []), entry]);
     }
     for (const [property, group] of byProperty) {
-        console.log(`     ${property}: [ ..., ${group.map(placement).join(', ')} ]`);
+        console.log(`     ${property}: [ ..., ${group.map((entry) => placement(entry, source)).join(', ')} ]`);
     }
 }
 
-/** An ordered entry has to say where it goes, or the pasted line reproduces the bug it prevents. */
-function placement(entry: Entry): string {
-    return entry.before === undefined ? entry.identifier : `${entry.identifier}, ${entry.before}`;
+function readModule(moduleFile: string): string | null {
+    try {
+        return fs.readFileSync(moduleFile, 'utf-8');
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * An ordered entry has to say where it goes, or the pasted line reproduces the bug it prevents.
+ * It only says so relative to a class the module has: a feature that is one action has no
+ * Show<Entity>Controller, and naming one sends the reader looking for a class that is not there.
+ */
+function placement(entry: Entry, source: string | null): string {
+    if (entry.before === undefined || source === null) return entry.identifier;
+    const present = new RegExp(`\\b${entry.before}\\b`).test(source);
+    return present ? `${entry.identifier}, ${entry.before}` : entry.identifier;
 }
 
 function relative(target: string): string {

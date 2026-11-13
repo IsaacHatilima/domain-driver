@@ -42,6 +42,15 @@ function entry(identifier = 'AssetsModule'): { identifier: string; definedIn: st
     };
 }
 
+function controllerEntry(): { identifier: string; definedIn: string; property: 'controllers'; before: string } {
+    return {
+        identifier: 'ArchiveProjectController',
+        definedIn: path.join(process.cwd(), 'controllers', 'ArchiveProject.controller.ts'),
+        property: 'controllers',
+        before: 'ShowProjectController',
+    };
+}
+
 beforeEach(() => {
     project = createTempProject('registration');
     logged = [];
@@ -101,6 +110,40 @@ describe('applyRegistrations', () => {
 
         expect(fs.readFileSync(moduleFile, 'utf-8')).toBe(MODULE_SOURCE);
         expect(logged).toHaveLength(0);
+    });
+
+    it('names the controller to insert before only when the module has it', () => {
+        const withShow = writeModule(`import { Module } from '@nestjs/common';
+
+@Module({
+  controllers: [ListProjectController, ShowProjectController],
+})
+export class ProjectsModule {}
+`);
+        applyRegistrations(withShow, [controllerEntry()], false);
+        expect(logged.join('\n')).toContain('controllers: [ ..., ArchiveProjectController, ShowProjectController ]');
+    });
+
+    it('does not name a Show controller the module does not have', () => {
+        const flow = writeModule(`import { Module } from '@nestjs/common';
+
+@Module({
+  controllers: [],
+  providers: [],
+})
+export class ArchiveProjectModule {}
+`);
+        applyRegistrations(flow, [controllerEntry()], false);
+        const hint = logged.join('\n');
+        expect(hint).toContain('controllers: [ ..., ArchiveProjectController ]');
+        expect(hint).not.toContain('ShowProjectController');
+    });
+
+    it('does not name it either when the module file does not exist', () => {
+        applyRegistrations(path.join(process.cwd(), 'missing.module.ts'), [controllerEntry()], true);
+        const hint = logged.join('\n');
+        expect(hint).toContain('the module file does not exist');
+        expect(hint).not.toContain('ShowProjectController');
     });
 
     it('does nothing at all with no entries', () => {

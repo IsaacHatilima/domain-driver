@@ -57,9 +57,9 @@ export function standardActionNames(entity: string): readonly string[] {
 export function registerCustomAction(ctx: RenderContext, action: string, entity: string): void {
     if (ctx.profile.name !== 'nest') return;
     const entries: Entry[] = [
-        { ...entriesFor(ctx, KINDS.controller, [action])[0], before: `Show${entity}Controller` },
-        entriesFor(ctx, KINDS.service, [action])[0],
-        entriesFor(ctx, KINDS.repository, [action])[0],
+        ...entriesFor(ctx, KINDS.controller, [action]).map((entry) => ({ ...entry, before: `Show${entity}Controller` })),
+        ...entriesFor(ctx, KINDS.service, [action]),
+        ...entriesFor(ctx, KINDS.repository, [action]),
     ];
     applyRegistrations(featureModule(ctx), entries, ctx.stack.autoRegister);
 }
