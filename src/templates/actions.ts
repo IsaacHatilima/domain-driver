@@ -143,7 +143,7 @@ export function customAction(
         status: customStatus(pascal, method, options.returns),
         method,
         path: customPath(slug, onRecord, feature),
-        failure: `Failed to ${camel} ${entity}`,
+        failure: `Failed to ${slug.replace(/-/g, ' ')}`,
         custom: true,
     });
 }

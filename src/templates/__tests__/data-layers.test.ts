@@ -151,7 +151,7 @@ describe('custom action specs through the data templates', () => {
         expect(content).toContain('export function useFindActiveUsers() {');
         expect(content).toContain('data: User[]; error: string | null };');
         expect(content).toContain("fetch('/api/users/find-active-users', { signal: controller.signal })");
-        expect(content).toContain("if (!response.ok) throw new Error('Failed to findActiveUsers User');");
+        expect(content).toContain("if (!response.ok) throw new Error('Failed to find active users');");
         expect(content).toContain('return z.array(UserSchema).parse(await response.json());');
     });
 

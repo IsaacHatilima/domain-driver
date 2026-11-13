@@ -242,6 +242,8 @@ describe('renderHook', () => {
         expect(content).toContain(`      const response = await fetch(\`/api/projects/\${encodeURIComponent(id)}/archive-project\`, {
         method: 'PATCH',
       });`);
+        expect(content).toContain("if (!response.ok) throw new Error('Failed to archive project');");
+        expect(content).toContain("setError(err instanceof Error ? err.message : 'Failed to archive project');");
         expect(content).toContain('return { archiveProject, loading, error };');
         expect(content).not.toContain('useEffect');
     });

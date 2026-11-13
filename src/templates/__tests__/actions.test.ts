@@ -130,7 +130,7 @@ describe('customAction', () => {
             status: 200,
             method: 'get',
             path: '/find-active-users',
-            failure: 'Failed to findActiveUsers User',
+            failure: 'Failed to find active users',
             custom: true,
         });
     });
@@ -148,7 +148,7 @@ describe('customAction', () => {
             status: 200,
             method: 'post',
             path: '/archive-user',
-            failure: 'Failed to archiveUser User',
+            failure: 'Failed to archive user',
             custom: true,
         });
     });
@@ -172,6 +172,12 @@ describe('customAction', () => {
         expect(RETURN_KINDS).toEqual(['list', 'one', 'void']);
     });
 
+    it('words the failure from the action name, in lower case', () => {
+        expect(customAction('Project', 'archiveProject', { withInput: false, returns: 'one' }).failure).toBe('Failed to archive project');
+        expect(customAction('Key', 'syncAPIKeys', { withInput: false, returns: 'list' }).failure).toBe('Failed to sync api keys');
+        expect(customAction('Project', 'ArchiveProject', { withInput: false, returns: 'one' }).failure).toBe('Failed to archive project');
+    });
+
     it('lists the methods', () => {
         expect(HTTP_METHODS).toEqual(['get', 'post', 'put', 'patch', 'delete']);
     });
@@ -193,7 +199,7 @@ describe('customAction on one record', () => {
             status: 200,
             method: 'patch',
             path: '/:id/archive-project',
-            failure: 'Failed to archiveProject Project',
+            failure: 'Failed to archive project',
             custom: true,
         });
     });
