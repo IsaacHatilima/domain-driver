@@ -110,13 +110,27 @@ describe('renderHook', () => {
 
         expect(content).toContain('export function useListCat()');
         expect(content).toContain("import type { Cat } from '../types/Cat.types';");
-        expect(content).toContain('const [data, setData] = useState<Cat[]>([]);');
-        expect(content).toContain("const response = await fetch('/api/cat');");
+        expect(content).toContain('type ListCatResult = { request: string; data: Cat[]; error: string | null };');
+        expect(content).toContain('const request = String(attempt);');
+        expect(content).toContain("fetch('/api/cat', { signal: controller.signal })");
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat list');");
-        expect(content).toContain('setData((await response.json()) as Cat[]);');
-        expect(content).toContain('}, []);');
-        expect(content).toContain('void refetch();');
-        expect(content).toContain('return { data, loading, error, refetch };');
+        expect(content).toContain('return (await response.json()) as Cat[];');
+        expect(content).toContain('}, [request]);');
+        expect(content).toContain('return () => controller.abort();');
+        expect(content).toContain('data: result?.data ?? [],');
+        expect(content).toContain('loading: result?.request !== request,');
+        expect(content).toContain('const refetch = useCallback(() => setAttempt((count) => count + 1), []);');
+    });
+
+    it('sets query state only in the request callbacks, never synchronously in the effect', () => {
+        const ctx = contextFor('react', 'cat');
+        const content = renderHook(ctx, standardAction('List', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/ListCat.hook.ts'));
+        const effect = content.slice(content.indexOf('useEffect(() => {'), content.indexOf('}, [request]);'));
+        const synchronous = effect.split('\n').filter((line) => /^ {4}\w/.test(line));
+
+        expect(synchronous.join('\n')).not.toMatch(/set[A-Z]/);
+        expect(content).not.toContain('void refetch();');
+        expect(content).not.toContain('setLoading');
     });
 
     it('renders a detail query hook keyed on the id', () => {
@@ -124,11 +138,13 @@ describe('renderHook', () => {
         const content = renderHook(ctx, standardAction('Show', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/ShowCat.hook.ts'));
 
         expect(content).toContain('export function useShowCat(id: string)');
-        expect(content).toContain('const [data, setData] = useState<Cat | null>(null);');
-        expect(content).toContain('const response = await fetch(`/api/cat/${id}`);');
+        expect(content).toContain('type ShowCatResult = { request: string; data: Cat | null; error: string | null };');
+        expect(content).toContain('const request = `${id}:${attempt}`;');
+        expect(content).toContain('fetch(`/api/cat/${id}`, { signal: controller.signal })');
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat');");
-        expect(content).toContain('setData((await response.json()) as Cat);');
-        expect(content).toContain('}, [id]);');
+        expect(content).toContain('return (await response.json()) as Cat;');
+        expect(content).toContain('}, [id, request]);');
+        expect(content).toContain('data: result?.data ?? null,');
     });
 
     it('renders a mutation hook with a destructured onSuccess', () => {

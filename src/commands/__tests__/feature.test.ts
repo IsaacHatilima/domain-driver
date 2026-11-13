@@ -49,7 +49,7 @@ describe('make:feature with a relocated feature root', () => {
         await makeFeature('billing', true);
 
         expect(readProjectFile('app/auth/billing/hooks/ListBilling.hook.ts')).toContain(
-            "fetch('/api/billing')"
+            "fetch('/api/billing', { signal: controller.signal })"
         );
         expect(projectFileExists('app/api/billing/route.ts')).toBe(true);
     });
@@ -119,9 +119,9 @@ describe('make:feature on next-frontend', () => {
     it('gives the hook the fetch that the client service used to make', async () => {
         await makeFeature('coffee-type', true);
         const hook = readProjectFile('app/coffee-type/hooks/ListCoffeeType.hook.ts');
-        expect(hook).toContain("const response = await fetch('/api/coffee-type');");
+        expect(hook).toContain("fetch('/api/coffee-type', { signal: controller.signal })");
         expect(hook).toContain("if (!response.ok) throw new Error('Failed to fetch CoffeeType list');");
-        expect(hook).toContain('setData((await response.json()) as CoffeeType[]);');
+        expect(hook).toContain('return (await response.json()) as CoffeeType[];');
         expect(hook).not.toContain('Service');
         expect(hook).not.toContain("'use client'");
     });
@@ -171,7 +171,7 @@ describe('make:feature on react', () => {
             false
         );
         expect(readProjectFile('src/features/cat/hooks/ListCat.hook.ts')).toContain(
-            "const response = await fetch('/api/cat');"
+            "fetch('/api/cat', { signal: controller.signal })"
         );
     });
 });

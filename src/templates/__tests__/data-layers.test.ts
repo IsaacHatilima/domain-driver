@@ -109,7 +109,7 @@ describe('renderHook requests the API', () => {
         const ctx = contextFor('react', 'cat');
         const fromFile = path.join(ctx.featureDir, 'hooks', 'ShowCat.hook.ts');
         const content = renderHook(ctx, standardAction('Show', 'Cat'), 'Cat', fromFile);
-        expect(content).toContain('await fetch(`/api/cat/${id}`);');
+        expect(content).toContain('fetch(`/api/cat/${id}`, { signal: controller.signal })');
     });
 });
 
@@ -149,10 +149,10 @@ describe('custom action specs through the data templates', () => {
         const content = renderHook(ctx, spec, 'User', fromFile);
         expect(content).toContain("import type { User } from '../types/User.types';");
         expect(content).toContain('export function useFindActiveUsers() {');
-        expect(content).toContain('const [data, setData] = useState<User[]>([]);');
-        expect(content).toContain("const response = await fetch('/api/users/find-active-users');");
+        expect(content).toContain('data: User[]; error: string | null };');
+        expect(content).toContain("fetch('/api/users/find-active-users', { signal: controller.signal })");
         expect(content).toContain("if (!response.ok) throw new Error('Failed to findActiveUsers User');");
-        expect(content).toContain('setData((await response.json()) as User[]);');
+        expect(content).toContain('return (await response.json()) as User[];');
     });
 
     it('the hook POSTs a body and reads nothing back for void', () => {
