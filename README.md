@@ -115,7 +115,7 @@ domain-driver make:feature users            # folders + .gitkeep, plus page.tsx 
 domain-driver make:feature users/User -a    # every layer for the detected stack, entity User
 ```
 
-Feature names must be kebab-case. Without `/Entity`, the entity is the PascalCase feature name (`users` becomes `Users`).
+Feature names must be kebab-case. Without `/Entity`, the entity is the PascalCase feature name (`users` becomes `Users`). On Nest the module is named after the feature folder whatever the entity, like its file: `make:feature create-project/Project` writes `CreateProjectModule` in `create-project.module.ts`, so features that share an entity never share a module name.
 
 The `.gitkeep` in a layer folder only keeps the empty folder in git. The first time any command writes a file into that folder, the `.gitkeep` is deleted, so it never ends up committed beside real code. Folders nothing has been written into keep theirs.
 
@@ -382,6 +382,10 @@ The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`)
 - **A feature that is its action** no longer repeats its name in the route: `make:action create-project/Project createProject` in a `create-project` feature routes at `/create-project`, not `/create-project/create-project`. Check clients written against the doubled path.
 - **`.gitkeep` files** are removed from a layer folder once a command writes into it. Ones committed by earlier versions stay until you delete them.
 - **`make:container`** no longer imports a hook or component that does not exist; see `make:container` above.
+- **Nest feature modules are named after their folder.** `make:feature create-project/Project` now writes `CreateProjectModule`, not `ProjectModule`, matching `make:feature create-project` and the file name. Modules that already exist keep their names.
+- **Hooks encode the id** in the URLs they fetch, `${encodeURIComponent(id)}`, so an id containing `/`, `?` or `#` cannot reach a different route.
+- **Path aliases are found in the default Next tsconfig.** Alias detection used to give up on a tsconfig that has both `"@/*"` and `"**/*.ts"` (or a `$schema` URL) and fall back to relative imports; generated imports now use the alias there.
+- **Bespoke action errors** read from the action name, `Failed to archive project`, instead of `Failed to archiveProject Project`. The standard five keep theirs.
 
 ## Upgrading from 0.8.x
 
