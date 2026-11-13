@@ -48,6 +48,8 @@ describe('on next-frontend', () => {
     });
 
     it('make:container writes a container with the directive', () => {
+        makeHook('cat', 'Cat');
+        makeComponent('cat', 'Cat');
         makeContainer('cat', 'CatContainer');
         const content = readProjectFile('app/cat/containers/CatContainer.tsx');
         expect(content).toContain("'use client'");
@@ -145,6 +147,8 @@ describe('on react', () => {
     });
 
     it('make:container imports the flat component path', () => {
+        makeHook('cat', 'Cat');
+        makeComponent('cat', 'Cat');
         makeContainer('cat', 'CatContainer');
         const content = readProjectFile('src/features/cat/containers/CatContainer.tsx');
         expect(content).not.toContain("'use client'");
@@ -166,6 +170,63 @@ describe('on react', () => {
         expect(create).toContain("method: 'POST',");
         expect(create).toContain('body: JSON.stringify(data),');
         expect(create).not.toContain('Service');
+    });
+});
+
+describe('make:container wires only what exists', () => {
+    const logged = (): string[] => vi.mocked(console.log).mock.calls.map(([message]) => String(message));
+
+    beforeEach(() => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/projects');
+    });
+
+    it('imports no hook when the name is not an entity with a List hook, and names the hooks there are', () => {
+        makeHook('projects', 'Project');
+        makeContainer('projects', 'ProjectDetailContainer');
+
+        const content = readProjectFile('src/features/projects/containers/ProjectDetailContainer.tsx');
+        expect(content).not.toContain('useListProjectDetail');
+        expect(content).not.toContain('import');
+        expect(content).toContain('export default function ProjectDetailContainer() {');
+        expect(logged()).toContain(
+            'ℹ️  hooks/ListProjectDetail.hook.ts not found, so ProjectDetailContainer calls no hook yet. ' +
+                'Call one of the feature\'s hooks in it: useCreateProject, useDeleteProject, useListProject, useShowProject, useUpdateProject.'
+        );
+    });
+
+    it('says how to generate hooks when the feature has none', () => {
+        makeContainer('projects', 'ProjectDetailContainer');
+        expect(logged()).toContain(
+            'ℹ️  hooks/ListProjectDetail.hook.ts not found, so ProjectDetailContainer calls no hook yet. ' +
+                'Generate the hooks with: domain-driver make:hook projects/<Entity>'
+        );
+    });
+
+    it('lists through the List hook when it exists, and through the component when that exists too', () => {
+        makeHook('projects', 'Project');
+        makeComponent('projects', 'Project');
+        vi.mocked(console.log).mockClear();
+        makeContainer('projects', 'ProjectContainer');
+
+        const content = readProjectFile('src/features/projects/containers/ProjectContainer.tsx');
+        expect(content).toContain("import { useListProject } from '../hooks/ListProject.hook';");
+        expect(content).toContain("import Project from '../components/Project';");
+        expect(logged().some((line) => line.startsWith('ℹ️'))).toBe(false);
+    });
+
+    it('renders each record without a component that does not exist, and says which one to make', () => {
+        makeHook('projects', 'Project');
+        vi.mocked(console.log).mockClear();
+        makeContainer('projects', 'ProjectContainer');
+
+        const content = readProjectFile('src/features/projects/containers/ProjectContainer.tsx');
+        expect(content).toContain("import { useListProject } from '../hooks/ListProject.hook';");
+        expect(content).not.toContain('../components/');
+        expect(content).toContain('<div key={item.id}>{item.id}</div>');
+        expect(logged()).toContain(
+            'ℹ️  components/Project.tsx not found, so ProjectContainer renders each record\'s id. Run: domain-driver make:component projects/Project'
+        );
     });
 });
 

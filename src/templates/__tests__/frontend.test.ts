@@ -68,11 +68,38 @@ describe('renderComponent', () => {
     });
 });
 
+const WIRED = { listHook: true, component: true } as const;
+
 describe('renderContainer', () => {
+    it('renders a container that imports nothing when there is no List hook to call', () => {
+        const ctx = contextFor('next-frontend', 'projects');
+        const fromFile = path.join(ctx.featureDir, 'containers', 'ProjectDetailContainer.tsx');
+        const content = renderContainer(ctx, 'ProjectDetailContainer', 'ProjectDetail', fromFile, {
+            listHook: false,
+            component: false,
+        });
+        expect(content).toBe(`'use client';
+
+export default function ProjectDetailContainer() {
+  // Call this feature's hooks here and pass what they return to its components.
+  return <div>ProjectDetail</div>;
+}
+`);
+    });
+
+    it('renders each record inline when the entity component does not exist', () => {
+        const ctx = contextFor('react', 'cat');
+        const fromFile = path.join(ctx.featureDir, 'containers', 'CatContainer.tsx');
+        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile, { listHook: true, component: false });
+        expect(content).toContain("import { useListCat } from '../hooks/ListCat.hook';");
+        expect(content).not.toContain('components/');
+        expect(content).toContain('<div key={item.id}>{item.id}</div>');
+    });
+
     it('uses the directive and split component dir on next', () => {
         const ctx = contextFor('next-frontend', 'cat');
         const fromFile = path.join(ctx.featureDir, 'containers', 'CatContainer.tsx');
-        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile);
+        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile, WIRED);
         expect(content.startsWith("'use client';")).toBe(true);
         expect(content).toContain("import { useListCat } from '../hooks/ListCat.hook';");
         expect(content).toContain("import Cat from '../components/client/Cat';");
@@ -83,7 +110,7 @@ describe('renderContainer', () => {
     it('drops the directive and uses the flat component dir on react', () => {
         const ctx = contextFor('react', 'cat');
         const fromFile = path.join(ctx.featureDir, 'containers', 'CatContainer.tsx');
-        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile);
+        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile, WIRED);
         expect(content).not.toContain("'use client'");
         expect(content).toContain("import { useListCat } from '../hooks/ListCat.hook';");
         expect(content).toContain("import Cat from '../components/Cat';");
@@ -92,7 +119,7 @@ describe('renderContainer', () => {
     it('uses isPending, error.message, and a nullish-coalesced list on tanstack-start', () => {
         const ctx = contextFor('tanstack-start', 'cat');
         const fromFile = path.join(ctx.featureDir, '-containers', 'CatContainer.tsx');
-        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile);
+        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile, WIRED);
         expect(content).toContain("import { useListCat } from '../-hooks/ListCat.hook';");
         expect(content).toContain('const { data, isPending, error } = useListCat();');
         expect(content).toContain('if (isPending) return <div>Loading...</div>;');
