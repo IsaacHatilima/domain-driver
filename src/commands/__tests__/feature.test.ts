@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { makeAction } from '../action';
+import { makeComponent } from '../component';
 import { makeFeature } from '../feature';
+import { makeTypes } from '../types';
 import {
     createTempProject,
     writePackageJson,
@@ -142,6 +145,37 @@ describe('make:feature on next-frontend', () => {
         mkdir('src/app');
         await makeFeature('cat');
         expect(projectFileExists('src/app/cat/page.tsx')).toBe(true);
+    });
+});
+
+describe('placeholders left by make:feature without -a', () => {
+    it('drops a layer folder .gitkeep once a later command writes a file into it', async () => {
+        writePackageJson({ react: '1' });
+        mkdir('src');
+        await makeFeature('projects');
+
+        makeTypes('projects', 'Project');
+        makeAction('projects', 'Project', 'findActiveProjects', { withInput: false, returns: 'list' });
+
+        const files = listFiles('src/features/projects');
+        expect(files).toContain('types/Project.types.ts');
+        expect(files).toContain('hooks/FindActiveProjects.hook.ts');
+        expect(files).not.toContain('types/.gitkeep');
+        expect(files).not.toContain('hooks/.gitkeep');
+        // Folders nothing was written into keep theirs, so git still tracks them.
+        expect(files).toContain('components/.gitkeep');
+        expect(files).toContain('containers/.gitkeep');
+    });
+
+    it('drops only the client placeholder when a client component is written on Next', async () => {
+        writePackageJson({ next: '1' });
+        await makeFeature('cat');
+        makeComponent('cat', 'CatCard');
+
+        const files = listFiles('app/cat');
+        expect(files).toContain('components/client/CatCard.tsx');
+        expect(files).not.toContain('components/client/.gitkeep');
+        expect(files).toContain('components/server/.gitkeep');
     });
 });
 
