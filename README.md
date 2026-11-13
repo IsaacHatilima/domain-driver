@@ -227,6 +227,26 @@ const { mutate: createCat } = useCreateCat();
 
 Generated type references use `import type`, including under Vite's `verbatimModuleSyntax`. In Node ESM projects using NodeNext/Node16 resolution, local imports use runtime `.js` extensions; CommonJS and bundler projects retain their existing import style. Nest DTOs and injected classes remain runtime imports.
 
+### Formatting with your Prettier
+
+The templates are written in one style: single quotes, semicolons, two-space indents. When your project has Prettier and a Prettier config, every file a command writes or changes is then formatted with that Prettier and that config, so it lands in your style and a diff shows only what is new. That includes the Nest modules it registers classes into.
+
+- Prettier is borrowed from your project, never bundled: the version in your `node_modules`, with the config `prettier --check` would use (`.prettierrc`, `prettier.config.*` or the `prettier` key in `package.json`, its `overrides`, and `.editorconfig`). Plugins named in the config, such as `prettier-plugin-tailwindcss`, load as they do for Prettier itself, which resolves them from the working directory, so run commands from the project root.
+- A file matched by `.prettierignore` in the project root stays as generated.
+- Only the files this command wrote or changed are formatted. A file it skipped because it already exists, and the rest of your project, are left alone.
+- Without Prettier in the project, or without a Prettier config, files are written exactly as before.
+- A file that cannot be formatted, for example because a plugin in the config is not installed, keeps its generated content. The command still succeeds and prints one line per such file:
+
+```
+⚠️  Did not format src/features/projects/hooks/ArchiveProject.hook.ts (Cannot find package 'prettier-plugin-tailwindcss' imported from /app/noop.js); kept it as generated
+```
+
+Pass `--no-format` to any `make:*` command to keep the template style:
+
+```bash
+domain-driver make:feature projects/Project -a --no-format
+```
+
 ---
 
 ## Next.js full-stack: Server Actions
@@ -374,7 +394,7 @@ The command prints the route each controller answers:
 
 Nest matches routes in the order modules are registered, so a literal GET such as `GET /projects/find-active` also prints which module has to come first when another flow answers `GET /projects/:id`. Without an area module nothing changes: a flow feature routes at its own root, as in 0.10.
 
-The edit is made through the TypeScript compiler API, borrowed from your own project rather than bundled, and applied as a text insertion at AST-computed positions. Your comments, import order and formatting survive untouched — only the two inserted lines are new. Registering the same class twice does nothing.
+The edit is made through the TypeScript compiler API, borrowed from your own project rather than bundled, and applied as a text insertion at AST-computed positions. Your comments and import order survive untouched — only the two inserted lines are new. When the project has Prettier and a Prettier config, the edited module is then formatted with it like every file the command wrote; see [Formatting with your Prettier](#formatting-with-your-prettier). With `--no-format`, or without Prettier, the rest of the file keeps its formatting too. Registering the same class twice does nothing.
 
 A bespoke action's controller is inserted **before** `Show<Entity>Controller` rather than appended, because Nest matches routes in declaration order and a custom `GET /actives` would otherwise be swallowed by `GET /:id`. A module without a Show controller, such as a feature that is one action, simply gets it appended, and the printed by-hand lines only name `Show<Entity>Controller` when the module has it.
 
@@ -452,11 +472,12 @@ The cache lives in `~/.cache/domain-driver` (or `$XDG_CACHE_HOME/domain-driver`)
 
 ## Upgrading from 0.10.x
 
-0.11.0 changes what new scaffolding looks like on `next-fullstack` and in Nest areas. Generated files that already exist are never overwritten.
+0.11.0 changes what new scaffolding looks like on `next-fullstack`, in Nest areas, and in projects that use Prettier. Generated files that already exist are never overwritten.
 
 - **next-fullstack writes through Server Actions.** `make:feature -a`, `make:action` and `make:controller` no longer write `app/api/**/route.ts` or fetch hooks. A write gets `server/actions/<Action><Entity>.action.ts`, which throws until you replace its `await requireCaller();` line with your session check; a read gets only its service and repository, and the container is an async Server Component that calls the List service. Pass `--route` for the old output. Features scaffolded earlier keep their route handlers and hooks, and `make:container` keeps writing a client container in a feature that has the List hook.
 - **next-fullstack is detected without `app/api`.** A `next` app with a database client dependency, or with an `app/**/server/` folder, is now `next-fullstack` rather than `next-frontend`. Pass `--stack next-frontend` to keep the old detection.
 - **Nest flows route under their area.** In a feature root with an area module (`src/projects/projects.module.ts`), controllers are `@Controller('<area>')`: `createProject` answers `POST /projects` rather than `POST /create-project`, and `login` answers `POST /auth/login`. See [Routes in an area](#routes-in-an-area). A Nest Update on the area's own resource is `@Patch(':id')`. Projects without an area module are unaffected.
+- **Generated files are formatted with your Prettier.** In a project with Prettier and a Prettier config, the files a command writes or changes, including the Nest modules it registers into, are formatted with that config afterwards, so they no longer show up rewritten line by line in your formatter's diff. Files in `.prettierignore` are skipped, and a file that fails to format is kept as generated with a warning. Pass `--no-format` for the old output. Projects without Prettier, or without a config, are unaffected. See [Formatting with your Prettier](#formatting-with-your-prettier).
 
 ## Upgrading from 0.9.x
 
@@ -559,6 +580,7 @@ npm run test:coverage
 - [x] Per-action hooks on every stack that has them, replacing the single combined hook
 - [x] Server Actions and Server Component reads on Next.js full-stack
 - [x] Nest routes under the area prefix
+- [x] Generated files formatted with the project's own Prettier
 - [ ] Config file — override stack and feature root per project
 - [ ] Configurable API base URL for the fetch in generated hooks
 - [ ] ORM-aware server repositories
