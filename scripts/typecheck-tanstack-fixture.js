@@ -14,8 +14,8 @@
 //
 //   1. `createServerFn(...).validator(<ZodSchema>)` accepts a bare Zod schema
 //      (no `(d) => Schema.parse(d)` wrapper) against the real package types.
-//   2. The whole vertical slice - route, container, hooks, client
-//      repositories, server functions - compiles as one consumer project.
+//   2. The whole vertical slice - route, container, hooks, schemas, server
+//      functions, services, repositories - compiles as one consumer project.
 //
 // One wrinkle that is NOT a domain-driver defect: a generated route file only
 // type-checks inside a project that has run TanStack Router's own file-route
@@ -37,6 +37,11 @@ const path = require('path');
 const REPO_ROOT = path.resolve(__dirname, '..');
 const FEATURE = 'cat';
 const ENTITY = 'Cat';
+const CUSTOM_ACTIONS = Object.freeze([
+    ['archiveCat', { withInput: false, returns: 'one', method: 'patch', onRecord: true }],
+    ['renameCat', { withInput: true, returns: 'one', method: 'put', onRecord: true }],
+    ['catHistory', { withInput: false, returns: 'list', onRecord: true }],
+]);
 
 // The profile's own floor (see the design doc's Risks section), not
 // domain-driver's -- domain-driver itself still supports Node >=20.
@@ -156,7 +161,12 @@ async function scaffoldFeature(dir) {
         // consumers, via the same renderers `stacks.test.ts` walks.
         // eslint-disable-next-line global-require, import/no-dynamic-require
         const { makeFeature } = require(path.join(REPO_ROOT, 'dist', 'commands', 'feature.js'));
+        // eslint-disable-next-line global-require, import/no-dynamic-require
+        const { makeAction } = require(path.join(REPO_ROOT, 'dist', 'commands', 'action.js'));
         await makeFeature(FEATURE, true, ENTITY);
+        // Bespoke actions on one record: a mutation without a body, one with a body, and a
+        // query keyed under the record, so their hooks and server functions compile too.
+        for (const [name, options] of CUSTOM_ACTIONS) makeAction(FEATURE, ENTITY, name, options);
     } finally {
         process.chdir(originalCwd);
     }
@@ -192,20 +202,18 @@ const REQUIRED_GENERATED_FILES = Object.freeze([
     // a renderer regression emitting nothing for it would otherwise type-
     // check clean without this check.
     `${FEATURE_ROOT}/index.tsx`,
-    // Types layer
+    // Types layer, inferred from the entity schema
     `${FEATURE_ROOT}/-types/${ENTITY}.types.ts`,
-    // Schemas layer (write actions only -- there is no "List" schema)
+    // Schemas layer: the entity schema, and one per write action (there is no "List" schema)
+    `${FEATURE_ROOT}/-schemas/${ENTITY}.schema.ts`,
     `${FEATURE_ROOT}/-schemas/Create${ENTITY}.schema.ts`,
     // Component layer
     `${FEATURE_ROOT}/-components/${ENTITY}.tsx`,
     // Container layer
     `${FEATURE_ROOT}/-containers/${ENTITY}Container.tsx`,
-    // Hooks layer
+    // Hooks layer, which calls the server functions directly: there is no client service or repository
     `${FEATURE_ROOT}/-hooks/List${ENTITY}.hook.ts`,
-    // Client services layer
-    `${FEATURE_ROOT}/-client/services/List${ENTITY}.service.ts`,
-    // Client repositories layer
-    `${FEATURE_ROOT}/-client/repositories/List${ENTITY}.repository.ts`,
+    `${FEATURE_ROOT}/-hooks/Archive${ENTITY}.hook.ts`,
     // Server functions layer (controller)
     `${FEATURE_ROOT}/-server/functions/List${ENTITY}.fn.ts`,
     // Server services layer
