@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { makeAction, parseReturns } from '../action';
+import * as fs from 'fs';
+import * as path from 'path';
+import { makeAction, parseMethod, parseReturns } from '../action';
 import { makeTypes } from '../types';
 import {
     createTempProject,
@@ -35,6 +37,77 @@ describe('parseReturns', () => {
     });
 });
 
+describe('parseMethod', () => {
+    it('accepts the five methods in any case and rejects others', () => {
+        for (const method of ['get', 'post', 'put', 'patch', 'delete']) expect(parseMethod(method)).toBe(method);
+        expect(parseMethod('PATCH')).toBe('patch');
+        expect(() => parseMethod('fetch')).toThrow('Invalid --method "fetch". Use get, post, put, patch, or delete.');
+    });
+});
+
+describe('make:action on one record', () => {
+    it('writes a PATCH mutation hook on react', () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/projects');
+        makeAction('projects', 'Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        const hook = readProjectFile('src/features/projects/hooks/ArchiveProject.hook.ts');
+        expect(hook).toContain('const archiveProject = useCallback(async (id: string) => {');
+        expect(hook).toContain("method: 'PATCH',");
+        expect(hook).not.toContain('useEffect');
+    });
+
+    it('passes the id from controller to repository and prints the record route on express', () => {
+        writePackageJson({ express: '1' });
+        mkdir('src/features/projects');
+        makeAction('projects', 'Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        expect(readProjectFile('src/features/projects/controllers/ArchiveProject.controller.ts')).toContain('service.handle(req.params.id)');
+        expect(readProjectFile('src/features/projects/services/ArchiveProject.service.ts')).toContain('async handle(id: string): Promise<Project> {');
+        expect(readProjectFile('src/features/projects/repositories/ArchiveProject.repository.ts')).toContain('async handle(id: string): Promise<Project> {');
+        expect(logged()).toContain(
+            "ℹ️  Add to projects.routes.ts: router.patch('/:id/archive-project', archiveProjectController);"
+        );
+    });
+
+    it('writes the route handler under [id] on next-fullstack', () => {
+        writePackageJson({ next: '1' });
+        mkdir('app/api');
+        mkdir('app/projects');
+        makeAction('projects', 'Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        expect(readProjectFile('app/api/projects/[id]/archive-project/route.ts')).toContain('export async function PATCH(');
+        expect(projectFileExists('app/api/projects/:id')).toBe(false);
+    });
+
+    it('rejects a GET with a body before writing anything', () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/users');
+        expect(() => makeAction('users', 'User', 'searchUsers', { withInput: true, returns: 'list', method: 'get' })).toThrow(
+            'A GET action cannot take a request body.'
+        );
+        expect(listFiles('src/features/users')).toEqual([]);
+    });
+});
+
+describe('make:action in a feature that is the action itself', () => {
+    it('routes a Nest create at the controller root with the default 201', () => {
+        writePackageJson({ '@nestjs/core': '1', 'nestjs-zod': '1' }, {}, { domainDriver: { featureRoot: 'src/projects' } });
+        mkdir('src/projects/create-project');
+        makeAction('create-project', 'Project', 'createProject', { withInput: true, returns: 'one' });
+        const controller = readProjectFile('src/projects/create-project/controllers/CreateProject.controller.ts');
+        expect(controller).toContain("@Controller('create-project')");
+        expect(controller).toContain('@Post()\n  handle(@Body() body: CreateProjectDto): Promise<Project> {');
+        expect(controller).not.toContain('HttpCode');
+    });
+
+    it('prints a root route line on express', () => {
+        writePackageJson({ express: '1' });
+        mkdir('src/features/create-project');
+        makeAction('create-project', 'Project', 'createProject', { withInput: true, returns: 'one' });
+        expect(logged()).toContain(
+            "ℹ️  Add to create-project.routes.ts: router.post('/', createProjectController);"
+        );
+    });
+});
+
 describe('make:action on node with express', () => {
     beforeEach(() => {
         writePackageJson({ express: '1' });
@@ -55,11 +128,20 @@ describe('make:action on node with express', () => {
 
     it('hints when the types file is missing and stays quiet when it exists', () => {
         makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
-        expect(logged()).toContain('ℹ️  types/User.types.ts not found. Run: domain-driver make:types users/User');
+        expect(logged()).toContain(
+            'ℹ️  types/User.types.ts and schemas/User.schema.ts not found. Run: domain-driver make:types users/User'
+        );
         vi.mocked(console.log).mockClear();
         makeTypes('users', 'User');
         makeAction('users', 'User', 'countUsers', { withInput: false, returns: 'one' });
-        expect(logged().some((line) => line.includes('types/User.types.ts not found'))).toBe(false);
+        expect(logged().some((line) => line.includes('not found'))).toBe(false);
+    });
+
+    it('names only the entity schema when the types file predates it', () => {
+        mkdir('src/features/users/types');
+        fs.writeFileSync(path.join(process.cwd(), 'src/features/users/types/User.types.ts'), 'export interface User { id: string }\n');
+        makeAction('users', 'User', 'findActiveUsers', { withInput: false, returns: 'list' });
+        expect(logged()).toContain('ℹ️  schemas/User.schema.ts not found. Run: domain-driver make:types users/User');
     });
 
     it('writes a schema with --with-input and a 204 controller for void', () => {

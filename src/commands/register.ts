@@ -5,6 +5,7 @@ import { ModuleProperty } from '../nest/register';
 import { layerDir } from '../stack/registry';
 import { Layer } from '../stack/types';
 import { ACTIONS } from '../templates/actions';
+import { featureModuleName } from '../templates/nest/module';
 import { RenderContext } from '../templates/context';
 import { fileExists } from '../utils/fs';
 
@@ -57,15 +58,15 @@ export function standardActionNames(entity: string): readonly string[] {
 export function registerCustomAction(ctx: RenderContext, action: string, entity: string): void {
     if (ctx.profile.name !== 'nest') return;
     const entries: Entry[] = [
-        { ...entriesFor(ctx, KINDS.controller, [action])[0], before: `Show${entity}Controller` },
-        entriesFor(ctx, KINDS.service, [action])[0],
-        entriesFor(ctx, KINDS.repository, [action])[0],
+        ...entriesFor(ctx, KINDS.controller, [action]).map((entry) => ({ ...entry, before: `Show${entity}Controller` })),
+        ...entriesFor(ctx, KINDS.service, [action]),
+        ...entriesFor(ctx, KINDS.repository, [action]),
     ];
     applyRegistrations(featureModule(ctx), entries, ctx.stack.autoRegister);
 }
 
 /** Registers the feature's module in the application's root module. */
-export function registerFeatureModule(ctx: RenderContext, entity: string): void {
+export function registerFeatureModule(ctx: RenderContext): void {
     if (ctx.profile.name !== 'nest') return;
     const moduleFile = featureModule(ctx);
     if (!fileExists(moduleFile)) return;
@@ -74,7 +75,7 @@ export function registerFeatureModule(ctx: RenderContext, entity: string): void 
     if (rootModule === null) {
         if (!ctx.stack.autoRegister) return;
         console.log(
-            `ℹ️  No root module found, so ${entity}Module was not registered. Add it by hand, or name the file with "domainDriver": { "rootModule": "..." } in package.json.`
+            `ℹ️  No root module found, so ${featureModuleName(ctx.feature)} was not registered. Add it by hand, or name the file with "domainDriver": { "rootModule": "..." } in package.json.`
         );
         return;
     }
@@ -82,7 +83,7 @@ export function registerFeatureModule(ctx: RenderContext, entity: string): void 
 
     applyRegistrations(
         rootModule,
-        [{ identifier: `${entity}Module`, definedIn: moduleFile, property: 'imports' }],
+        [{ identifier: featureModuleName(ctx.feature), definedIn: moduleFile, property: 'imports' }],
         ctx.stack.autoRegister
     );
 }

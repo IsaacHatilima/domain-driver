@@ -4,7 +4,7 @@ import { RenderContext } from '../templates/context';
 import { renderPage } from '../templates/frontend/page';
 import { renderRoute } from '../templates/frontend/route';
 import { renderModule } from '../templates/nest/module';
-import { fileExists, mkdirSafe, writeFileSafe } from '../utils/fs';
+import { fileExists, mkdirSafe, PLACEHOLDER, writeFileSafe } from '../utils/fs';
 import { toPascalCase } from '../utils/naming';
 import { makeComponent } from './component';
 import { makeContainer } from './container';
@@ -30,7 +30,7 @@ export async function makeFeature(name: string, all: boolean = false, entityName
 
     if (all) scaffoldLayers(ctx, entity);
     writeEntryFile(ctx, entity, all);
-    registerFeatureModule(ctx, entity);
+    registerFeatureModule(ctx);
 
     if (all) console.log(`✅ All files scaffolded for "${name}"`);
 }
@@ -39,7 +39,7 @@ function createFolders(ctx: RenderContext, all: boolean): void {
     for (const folder of ctx.profile.folders) {
         const dir = path.join(ctx.featureDir, folder);
         mkdirSafe(dir);
-        if (!all) writeFileSafe(path.join(dir, '.gitkeep'), '');
+        if (!all) writeFileSafe(path.join(dir, PLACEHOLDER), '');
     }
 }
 

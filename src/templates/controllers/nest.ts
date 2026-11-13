@@ -6,6 +6,7 @@ const METHOD_DECORATORS: Readonly<Record<HttpMethod, string>> = Object.freeze({
     get: 'Get',
     post: 'Post',
     put: 'Put',
+    patch: 'Patch',
     delete: 'Delete',
 });
 
@@ -13,6 +14,7 @@ const NEST_DEFAULT_STATUS: Readonly<Record<HttpMethod, number>> = Object.freeze(
     get: 200,
     post: 201,
     put: 200,
+    patch: 200,
     delete: 200,
 });
 

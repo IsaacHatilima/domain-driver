@@ -82,6 +82,36 @@ describe('renderActionRoute', () => {
         expect(content).toContain('return NextResponse.json(await service.handle(parsed.data));');
     });
 
+    it('a create answers 201', () => {
+        const ctx = contextFor('next-fullstack', 'users');
+        const spec = customAction('User', 'createUser', { withInput: true, returns: 'one' });
+        const fromFile = path.join(apiRouteDir(ctx.stack, 'users'), 'create-user', 'route.ts');
+        const content = renderActionRoute(ctx, spec, fromFile);
+        expect(content).toContain('return NextResponse.json(await service.handle(parsed.data), { status: 201 });');
+    });
+
+    it('an action on one record reads the id from the route params', () => {
+        const ctx = contextFor('next-fullstack', 'users');
+        const spec = customAction('User', 'archiveUser', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        const fromFile = path.join(apiRouteDir(ctx.stack, 'users'), '[id]', 'archive-user', 'route.ts');
+        const content = renderActionRoute(ctx, spec, fromFile);
+        expect(content).toContain("import { ArchiveUserService } from '../../../../users/server/services/ArchiveUser.service';");
+        expect(content).toContain('type RouteContext = { params: Promise<{ id: string }> };');
+        expect(content).toContain('export async function PATCH(_request: Request, { params }: RouteContext): Promise<NextResponse> {');
+        expect(content).toContain('  const { id } = await params;\n  return NextResponse.json(await service.handle(id));');
+    });
+
+    it('an action on one record with a body validates it after reading the id', () => {
+        const ctx = contextFor('next-fullstack', 'users');
+        const spec = customAction('User', 'renameUser', { withInput: true, returns: 'void', method: 'put', onRecord: true });
+        const fromFile = path.join(apiRouteDir(ctx.stack, 'users'), '[id]', 'rename-user', 'route.ts');
+        const content = renderActionRoute(ctx, spec, fromFile);
+        expect(content).toContain('export async function PUT(request: Request, { params }: RouteContext): Promise<Response> {');
+        expect(content).toContain('const parsed = RenameUserSchema.safeParse(await request.json());');
+        expect(content).toContain('await service.handle(id, parsed.data);');
+        expect(content).toContain('return new Response(null, { status: 204 });');
+    });
+
     it('void returns an empty 204', () => {
         const ctx = contextFor('next-fullstack', 'users');
         const spec = customAction('User', 'purgeUsers', { withInput: false, returns: 'void' });

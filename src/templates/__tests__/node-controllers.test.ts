@@ -182,6 +182,50 @@ describe('node dispatcher', () => {
     });
 });
 
+describe('custom actions on one record through the controller templates', () => {
+    const archive = () => customAction('Cat', 'archiveCat', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+
+    it('express reads the id from the params', () => {
+        const ctx = contextFor('node', 'cat', { httpFramework: 'express' });
+        const content = renderExpressController(ctx, archive(), controllerFile(ctx, 'Archive'));
+        expect(content).toContain('archiveCatController(req: Request<{ id: string }>, res: Response, next: NextFunction)');
+        expect(content).toContain('res.status(200).json(await service.handle(req.params.id));');
+    });
+
+    it('fastify types the id param', () => {
+        const ctx = contextFor('node', 'cat', { httpFramework: 'fastify' });
+        const content = renderFastifyController(ctx, archive(), controllerFile(ctx, 'Archive'));
+        expect(content).toContain('request: FastifyRequest<{ Params: { id: string } }>');
+        expect(content).toContain('await service.handle(request.params.id)');
+    });
+
+    it('hono types the context with the full action path', () => {
+        const ctx = contextFor('node', 'cat', { httpFramework: 'hono' });
+        const content = renderHonoController(ctx, archive(), controllerFile(ctx, 'Archive'));
+        expect(content).toContain("export async function archiveCatController(c: Context<{}, '/:id/archive-cat'>): Promise<Response> {");
+        expect(content).toContain("await service.handle(c.req.param('id'))");
+    });
+
+    it('generic takes the id', () => {
+        const ctx = contextFor('node', 'cat');
+        const content = renderGenericController(ctx, archive(), 'Cat', controllerFile(ctx, 'Archive'));
+        expect(content).toContain('async handle(id: string): Promise<Cat> {');
+        expect(content).toContain('return service.handle(id);');
+    });
+
+    it('route lines use the method and the record path', () => {
+        expect(renderNodeRouteLine(contextFor('node', 'cat', { httpFramework: 'express' }), archive(), 'Cat')).toBe(
+            "router.patch('/:id/archive-cat', archiveCatController);"
+        );
+        expect(renderNodeRouteLine(contextFor('node', 'cat', { httpFramework: 'fastify' }), archive(), 'Cat')).toBe(
+            "app.patch('/:id/archive-cat', archiveCatController);"
+        );
+        expect(renderNodeRouteLine(contextFor('node', 'cat', { httpFramework: 'hono' }), archive(), 'Cat')).toBe(
+            "cat.patch('/:id/archive-cat', archiveCatController);"
+        );
+    });
+});
+
 describe('custom action specs through the controller templates', () => {
     const findActive = customAction('User', 'findActiveUsers', { withInput: false, returns: 'list' });
     const archive = customAction('User', 'archiveUser', { withInput: true, returns: 'one' });

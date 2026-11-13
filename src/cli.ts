@@ -1,7 +1,7 @@
 // src/cli.ts
 import { Command } from 'commander';
 import * as os from 'os';
-import { makeAction, parseReturns } from './commands/action';
+import { makeAction, parseMethod, parseReturns } from './commands/action';
 import { makeComponent, parseComponentType } from './commands/component';
 import { makeContainer } from './commands/container';
 import { makeController } from './commands/controller';
@@ -34,6 +34,23 @@ export interface CliDeps {
 }
 
 const SKIP_DETECTION = new Set(['update']);
+
+/** make:action writes different files per stack, so its help says which, rather than one list for all. */
+const ACTION_FILES_HELP = `
+Files per stack:
+  react, next-frontend   hook only; the service and repository live behind the API, outside the project
+  next-fullstack         hook, service, repository, route handler at app/api/<feature>/<slug>/route.ts
+  tanstack-start         hook, service, repository, server function (<Name>.fn.ts)
+  node                   service, repository, controller; prints the line for <feature>.routes.ts
+  nest                   service, repository, controller, and a DTO with --with-input; registered in <feature>.module.ts
+--with-input also writes <Name>.schema.ts on every stack.`;
+
+interface MakeActionOptions {
+    readonly withInput: boolean;
+    readonly returns: string;
+    readonly method?: string;
+    readonly onRecord: boolean;
+}
 
 export function defaultCliDeps(): CliDeps {
     return {
@@ -89,7 +106,7 @@ export function createProgram(deps: CliDeps): Command {
     program
         .command('make:feature <target>')
         .description('Scaffold a feature folder for the detected stack (<feature> or <feature>/<Entity>)')
-        .option('-a, --all', 'Scaffold all files inside each folder')
+        .option('-a, --all', "Scaffold every layer's files, not just the folders")
         .action(async (target: string, options: { all?: boolean }) => {
             const { feature, entity } = parseFeatureTarget(target);
             await makeFeature(feature, options.all ?? false, entity ?? undefined);
@@ -97,7 +114,7 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('make:component <target>')
-        .description('Scaffold a component inside an existing feature (<feature>/<Name>)')
+        .description('Scaffold a component inside an existing feature (<feature>/<Name>); react, next-frontend, next-fullstack, tanstack-start')
         .argument('[type]', 'Component type: client or server', 'client')
         .action((target: string, type: string) => {
             const { feature, name } = parseTarget(target);
@@ -106,7 +123,9 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('make:container <target>')
-        .description('Scaffold a smart container component inside an existing feature (<feature>/<Name>)')
+        .description(
+            'Scaffold a container (<feature>/<Entity>Container): it lists records through useList<Entity> when that hook exists, and calls no hook otherwise'
+        )
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             makeContainer(feature, name);
@@ -114,7 +133,9 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('make:hook <target>')
-        .description('Scaffold single-responsibility hook files inside an existing feature (<feature>/<Entity>)')
+        .description(
+            'Scaffold one hook file per action, List to Delete, that calls the API (<feature>/<Entity>); react, next-frontend, next-fullstack, tanstack-start'
+        )
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             makeHook(feature, name);
@@ -122,7 +143,9 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('make:service <target>')
-        .description('Scaffold single-responsibility service files inside an existing feature (<feature>/<Entity>)')
+        .description(
+            'Scaffold one server-side service per action (<feature>/<Entity>); node, nest, next-fullstack, tanstack-start'
+        )
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             const wrote = makeService(feature, name);
@@ -131,7 +154,9 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('make:repository <target>')
-        .description('Scaffold single-responsibility repository files inside an existing feature (<feature>/<Entity>)')
+        .description(
+            'Scaffold one server-side repository per action (<feature>/<Entity>); node, nest, next-fullstack, tanstack-start'
+        )
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             const wrote = makeRepository(feature, name);
@@ -140,7 +165,9 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('make:controller <target>')
-        .description('Scaffold single-responsibility controllers or route handlers inside an existing feature (<feature>/<Entity>)')
+        .description(
+            'Scaffold one controller per action: Node and Nest controllers, Next route handlers, TanStack Start server functions (<feature>/<Entity>); not on react or next-frontend'
+        )
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             const wrote = makeController(feature, name);
@@ -149,13 +176,22 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('make:action <target> <action>')
-        .description('Scaffold a bespoke action as its own service, repository, and controller (<feature>/<Entity> <actionName>)')
+        .description("Scaffold a bespoke action as its own file in each of the stack's layers (<feature>/<Entity> <actionName>)")
         .option('--with-input', 'The action takes a request body validated by a Zod schema', false)
         .option('--returns <kind>', 'list, one, or void', 'list')
-        .action((target: string, action: string, options: { withInput: boolean; returns: string }) => {
+        .option('--method <method>', 'get, post, put, patch, or delete (default: post with --with-input, otherwise get)')
+        .option('--on-record', 'The action takes the record id: route /:id/<slug>, with id passed through every layer', false)
+        .addHelpText('after', ACTION_FILES_HELP)
+        .action((target: string, action: string, options: MakeActionOptions) => {
             const { feature, name } = parseTarget(target);
             const returns = parseReturns(options.returns);
-            const wrote = makeAction(feature, name, action, { withInput: options.withInput, returns });
+            const method = options.method === undefined ? undefined : parseMethod(options.method);
+            const wrote = makeAction(feature, name, action, {
+                withInput: options.withInput,
+                returns,
+                method,
+                onRecord: options.onRecord,
+            });
             if (wrote) {
                 const { pascal } = actionCase(action);
                 registerCustomAction(requireFeature(feature), pascal, name);
@@ -164,7 +200,9 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('make:schema <target>')
-        .description('Scaffold Zod schemas (and Nest DTOs) for create and update operations (<feature>/<Entity>)')
+        .description(
+            'Scaffold the entity schema and the Create and Update Zod schemas, plus Create and Update DTOs on Nest (<feature>/<Entity>)'
+        )
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             makeSchema(feature, name);
@@ -172,7 +210,9 @@ export function createProgram(deps: CliDeps): Command {
 
     program
         .command('make:types <target>')
-        .description('Scaffold a types file inside an existing feature (<feature>/<Entity>)')
+        .description(
+            'Scaffold the entity type, inferred with z.infer from the entity schema, which it writes when missing (<feature>/<Entity>)'
+        )
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
             makeTypes(feature, name);

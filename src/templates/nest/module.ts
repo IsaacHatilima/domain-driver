@@ -1,6 +1,16 @@
 import { Layer } from '../../stack/types';
+import { toPascalCase } from '../../utils/naming';
 import { ACTIONS } from '../actions';
 import { RenderContext } from '../context';
+
+/**
+ * The module is named after its folder, as its file is. Naming it after the entity gave every
+ * flow feature of one entity (`create-project`, `archive-project`, ...) the same `ProjectModule`,
+ * so the root module could only register one of them.
+ */
+export function featureModuleName(feature: string): string {
+    return `${toPascalCase(feature)}Module`;
+}
 
 function classNames(entity: string, suffix: string): readonly string[] {
     return ACTIONS.map((action) => `${action}${entity}${suffix}`);
@@ -39,6 +49,6 @@ export function renderModule(ctx: RenderContext, entity: string, fromFile: strin
   controllers: ${list(controllers)},
   providers: ${list(providers)},
 })
-export class ${entity}Module {}
+export class ${featureModuleName(ctx.feature)} {}
 `;
 }

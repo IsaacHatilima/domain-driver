@@ -23,6 +23,8 @@ const perAction = (dir: string, suffix: string): string[] =>
     ACTIONS.map((action) => `${dir}/${action}CoffeeType.${suffix}.ts`);
 const writeActions = (dir: string, suffix: string): string[] =>
     ['Create', 'Update'].map((action) => `${dir}/${action}CoffeeType.${suffix}.ts`);
+/** The entity schema the types derive from, beside the Create and Update schemas. */
+const schemas = (dir: string): string[] => [`${dir}/CoffeeType.schema.ts`, ...writeActions(dir, 'schema')];
 
 function assertImportsResolve(relativeRoot: string, alias: AliasConfig | null): void {
     for (const file of listFiles(relativeRoot)) {
@@ -65,7 +67,7 @@ describe('make:feature -a per stack', () => {
                 'coffee-type/containers/CoffeeTypeContainer.tsx',
                 ...perAction('coffee-type/hooks', 'hook'),
                 'coffee-type/page.tsx',
-                ...writeActions('coffee-type/schemas', 'schema'),
+                ...schemas('coffee-type/schemas'),
                 'coffee-type/types/CoffeeType.types.ts',
             ].sort()
         );
@@ -92,7 +94,7 @@ describe('make:feature -a per stack', () => {
                 'coffee-type/containers/CoffeeTypeContainer.tsx',
                 ...perAction('coffee-type/hooks', 'hook'),
                 'coffee-type/page.tsx',
-                ...writeActions('coffee-type/schemas', 'schema'),
+                ...schemas('coffee-type/schemas'),
                 ...perAction('coffee-type/server/repositories', 'repository'),
                 ...perAction('coffee-type/server/services', 'service'),
                 'coffee-type/types/CoffeeType.types.ts',
@@ -132,7 +134,7 @@ describe('make:feature -a per stack', () => {
                 'coffee-type/components/CoffeeType.tsx',
                 'coffee-type/containers/CoffeeTypeContainer.tsx',
                 ...perAction('coffee-type/hooks', 'hook'),
-                ...writeActions('coffee-type/schemas', 'schema'),
+                ...schemas('coffee-type/schemas'),
                 'coffee-type/types/CoffeeType.types.ts',
             ].sort()
         );
@@ -153,7 +155,7 @@ describe('make:feature -a per stack', () => {
                 'coffee-type/coffee-type.routes.ts',
                 ...perAction('coffee-type/controllers', 'controller'),
                 ...perAction('coffee-type/repositories', 'repository'),
-                ...writeActions('coffee-type/schemas', 'schema'),
+                ...schemas('coffee-type/schemas'),
                 ...perAction('coffee-type/services', 'service'),
                 'coffee-type/types/CoffeeType.types.ts',
             ].sort()
@@ -179,7 +181,7 @@ describe('make:feature -a per stack', () => {
                 ...perAction('coffee-type/controllers', 'controller'),
                 ...writeActions('coffee-type/dto', 'dto'),
                 ...perAction('coffee-type/repositories', 'repository'),
-                ...writeActions('coffee-type/schemas', 'schema'),
+                ...schemas('coffee-type/schemas'),
                 ...perAction('coffee-type/services', 'service'),
                 'coffee-type/types/CoffeeType.types.ts',
             ].sort()
@@ -196,7 +198,7 @@ describe('make:feature -a per stack', () => {
                 'coffee-type/-containers/CoffeeTypeContainer.tsx',
                 'coffee-type/-hooks/coffee-type.keys.ts',
                 ...perAction('coffee-type/-hooks', 'hook'),
-                ...writeActions('coffee-type/-schemas', 'schema'),
+                ...schemas('coffee-type/-schemas'),
                 ...perAction('coffee-type/-server/functions', 'fn'),
                 ...perAction('coffee-type/-server/repositories', 'repository'),
                 ...perAction('coffee-type/-server/services', 'service'),
@@ -209,7 +211,9 @@ describe('make:feature -a per stack', () => {
         // The hook calls the generated server function directly, with no Service in between.
         const hook = readProjectFile('src/routes/coffee-type/-hooks/ListCoffeeType.hook.ts');
         expect(hook).toContain("import { listCoffeeType } from '../-server/functions/ListCoffeeType.fn';");
-        expect(hook).toContain('queryFn: (): Promise<CoffeeType[]> => listCoffeeType(),');
+        expect(hook).toContain(
+            'queryFn: async (): Promise<CoffeeType[]> => z.array(CoffeeTypeSchema).parse(await listCoffeeType()),'
+        );
         expect(hook).not.toContain('Service');
         assertImportsResolve('src/routes', null);
     });

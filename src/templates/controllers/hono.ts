@@ -9,7 +9,7 @@ export function renderHonoController(ctx: RenderContext, spec: ActionSpec, fromF
         ...(spec.schema !== null ? [schemaImport(ctx, fromFile, spec.schema)] : []),
         serviceImport(ctx, fromFile, spec),
     ].join('\n');
-    const contextType = spec.usesId ? "Context<{}, '/:id'>" : 'Context';
+    const contextType = spec.usesId ? `Context<{}, '${spec.path}'>` : 'Context';
     const validate =
         spec.schema !== null
             ? `  const parsed = ${spec.schema}Schema.safeParse(await c.req.json());

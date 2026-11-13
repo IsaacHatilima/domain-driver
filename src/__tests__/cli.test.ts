@@ -32,6 +32,16 @@ function cliDeps(overrides: Partial<CliDeps> = {}): CliDeps {
     };
 }
 
+/** A subcommand's full help, including text added after the options. */
+function fullHelp(name: string): string {
+    const command = createProgram(cliDeps()).commands.find((candidate) => candidate.name() === name);
+    if (command === undefined) throw new Error(`no ${name} command`);
+    let out = '';
+    command.configureOutput({ writeOut: (text) => (out += text) });
+    command.outputHelp();
+    return out;
+}
+
 async function run(deps: CliDeps, argv: readonly string[]): Promise<void> {
     const program = createProgram(deps).exitOverride();
     await program.parseAsync(['node', 'domain-driver', ...argv]);
@@ -73,6 +83,54 @@ describe('createProgram', () => {
         mkdir('src/features/cat');
         await run(cliDeps({ env: { DOMAIN_DRIVER_CACHE_DIR: cacheDir, CI: '1' } }), ['make:types', 'cat/Cat']);
         expect(lines).toEqual([STACK_LINE]);
+    });
+
+    it('make:action passes --method and --on-record through', async () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/projects');
+        await run(cliDeps({ isTTY: false }), [
+            'make:action',
+            'projects/Project',
+            'archiveProject',
+            '--on-record',
+            '--method',
+            'patch',
+            '--returns',
+            'one',
+        ]);
+        const hook = fs.readFileSync(path.join(project.dir, 'src/features/projects/hooks/ArchiveProject.hook.ts'), 'utf-8');
+        expect(hook).toContain('const archiveProject = useCallback(async (id: string) => {');
+        expect(hook).toContain("method: 'PATCH',");
+    });
+
+    it('make:action rejects an unknown --method', async () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/projects');
+        await expect(
+            run(cliDeps({ isTTY: false }), ['make:action', 'projects/Project', 'archiveProject', '--method', 'fetch'])
+        ).rejects.toThrow('Invalid --method "fetch". Use get, post, put, patch, or delete.');
+        expect(projectFileExists('src/features/projects/hooks')).toBe(false);
+    });
+
+    it('make:action help says which files each stack gets, not a service pair everywhere', () => {
+        const help = fullHelp('make:action');
+        expect(help).not.toContain('as its own service, repository, and controller');
+        expect(help).toContain('--method <method>');
+        expect(help).toContain('--on-record');
+        expect(help).toMatch(/react, next-frontend +hook only/);
+        expect(help).toMatch(/nest +service, repository, controller/);
+        expect(help).toMatch(/tanstack-start +hook, service, repository, server function/);
+    });
+
+    it('layer help names the stacks a layer exists on', () => {
+        // Commander wraps descriptions at the terminal width, so compare the words, not the lines.
+        const helpFor = (name: string): string => fullHelp(name).replace(/\s+/g, ' ');
+        expect(helpFor('make:service')).toContain('node, nest, next-fullstack, tanstack-start');
+        expect(helpFor('make:repository')).toContain('node, nest, next-fullstack, tanstack-start');
+        expect(helpFor('make:controller')).toContain('not on react or next-frontend');
+        expect(helpFor('make:hook')).toContain('react, next-frontend, next-fullstack, tanstack-start');
+        expect(helpFor('make:schema')).toContain('entity schema');
+        expect(helpFor('make:types')).toContain('z.infer');
     });
 
     it('has no init command and writes no agent files', async () => {

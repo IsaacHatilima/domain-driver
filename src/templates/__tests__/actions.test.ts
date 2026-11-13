@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { actionCase, customAction, isQueryAction, standardAction, standardActions, RETURN_KINDS } from '../actions';
+import { actionCase, customAction, HTTP_METHODS, isQueryAction, standardAction, standardActions, RETURN_KINDS } from '../actions';
 
 describe('actionCase', () => {
     it('normalises camelCase and PascalCase', () => {
@@ -33,6 +33,7 @@ describe('standardAction', () => {
             method: 'get',
             path: '/',
             failure: 'Failed to fetch Cat list',
+            custom: false,
         });
     });
 
@@ -50,6 +51,7 @@ describe('standardAction', () => {
             method: 'get',
             path: '/:id',
             failure: 'Failed to fetch Cat',
+            custom: false,
         });
     });
 
@@ -67,6 +69,7 @@ describe('standardAction', () => {
             method: 'post',
             path: '/',
             failure: 'Failed to create Cat',
+            custom: false,
         });
     });
 
@@ -84,6 +87,7 @@ describe('standardAction', () => {
             method: 'put',
             path: '/:id',
             failure: 'Failed to update Cat',
+            custom: false,
         });
     });
 
@@ -101,6 +105,7 @@ describe('standardAction', () => {
             method: 'delete',
             path: '/:id',
             failure: 'Failed to delete Cat',
+            custom: false,
         });
     });
 
@@ -125,7 +130,8 @@ describe('customAction', () => {
             status: 200,
             method: 'get',
             path: '/find-active-users',
-            failure: 'Failed to findActiveUsers User',
+            failure: 'Failed to find active users',
+            custom: true,
         });
     });
 
@@ -142,7 +148,8 @@ describe('customAction', () => {
             status: 200,
             method: 'post',
             path: '/archive-user',
-            failure: 'Failed to archiveUser User',
+            failure: 'Failed to archive user',
+            custom: true,
         });
     });
 
@@ -164,6 +171,110 @@ describe('customAction', () => {
     it('lists the return kinds', () => {
         expect(RETURN_KINDS).toEqual(['list', 'one', 'void']);
     });
+
+    it('words the failure from the action name, in lower case', () => {
+        expect(customAction('Project', 'archiveProject', { withInput: false, returns: 'one' }).failure).toBe('Failed to archive project');
+        expect(customAction('Key', 'syncAPIKeys', { withInput: false, returns: 'list' }).failure).toBe('Failed to sync api keys');
+        expect(customAction('Project', 'ArchiveProject', { withInput: false, returns: 'one' }).failure).toBe('Failed to archive project');
+    });
+
+    it('lists the methods', () => {
+        expect(HTTP_METHODS).toEqual(['get', 'post', 'put', 'patch', 'delete']);
+    });
+});
+
+describe('customAction on one record', () => {
+    it('takes the id, routes under /:id and uses the given method', () => {
+        expect(
+            customAction('Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true })
+        ).toEqual({
+            name: 'ArchiveProject',
+            handler: 'archiveProjectController',
+            params: 'id: string',
+            args: 'id',
+            returns: 'Promise<Project>',
+            usesEntityType: true,
+            schema: null,
+            usesId: true,
+            status: 200,
+            method: 'patch',
+            path: '/:id/archive-project',
+            failure: 'Failed to archive project',
+            custom: true,
+        });
+    });
+
+    it('takes the id before the body with input', () => {
+        const spec = customAction('Project', 'renameProject', { withInput: true, returns: 'one', method: 'put', onRecord: true });
+        expect(spec.params).toBe('id: string, data: RenameProject');
+        expect(spec.args).toBe('id, data');
+        expect(spec.schema).toBe('RenameProject');
+        expect(spec.method).toBe('put');
+    });
+
+    it('defaults to GET on a record without input, as off it', () => {
+        const spec = customAction('Project', 'projectHistory', { withInput: false, returns: 'list', onRecord: true });
+        expect(spec.method).toBe('get');
+        expect(spec.path).toBe('/:id/project-history');
+        expect(spec.params).toBe('id: string');
+    });
+
+    it('responds 204 for a void delete on a record', () => {
+        const spec = customAction('Project', 'purgeProject', { withInput: false, returns: 'void', method: 'delete', onRecord: true });
+        expect(spec.status).toBe(204);
+        expect(spec.usesEntityType).toBe(false);
+    });
+});
+
+describe('customAction --method', () => {
+    it('keeps the defaults when no method is given', () => {
+        expect(customAction('User', 'findActiveUsers', { withInput: false, returns: 'list' }).method).toBe('get');
+        expect(customAction('User', 'notifyUsers', { withInput: true, returns: 'void' }).method).toBe('post');
+    });
+
+    it('overrides the default method', () => {
+        expect(customAction('User', 'purgeUsers', { withInput: false, returns: 'void', method: 'delete' }).method).toBe('delete');
+        expect(customAction('User', 'importUsers', { withInput: true, returns: 'list', method: 'put' }).method).toBe('put');
+    });
+
+    it('rejects a GET that takes a request body', () => {
+        expect(() => customAction('User', 'searchUsers', { withInput: true, returns: 'list', method: 'get' })).toThrow(
+            'A GET action cannot take a request body. Drop --with-input, or pick --method post, put, patch, or delete.'
+        );
+    });
+});
+
+describe('customAction status', () => {
+    it('responds 201 for a POST that creates and returns a record', () => {
+        expect(customAction('Project', 'createProject', { withInput: true, returns: 'one' }).status).toBe(201);
+    });
+
+    it('responds 200 for any other POST returning data', () => {
+        expect(customAction('User', 'archiveUser', { withInput: true, returns: 'one' }).status).toBe(200);
+        expect(customAction('User', 'createdReport', { withInput: true, returns: 'one' }).status).toBe(200);
+        expect(customAction('Project', 'createProject', { withInput: true, returns: 'one', method: 'put' }).status).toBe(200);
+    });
+
+    it('still responds 204 for a create that returns nothing', () => {
+        expect(customAction('Project', 'createProject', { withInput: true, returns: 'void' }).status).toBe(204);
+    });
+});
+
+describe('customAction in a feature that is the action itself', () => {
+    it('routes at the feature root instead of repeating the feature in the path', () => {
+        const spec = customAction('Project', 'createProject', { withInput: true, returns: 'one' }, 'create-project');
+        expect(spec.path).toBe('/');
+        expect(spec.custom).toBe(true);
+    });
+
+    it('routes at /:id when the action is on one record', () => {
+        const spec = customAction('Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true }, 'archive-project');
+        expect(spec.path).toBe('/:id');
+    });
+
+    it('keeps the slug when the feature is something else', () => {
+        expect(customAction('Project', 'createProject', { withInput: true, returns: 'one' }, 'projects').path).toBe('/create-project');
+    });
 });
 
 describe('isQueryAction', () => {
@@ -171,6 +282,14 @@ describe('isQueryAction', () => {
         expect(isQueryAction(standardAction('List', 'Cat'))).toBe(true);
         expect(isQueryAction(standardAction('Show', 'Cat'))).toBe(true);
         expect(isQueryAction(customAction('Cat', 'findActiveCats', { withInput: false, returns: 'list' }))).toBe(true);
+    });
+
+    it('is true for a GET on one record and false for any other method on one', () => {
+        expect(isQueryAction(customAction('Cat', 'catHistory', { withInput: false, returns: 'list', onRecord: true }))).toBe(true);
+        expect(
+            isQueryAction(customAction('Cat', 'archiveCat', { withInput: false, returns: 'one', method: 'patch', onRecord: true }))
+        ).toBe(false);
+        expect(isQueryAction(customAction('Cat', 'archiveCat', { withInput: false, returns: 'one', method: 'post' }))).toBe(false);
     });
 
     it('is false for a GET action that returns void', () => {

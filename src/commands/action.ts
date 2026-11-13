@@ -1,6 +1,6 @@
 import * as path from 'path';
-import { hasLayer, layerDir } from '../stack/registry';
-import { ActionSpec, customAction, CustomActionOptions, RETURN_KINDS, ReturnKind } from '../templates/actions';
+import { hasLayer } from '../stack/registry';
+import { ActionSpec, customAction, CustomActionOptions, HTTP_METHODS, HttpMethod, RETURN_KINDS, ReturnKind } from '../templates/actions';
 import { renderServerRepository } from '../templates/backend/server-repository';
 import { RenderContext } from '../templates/context';
 import { renderActionRoute } from '../templates/controllers/next-action-route';
@@ -8,10 +8,11 @@ import { renderNodeRouteLine } from '../templates/controllers/node';
 import { renderDto } from '../templates/nest/dto';
 import { renderService } from '../templates/service';
 import { renderSchema } from '../templates/shared/schema';
-import { fileExists, mkdirSafe } from '../utils/fs';
+import { mkdirSafe } from '../utils/fs';
 import { lowerFirst } from '../utils/naming';
 import { apiRouteDir } from '../utils/paths';
 import { controllerRenderer, controllerSuffix } from './controller-renderer';
+import { hintMissingEntity } from './entity';
 import { hintNestjsZod, hintReactQuery } from './hints';
 import { ensureQueryKeys, hookRenderer } from './hook-renderer';
 import { ensureLayerDir, requireFeature } from './resolve';
@@ -22,6 +23,12 @@ export function parseReturns(value: string): ReturnKind {
     throw new Error(`Invalid --returns "${value}". Use list, one, or void.`);
 }
 
+export function parseMethod(value: string): HttpMethod {
+    const method = value.toLowerCase();
+    if ((HTTP_METHODS as readonly string[]).includes(method)) return method as HttpMethod;
+    throw new Error(`Invalid --method "${value}". Use get, post, put, patch, or delete.`);
+}
+
 export function makeAction(
     feature: string,
     entity: string,
@@ -29,9 +36,9 @@ export function makeAction(
     options: CustomActionOptions
 ): boolean {
     const ctx = requireFeature(feature);
-    const spec = customAction(entity, actionName, options);
+    const spec = customAction(entity, actionName, options, feature);
 
-    hintMissingTypes(ctx, entity);
+    hintMissingEntity(ctx, entity);
     let wroteAny = false;
     if (spec.schema !== null) wroteAny = writeInput(ctx, spec) || wroteAny;
     if (hasLayer(ctx.profile, 'serverRepository')) wroteAny = writeServerSide(ctx, spec, entity) || wroteAny;
@@ -40,12 +47,6 @@ export function makeAction(
 
     if (wroteAny) console.log(`✅ Action "${spec.name}" scaffolded in "${feature}"`);
     return wroteAny;
-}
-
-function hintMissingTypes(ctx: RenderContext, entity: string): void {
-    const typesFile = path.join(ctx.featureDir, layerDir(ctx.profile, 'types'), `${entity}.types.ts`);
-    if (fileExists(typesFile)) return;
-    console.log(`ℹ️  types/${entity}.types.ts not found. Run: domain-driver make:types ${ctx.feature}/${entity}`);
 }
 
 function writeInput(ctx: RenderContext, spec: ActionSpec): boolean {
@@ -82,9 +83,22 @@ function writeHook(ctx: RenderContext, spec: ActionSpec, entity: string): boolea
     return wrote;
 }
 
+/** The action's folder under `app/api/<feature>`: Next names a dynamic segment `[id]`, not `:id`. */
+function nextRouteSegments(spec: ActionSpec): string {
+    return spec.path.slice(1).replace(':id', '[id]');
+}
+
+/**
+ * Only a literal `/<slug>` route can be swallowed by `/:id`, so only that line says where it goes.
+ * The root route and `/:id/<slug>` cannot be mistaken for `/:id`.
+ */
+function routePlacement(spec: ActionSpec): string {
+    return spec.path === '/' || spec.path.startsWith('/:id') ? '' : " above the '/:id' routes";
+}
+
 function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): boolean {
     if (ctx.profile.name === 'next-fullstack') {
-        const routeDir = path.join(apiRouteDir(ctx.stack, ctx.feature), spec.path.slice(1));
+        const routeDir = path.join(apiRouteDir(ctx.stack, ctx.feature), nextRouteSegments(spec));
         mkdirSafe(routeDir);
         const routeFile = path.join(routeDir, 'route.ts');
         return writeIfAbsent(routeFile, () => renderActionRoute(ctx, spec, routeFile));
@@ -97,7 +111,7 @@ function writeController(ctx: RenderContext, spec: ActionSpec, entity: string): 
 
     const line = ctx.profile.name === 'node' ? renderNodeRouteLine(ctx, spec, entity) : null;
     if (wroteController && line !== null) {
-        console.log(`ℹ️  Add to ${ctx.feature}.routes.ts above the '/:id' routes: ${line}`);
+        console.log(`ℹ️  Add to ${ctx.feature}.routes.ts${routePlacement(spec)}: ${line}`);
     }
 
     return wroteController;

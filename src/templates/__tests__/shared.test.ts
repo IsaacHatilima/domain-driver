@@ -1,13 +1,48 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import * as path from 'path';
 import { renderTypes } from '../shared/types';
-import { renderSchema } from '../shared/schema';
+import { renderEntitySchema, renderSchema } from '../shared/schema';
+import { contextFor } from '../../__tests__/helpers/context';
+import { createTempProject, TempProject } from '../../__tests__/helpers/project';
+
+let project: TempProject;
+
+beforeEach(() => {
+    project = createTempProject('shared-templates');
+});
+
+afterEach(() => project.cleanup());
 
 describe('renderTypes', () => {
-    it('renders an interface with id and timestamps', () => {
-        const content = renderTypes('Cat');
-        expect(content).toContain('export interface Cat {');
-        expect(content).toContain('id: string;');
-        expect(content).toContain('createdAt: string;');
+    it('derives the entity type from its schema instead of a parallel interface', () => {
+        const ctx = contextFor('react', 'cat');
+        const content = renderTypes(ctx, 'Cat', path.join(ctx.featureDir, 'types', 'Cat.types.ts'));
+        expect(content).toBe(`import type { z } from 'zod';
+import type { CatSchema } from '../schemas/Cat.schema';
+
+export type Cat = z.infer<typeof CatSchema>;
+`);
+        expect(content).not.toContain('interface');
+    });
+
+    it('reaches the schema through the profile layer folders', () => {
+        const ctx = contextFor('tanstack-start', 'cat');
+        const content = renderTypes(ctx, 'Cat', path.join(ctx.featureDir, '-types', 'Cat.types.ts'));
+        expect(content).toContain("import type { CatSchema } from '../-schemas/Cat.schema';");
+    });
+});
+
+describe('renderEntitySchema', () => {
+    it('renders the record with its id and timestamps and room for the fields', () => {
+        expect(renderEntitySchema('Cat')).toBe(`import { z } from 'zod';
+
+export const CatSchema = z.object({
+  id: z.string(),
+  // add Cat fields here
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+`);
     });
 });
 

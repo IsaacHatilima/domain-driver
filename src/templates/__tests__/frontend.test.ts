@@ -68,11 +68,38 @@ describe('renderComponent', () => {
     });
 });
 
+const WIRED = { listHook: true, component: true } as const;
+
 describe('renderContainer', () => {
+    it('renders a container that imports nothing when there is no List hook to call', () => {
+        const ctx = contextFor('next-frontend', 'projects');
+        const fromFile = path.join(ctx.featureDir, 'containers', 'ProjectDetailContainer.tsx');
+        const content = renderContainer(ctx, 'ProjectDetailContainer', 'ProjectDetail', fromFile, {
+            listHook: false,
+            component: false,
+        });
+        expect(content).toBe(`'use client';
+
+export default function ProjectDetailContainer() {
+  // Call this feature's hooks here and pass what they return to its components.
+  return <div>ProjectDetail</div>;
+}
+`);
+    });
+
+    it('renders each record inline when the entity component does not exist', () => {
+        const ctx = contextFor('react', 'cat');
+        const fromFile = path.join(ctx.featureDir, 'containers', 'CatContainer.tsx');
+        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile, { listHook: true, component: false });
+        expect(content).toContain("import { useListCat } from '../hooks/ListCat.hook';");
+        expect(content).not.toContain('components/');
+        expect(content).toContain('<div key={item.id}>{item.id}</div>');
+    });
+
     it('uses the directive and split component dir on next', () => {
         const ctx = contextFor('next-frontend', 'cat');
         const fromFile = path.join(ctx.featureDir, 'containers', 'CatContainer.tsx');
-        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile);
+        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile, WIRED);
         expect(content.startsWith("'use client';")).toBe(true);
         expect(content).toContain("import { useListCat } from '../hooks/ListCat.hook';");
         expect(content).toContain("import Cat from '../components/client/Cat';");
@@ -83,7 +110,7 @@ describe('renderContainer', () => {
     it('drops the directive and uses the flat component dir on react', () => {
         const ctx = contextFor('react', 'cat');
         const fromFile = path.join(ctx.featureDir, 'containers', 'CatContainer.tsx');
-        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile);
+        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile, WIRED);
         expect(content).not.toContain("'use client'");
         expect(content).toContain("import { useListCat } from '../hooks/ListCat.hook';");
         expect(content).toContain("import Cat from '../components/Cat';");
@@ -92,7 +119,7 @@ describe('renderContainer', () => {
     it('uses isPending, error.message, and a nullish-coalesced list on tanstack-start', () => {
         const ctx = contextFor('tanstack-start', 'cat');
         const fromFile = path.join(ctx.featureDir, '-containers', 'CatContainer.tsx');
-        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile);
+        const content = renderContainer(ctx, 'CatContainer', 'Cat', fromFile, WIRED);
         expect(content).toContain("import { useListCat } from '../-hooks/ListCat.hook';");
         expect(content).toContain('const { data, isPending, error } = useListCat();');
         expect(content).toContain('if (isPending) return <div>Loading...</div>;');
@@ -110,11 +137,14 @@ describe('renderHook', () => {
 
         expect(content).toContain('export function useListCat()');
         expect(content).toContain("import type { Cat } from '../types/Cat.types';");
+        expect(content).toContain("import { z } from 'zod';");
+        expect(content).toContain("import { CatSchema } from '../schemas/Cat.schema';");
         expect(content).toContain('type ListCatResult = { request: string; data: Cat[]; error: string | null };');
         expect(content).toContain('const request = String(attempt);');
         expect(content).toContain("fetch('/api/cat', { signal: controller.signal })");
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat list');");
-        expect(content).toContain('return (await response.json()) as Cat[];');
+        expect(content).toContain('return z.array(CatSchema).parse(await response.json());');
+        expect(content).not.toContain(' as Cat');
         expect(content).toContain('}, [request]);');
         expect(content).toContain('return () => controller.abort();');
         expect(content).toContain('data: result?.data ?? [],');
@@ -131,6 +161,8 @@ describe('renderHook', () => {
         expect(synchronous.join('\n')).not.toMatch(/set[A-Z]/);
         expect(content).not.toContain('void refetch();');
         expect(content).not.toContain('setLoading');
+        // The response is parsed inside the request chain, before any state is set.
+        expect(effect).toContain('return z.array(CatSchema).parse(await response.json());');
     });
 
     it('renders a detail query hook keyed on the id', () => {
@@ -140,9 +172,11 @@ describe('renderHook', () => {
         expect(content).toContain('export function useShowCat(id: string)');
         expect(content).toContain('type ShowCatResult = { request: string; data: Cat | null; error: string | null };');
         expect(content).toContain('const request = `${id}:${attempt}`;');
-        expect(content).toContain('fetch(`/api/cat/${id}`, { signal: controller.signal })');
+        expect(content).toContain('fetch(`/api/cat/${encodeURIComponent(id)}`, { signal: controller.signal })');
         expect(content).toContain("if (!response.ok) throw new Error('Failed to fetch Cat');");
-        expect(content).toContain('return (await response.json()) as Cat;');
+        expect(content).toContain('return CatSchema.parse(await response.json());');
+        expect(content).not.toContain("from 'zod'");
+        expect(content).not.toContain(' as Cat');
         expect(content).toContain('}, [id, request]);');
         expect(content).toContain('data: result?.data ?? null,');
     });
@@ -155,13 +189,14 @@ describe('renderHook', () => {
         expect(content).toContain('const { onSuccess } = options;');
         expect(content).toContain('const updateCat = useCallback(async (id: string, data: UpdateCat) => {');
         expect(content).toContain("import type { UpdateCat } from '../schemas/UpdateCat.schema';");
-        expect(content).toContain(`      const response = await fetch(\`/api/cat/\${id}\`, {
+        expect(content).toContain(`      const response = await fetch(\`/api/cat/\${encodeURIComponent(id)}\`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });`);
         expect(content).toContain("if (!response.ok) throw new Error('Failed to update Cat');");
-        expect(content).toContain('const result = (await response.json()) as Cat;');
+        expect(content).toContain('const result = CatSchema.parse(await response.json());');
+        expect(content).toContain("import { CatSchema } from '../schemas/Cat.schema';");
         expect(content).toContain('onSuccess?.(result);');
         expect(content).toContain('}, [onSuccess]);');
         expect(content).toContain('return { updateCat, loading, error };');
@@ -173,13 +208,15 @@ describe('renderHook', () => {
         const content = renderHook(ctx, standardAction('Delete', 'Cat'), 'Cat', path.join(ctx.featureDir, 'hooks/DeleteCat.hook.ts'));
 
         expect(content).toContain('options: { onSuccess?: () => void } = {}');
-        expect(content).toContain(`      const response = await fetch(\`/api/cat/\${id}\`, {
+        expect(content).toContain(`      const response = await fetch(\`/api/cat/\${encodeURIComponent(id)}\`, {
         method: 'DELETE',
       });`);
         expect(content).toContain("if (!response.ok) throw new Error('Failed to delete Cat');");
         expect(content).toContain('onSuccess?.();');
         expect(content).not.toContain('JSON.stringify');
         expect(content).not.toContain('const result =');
+        expect(content).not.toContain('CatSchema');
+        expect(content).not.toContain("from 'zod'");
     });
 
     it('renders a void custom action as a callable mutation, not an auto-fetching query', () => {
@@ -193,6 +230,59 @@ describe('renderHook', () => {
         expect(content).toContain('onSuccess?.();');
         expect(content).not.toContain('useEffect');
         expect(content).not.toContain('useState<void');
+    });
+
+    it('renders a non-GET action on one record as a mutation that sends the id in the path', () => {
+        const ctx = contextFor('react', 'projects');
+        const spec = customAction('Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true });
+        const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, 'hooks/ArchiveProject.hook.ts'));
+
+        expect(content).toContain('export function useArchiveProject(options: { onSuccess?: (result: Project) => void } = {})');
+        expect(content).toContain('const archiveProject = useCallback(async (id: string) => {');
+        expect(content).toContain(`      const response = await fetch(\`/api/projects/\${encodeURIComponent(id)}/archive-project\`, {
+        method: 'PATCH',
+      });`);
+        expect(content).toContain("if (!response.ok) throw new Error('Failed to archive project');");
+        expect(content).toContain("setError(err instanceof Error ? err.message : 'Failed to archive project');");
+        expect(content).toContain('return { archiveProject, loading, error };');
+        expect(content).not.toContain('useEffect');
+    });
+
+    it('renders a non-GET action without input as a mutation, never a query that fires on mount', () => {
+        const ctx = contextFor('react', 'projects');
+        const spec = customAction('Project', 'syncProjects', { withInput: false, returns: 'list', method: 'post' });
+        const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, 'hooks/SyncProjects.hook.ts'));
+
+        expect(content).toContain('const syncProjects = useCallback(async () => {');
+        expect(content).toContain("method: 'POST',");
+        expect(content).not.toContain('useEffect');
+    });
+
+    it('renders a GET on one record as a query keyed on the id', () => {
+        const ctx = contextFor('react', 'projects');
+        const spec = customAction('Project', 'projectHistory', { withInput: false, returns: 'list', onRecord: true });
+        const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, 'hooks/ProjectHistory.hook.ts'));
+
+        expect(content).toContain('export function useProjectHistory(id: string)');
+        expect(content).toContain('const request = `${id}:${attempt}`;');
+        expect(content).toContain('fetch(`/api/projects/${encodeURIComponent(id)}/project-history`, { signal: controller.signal })');
+        expect(content).toContain('}, [id, request]);');
+    });
+
+    it('encodes the id in every URL, so a slash or ? in it cannot change the route', () => {
+        const ctx = contextFor('react', 'projects');
+        const specs = [
+            standardAction('Show', 'Project'),
+            standardAction('Update', 'Project'),
+            standardAction('Delete', 'Project'),
+            customAction('Project', 'archiveProject', { withInput: false, returns: 'one', method: 'patch', onRecord: true }),
+            customAction('Project', 'projectHistory', { withInput: false, returns: 'list', onRecord: true }),
+        ];
+        for (const spec of specs) {
+            const content = renderHook(ctx, spec, 'Project', path.join(ctx.featureDir, `hooks/${spec.name}.hook.ts`));
+            expect(content, spec.name).toContain('/api/projects/${encodeURIComponent(id)}');
+            expect(content, spec.name).not.toContain('/api/projects/${id}');
+        }
     });
 
     it('omits the client directive on Next, so the TS plugin does not read the hook as a component', () => {
@@ -211,9 +301,10 @@ describe('renderHook', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });`);
-        expect(content).toContain('const result = (await response.json()) as Cat;');
+        expect(content).toContain('const result = CatSchema.parse(await response.json());');
         expect(content).toContain("import type { Cat } from '../types/Cat.types';");
         expect(content).toContain("import type { CreateCat } from '../schemas/CreateCat.schema';");
+        expect(content).toContain("import { CatSchema } from '../schemas/Cat.schema';");
         expect(content).not.toContain('service');
         expect(content).not.toContain('Service');
         expect(content).not.toContain('repositories');
