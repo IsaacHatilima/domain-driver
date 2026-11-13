@@ -61,7 +61,7 @@ export function availableCommands(profile: StackProfile): readonly string[] {
  */
 function hintFor(profile: StackProfile, layer: Layer): string {
     if (profile.name === 'next-frontend' && layer === 'controller') {
-        return ' Create an app/api directory or pass --stack next-fullstack to enable route handlers.';
+        return ' This app has no server side: add its database client (drizzle-orm, prisma, pg, ...), create app/api, or pass --stack next-fullstack.';
     }
     if (layer === 'serverService' || layer === 'serverRepository') {
         return ` Services and repositories live behind the API, and the ${profile.name} stack has no server side. Its hooks call the API directly.`;

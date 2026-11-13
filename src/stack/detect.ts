@@ -13,6 +13,27 @@ import {
 
 const API_DIRS = ['app/api', 'src/app/api', 'pages/api', 'src/pages/api'] as const;
 
+const APP_DIRS = ['app', 'src/app'] as const;
+
+/**
+ * Packages that only make sense on a server: a Next app that depends on one reads and writes data
+ * itself, through Server Components and Server Actions, even when it has no `app/api` folder.
+ */
+const SERVER_DATA_DEPENDENCIES = [
+    'drizzle-orm',
+    '@prisma/client',
+    'prisma',
+    'pg',
+    'postgres',
+    'mysql2',
+    'better-sqlite3',
+    '@libsql/client',
+    'kysely',
+    'mongoose',
+] as const;
+
+const SERVER_FOLDER = 'server';
+
 interface PackageJson {
     readonly dependencies?: Record<string, string>;
     readonly devDependencies?: Record<string, string>;
@@ -111,9 +132,30 @@ function parseOverride(value: string): StackName {
 function inferStack(cwd: string, deps: ReadonlySet<string>): StackName {
     if (deps.has('@nestjs/core')) return 'nest';
     if (deps.has('@tanstack/react-start')) return 'tanstack-start';
-    if (deps.has('next')) return hasApiDir(cwd) ? 'next-fullstack' : 'next-frontend';
+    if (deps.has('next')) return isFullstackNext(cwd, deps) ? 'next-fullstack' : 'next-frontend';
     if (deps.has('react')) return 'react';
     return 'node';
+}
+
+/**
+ * A Next app owns a server side when it has route handlers, depends on a database client, or keeps
+ * server code in a feature's `server/` folder. A Server Actions app often has only the last two.
+ */
+function isFullstackNext(cwd: string, deps: ReadonlySet<string>): boolean {
+    return (
+        hasApiDir(cwd) ||
+        SERVER_DATA_DEPENDENCIES.some((name) => deps.has(name)) ||
+        APP_DIRS.some((dir) => containsServerFolder(path.join(cwd, dir)))
+    );
+}
+
+/** Whether `dir` or any folder below it holds a folder named `server`. Symlinks are not followed. */
+function containsServerFolder(dir: string): boolean {
+    if (!isDirectory(dir)) return false;
+    const folders = fs.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+    return folders.some(
+        (entry) => entry.name === SERVER_FOLDER || containsServerFolder(path.join(dir, entry.name))
+    );
 }
 
 /**
