@@ -59,11 +59,12 @@ describe('make:types', () => {
         expect(console.warn).toHaveBeenCalledTimes(1);
     });
 
-    it('throws when the feature does not exist', () => {
+    it('creates the feature folder when it does not exist', () => {
         writePackageJson({ next: '1' });
-        expect(() => makeTypes('cat', 'Cat')).toThrow(
-            'Feature "cat" does not exist. Run: domain-driver make:feature cat'
-        );
+        makeTypes('cat', 'Cat');
+        expect(projectFileExists('app/cat/types/Cat.types.ts')).toBe(true);
+        expect(projectFileExists('app/cat/schemas/Cat.schema.ts')).toBe(true);
+        expect(logged()).toContain(`✅ Feature folder "cat" created at ${path.join(process.cwd(), 'app/cat')}`);
     });
 
     it('rejects an invalid feature name', () => {

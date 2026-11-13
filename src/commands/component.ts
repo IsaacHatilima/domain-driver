@@ -1,8 +1,8 @@
 import * as path from 'path';
 import { assertLayer, componentDir } from '../stack/registry';
 import { renderComponent } from '../templates/frontend/component';
-import { fileExists, mkdirSafe, writeFileSafe } from '../utils/fs';
-import { requireFeature } from './resolve';
+import { fileExists, writeFileSafe } from '../utils/fs';
+import { ensureFeatureDir, openFeature } from './resolve';
 
 export type ComponentType = 'client' | 'server';
 
@@ -11,15 +11,14 @@ export function parseComponentType(value: string | undefined): ComponentType {
 }
 
 export function makeComponent(feature: string, name: string, type: ComponentType = 'client'): void {
-    const ctx = requireFeature(feature);
+    const ctx = openFeature(feature, 'make:component');
     assertLayer(ctx.profile, 'component', 'make:component');
 
     if (type === 'server' && !ctx.profile.serverComponents) {
         throw new Error(`The ${ctx.profile.name} stack has no server components.`);
     }
 
-    const dir = path.join(ctx.featureDir, componentDir(ctx.profile, type));
-    mkdirSafe(dir);
+    const dir = ensureFeatureDir(ctx, componentDir(ctx.profile, type));
     const filePath = path.join(dir, `${name}.tsx`);
 
     if (fileExists(filePath)) {

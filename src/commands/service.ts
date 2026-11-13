@@ -1,7 +1,7 @@
 import { standardActions } from '../templates/actions';
 import { renderService } from '../templates/service';
 import { assertLayer } from '../stack/registry';
-import { ensureLayerDir, requireFeature } from './resolve';
+import { ensureLayerDir, openFeature } from './resolve';
 import { writeSpecFiles } from './write';
 
 /**
@@ -9,7 +9,7 @@ import { writeSpecFiles } from './write';
  * which calls the endpoint directly, so there is no client-side counterpart.
  */
 export function makeService(feature: string, name: string): boolean {
-    const ctx = requireFeature(feature);
+    const ctx = openFeature(feature, 'make:service');
     assertLayer(ctx.profile, 'serverService', 'make:service');
     const dir = ensureLayerDir(ctx, 'serverService');
     const written = writeSpecFiles(dir, standardActions(name), 'service', (spec, filePath) =>

@@ -18,7 +18,7 @@ import { hintNestjsZod, hintReactQuery, hintRouteIgnored } from './hints';
 import { hintNestRoute } from './nest-routes';
 import { ensureQueryKeys, hookRenderer } from './hook-renderer';
 import { readsQuery, writeQueryContainer } from './query-container';
-import { ensureLayerDir, requireFeature } from './resolve';
+import { ensureLayerDir, openFeature } from './resolve';
 import { DeliveryOptions, hintCallerCheck, hintServerRead, usesServerActions, writeServerActions } from './server-actions';
 import { writeIfAbsent } from './write';
 
@@ -36,7 +36,7 @@ export function parseMethod(value: string): HttpMethod {
 }
 
 export function makeAction(feature: string, entity: string, actionName: string, options: MakeActionOptions): boolean {
-    const ctx = requireFeature(feature);
+    const ctx = openFeature(feature, 'make:action');
     const spec = customAction(entity, actionName, options, feature);
     hintRouteIgnored(ctx.profile, options.route);
 

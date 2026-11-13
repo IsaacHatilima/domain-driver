@@ -5,11 +5,11 @@ import { renderDto } from '../templates/nest/dto';
 import { renderSchema } from '../templates/shared/schema';
 import { ensureEntitySchema } from './entity';
 import { hintNestjsZod } from './hints';
-import { ensureLayerDir, requireFeature } from './resolve';
+import { ensureLayerDir, openFeature } from './resolve';
 import { writeActionFiles } from './write';
 
 export function makeSchema(feature: string, name: string): void {
-    const ctx = requireFeature(feature);
+    const ctx = openFeature(feature, 'make:schema');
     assertLayer(ctx.profile, 'schema', 'make:schema');
 
     ensureEntitySchema(ctx, name);

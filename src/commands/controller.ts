@@ -10,12 +10,12 @@ import { apiRouteDir } from '../utils/paths';
 import { controllerRenderer, controllerSuffix } from './controller-renderer';
 import { hintRouteIgnored } from './hints';
 import { hintNestRoutes } from './nest-routes';
-import { ensureLayerDir, requireFeature } from './resolve';
+import { ensureLayerDir, openFeature } from './resolve';
 import { DeliveryOptions, hintCallerCheck, usesServerActions, writeServerActions } from './server-actions';
 import { writeSpecFiles, writeIfAbsent } from './write';
 
 export function makeController(feature: string, name: string, options: DeliveryOptions = {}): boolean {
-    const ctx = requireFeature(feature);
+    const ctx = openFeature(feature, 'make:controller');
     assertLayer(ctx.profile, 'controller', 'make:controller');
     hintRouteIgnored(ctx.profile, options.route);
 

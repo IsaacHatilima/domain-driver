@@ -1,7 +1,7 @@
 import { standardActions } from '../templates/actions';
 import { renderServerRepository } from '../templates/backend/server-repository';
 import { assertLayer } from '../stack/registry';
-import { ensureLayerDir, requireFeature } from './resolve';
+import { ensureLayerDir, openFeature } from './resolve';
 import { writeSpecFiles } from './write';
 
 /**
@@ -10,7 +10,7 @@ import { writeSpecFiles } from './write';
  * repository.
  */
 export function makeRepository(feature: string, name: string): boolean {
-    const ctx = requireFeature(feature);
+    const ctx = openFeature(feature, 'make:repository');
     assertLayer(ctx.profile, 'serverRepository', 'make:repository');
     const dir = ensureLayerDir(ctx, 'serverRepository');
     const written = writeSpecFiles(dir, standardActions(name), 'repository', (spec, filePath) =>

@@ -2,12 +2,12 @@ import * as path from 'path';
 import { assertLayer } from '../stack/registry';
 import { renderTypes } from '../templates/shared/types';
 import { ensureEntitySchema } from './entity';
-import { ensureLayerDir, requireFeature } from './resolve';
+import { ensureLayerDir, openFeature } from './resolve';
 import { writeIfAbsent } from './write';
 
 /** The types file infers the entity from its schema, so the schema is written first when missing. */
 export function makeTypes(feature: string, name: string): void {
-    const ctx = requireFeature(feature);
+    const ctx = openFeature(feature, 'make:types');
     assertLayer(ctx.profile, 'types', 'make:types');
 
     ensureEntitySchema(ctx, name);
