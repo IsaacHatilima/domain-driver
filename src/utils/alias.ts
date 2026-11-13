@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { parseJsonc } from './jsonc';
 
 export interface AliasConfig {
     readonly prefix: string;
@@ -30,9 +31,7 @@ function readAlias(tsconfigPath: string): AliasConfig | null {
     if (!fs.existsSync(tsconfigPath)) return null;
 
     try {
-        const raw = fs.readFileSync(tsconfigPath, 'utf-8');
-        const stripped = raw.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-        const tsconfig = JSON.parse(stripped) as TsConfig;
+        const tsconfig = parseJsonc(fs.readFileSync(tsconfigPath, 'utf-8')) as TsConfig;
         return findWildcardAlias(tsconfig.compilerOptions?.paths ?? {});
     } catch {
         return null;
