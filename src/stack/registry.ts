@@ -22,6 +22,7 @@ const LAYER_COMMANDS: Readonly<Partial<Record<Layer, string>>> = Object.freeze({
     serverService: 'make:service',
     serverRepository: 'make:repository',
     controller: 'make:controller',
+    serverAction: 'make:controller',
     schema: 'make:schema',
     dto: 'make:schema',
     types: 'make:types',
@@ -41,6 +42,17 @@ export function layerDir(profile: StackProfile, layer: Layer): string {
         throw new Error(`Layer "${layer}" has no directory in the ${profile.name} profile.`);
     }
     return dir;
+}
+
+/**
+ * The folders `make:feature` creates. A Server Actions feature served by route handlers instead
+ * (`--route`) has fetch hooks where its actions would be.
+ */
+export function featureFolders(profile: StackProfile, route: boolean): readonly string[] {
+    if (!profile.serverActions || !route) return profile.folders;
+    const actions = layerDir(profile, 'serverAction');
+    const hooks = layerDir(profile, 'hook');
+    return profile.folders.map((folder) => (folder === actions ? hooks : folder));
 }
 
 export function componentDir(profile: StackProfile, type: 'client' | 'server'): string {

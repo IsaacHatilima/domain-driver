@@ -21,4 +21,5 @@ export const nextFrontend: StackProfile = Object.freeze({
     clientDirective: true,
     serverComponents: true,
     queryHooks: false,
+    serverActions: false,
 });

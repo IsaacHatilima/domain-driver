@@ -120,6 +120,33 @@ describe('createProgram', () => {
         expect(help).toMatch(/react, next-frontend +hook only/);
         expect(help).toMatch(/nest +service, repository, controller/);
         expect(help).toMatch(/tanstack-start +hook, service, repository, server function/);
+        expect(help).toMatch(/next-fullstack +service, repository; a write also gets server\/actions\/<Name>\.action\.ts/);
+        expect(help).toContain('--route');
+        expect(help).not.toContain('next-fullstack         hook, service, repository, route handler');
+    });
+
+    it('make:feature and make:controller take --route', () => {
+        expect(fullHelp('make:feature')).toContain('--route');
+        expect(fullHelp('make:controller')).toContain('--route');
+        expect(fullHelp('make:controller').replace(/\s+/g, ' ')).toContain('Server Actions');
+    });
+
+    it('make:action passes --route through on next-fullstack', async () => {
+        writePackageJson({ next: '1', 'drizzle-orm': '1' });
+        mkdir('app/projects');
+        await run(cliDeps({ isTTY: false }), ['make:action', 'projects/Project', 'archiveProject', '--on-record', '--method', 'post']);
+        expect(projectFileExists('app/projects/server/actions/ArchiveProject.action.ts')).toBe(true);
+        await run(cliDeps({ isTTY: false }), ['make:action', 'projects/Project', 'restoreProject', '--on-record', '--method', 'post', '--route']);
+        expect(projectFileExists('app/api/projects/[id]/restore-project/route.ts')).toBe(true);
+        expect(projectFileExists('app/projects/server/actions/RestoreProject.action.ts')).toBe(false);
+    });
+
+    it('make:feature passes --route through on next-fullstack', async () => {
+        writePackageJson({ next: '1', 'drizzle-orm': '1' });
+        mkdir('app');
+        await run(cliDeps({ isTTY: false }), ['make:feature', 'projects/Project', '-a', '--route']);
+        expect(projectFileExists('app/api/projects/route.ts')).toBe(true);
+        expect(projectFileExists('app/projects/server/actions')).toBe(false);
     });
 
     it('layer help names the stacks a layer exists on', () => {

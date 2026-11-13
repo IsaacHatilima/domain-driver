@@ -14,4 +14,5 @@ export const react: StackProfile = Object.freeze({
     clientDirective: false,
     serverComponents: false,
     queryHooks: false,
+    serverActions: false,
 });

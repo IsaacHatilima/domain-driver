@@ -33,7 +33,7 @@ describe('make:feature with a relocated feature root', () => {
     });
 
     it('moves the feature but leaves its route handlers under app/api', async () => {
-        await makeFeature('billing', true);
+        await makeFeature('billing', true, undefined, { route: true });
 
         // The feature follows the configured root.
         expect(projectFileExists('app/auth/billing/page.tsx')).toBe(true);
@@ -49,12 +49,20 @@ describe('make:feature with a relocated feature root', () => {
     });
 
     it('generates a hook whose url matches where the handler was written', async () => {
-        await makeFeature('billing', true);
+        await makeFeature('billing', true, undefined, { route: true });
 
         expect(readProjectFile('app/auth/billing/hooks/ListBilling.hook.ts')).toContain(
             "fetch('/api/billing', { signal: controller.signal })"
         );
         expect(projectFileExists('app/api/billing/route.ts')).toBe(true);
+    });
+
+    it('revalidates the relocated page from its Server Actions', async () => {
+        await makeFeature('billing', true);
+        expect(readProjectFile('app/auth/billing/server/actions/CreateBilling.action.ts')).toContain(
+            "revalidatePath('/auth/billing');"
+        );
+        expect(projectFileExists('app/api/billing')).toBe(false);
     });
 });
 

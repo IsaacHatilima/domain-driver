@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getProfile, hasLayer, layerDir, componentDir, availableCommands, assertLayer } from '../registry';
+import { getProfile, hasLayer, layerDir, componentDir, availableCommands, assertLayer, featureFolders } from '../registry';
 import { STACK_NAMES } from '../types';
 
 describe('profiles', () => {
@@ -9,18 +9,20 @@ describe('profiles', () => {
         expect(Object.isFrozen(profile)).toBe(true);
     });
 
-    it('next-fullstack keeps services and repositories on the server only', () => {
+    it('next-fullstack keeps actions, services and repositories on the server only', () => {
         const profile = getProfile('next-fullstack');
         expect(profile.folders).toEqual([
             'components/client',
             'components/server',
             'containers',
-            'hooks',
+            'server/actions',
             'server/services',
             'server/repositories',
             'schemas',
             'types',
         ]);
+        expect(profile.serverActions).toBe(true);
+        expect(layerDir(profile, 'serverAction')).toBe('server/actions');
         expect(profile.folders).not.toContain('client/services');
         expect(profile.folders).not.toContain('client/repositories');
         expect(Object.keys(profile.layerDirs)).not.toContain('clientService');
@@ -83,6 +85,28 @@ describe('profiles', () => {
         expect(hasLayer(profile, 'module')).toBe(true);
         expect(hasLayer(profile, 'dto')).toBe(true);
         expect(hasLayer(profile, 'hook')).toBe(false);
+    });
+
+    it('only next-fullstack defaults to Server Actions', () => {
+        for (const name of STACK_NAMES) {
+            expect(getProfile(name).serverActions, name).toBe(name === 'next-fullstack');
+        }
+    });
+
+    it('swaps server/actions for hooks in a next-fullstack feature served by route handlers', () => {
+        const profile = getProfile('next-fullstack');
+        expect(featureFolders(profile, true)).toEqual([
+            'components/client',
+            'components/server',
+            'containers',
+            'hooks',
+            'server/services',
+            'server/repositories',
+            'schemas',
+            'types',
+        ]);
+        expect(featureFolders(profile, false)).toBe(profile.folders);
+        expect(featureFolders(getProfile('react'), true)).toBe(getProfile('react').folders);
     });
 
     it('next profiles emit the client directive and have server components', () => {

@@ -26,12 +26,13 @@ describe('stack types', () => {
             'serverService',
             'serverRepository',
             'controller',
+            'serverAction',
             'module',
             'dto',
             'schema',
             'types',
         ]);
-        expect(LAYERS).toHaveLength(11);
+        expect(LAYERS).toHaveLength(12);
         expect(LAYERS).toContain('module');
     });
 

@@ -4,6 +4,7 @@ import { ActionSpec, customAction, CustomActionOptions, HTTP_METHODS, HttpMethod
 import { renderServerRepository } from '../templates/backend/server-repository';
 import { RenderContext } from '../templates/context';
 import { renderActionRoute } from '../templates/controllers/next-action-route';
+import { isWrite } from '../templates/controllers/next-server-action';
 import { renderNodeRouteLine } from '../templates/controllers/node';
 import { renderDto } from '../templates/nest/dto';
 import { renderService } from '../templates/service';
@@ -13,10 +14,13 @@ import { lowerFirst } from '../utils/naming';
 import { apiRouteDir } from '../utils/paths';
 import { controllerRenderer, controllerSuffix } from './controller-renderer';
 import { hintMissingEntity } from './entity';
-import { hintNestjsZod, hintReactQuery } from './hints';
+import { hintNestjsZod, hintReactQuery, hintRouteIgnored } from './hints';
 import { ensureQueryKeys, hookRenderer } from './hook-renderer';
 import { ensureLayerDir, requireFeature } from './resolve';
+import { DeliveryOptions, hintCallerCheck, hintServerRead, usesServerActions, writeServerActions } from './server-actions';
 import { writeIfAbsent } from './write';
+
+export interface MakeActionOptions extends CustomActionOptions, DeliveryOptions {}
 
 export function parseReturns(value: string): ReturnKind {
     if ((RETURN_KINDS as readonly string[]).includes(value)) return value as ReturnKind;
@@ -29,24 +33,38 @@ export function parseMethod(value: string): HttpMethod {
     throw new Error(`Invalid --method "${value}". Use get, post, put, patch, or delete.`);
 }
 
-export function makeAction(
-    feature: string,
-    entity: string,
-    actionName: string,
-    options: CustomActionOptions
-): boolean {
+export function makeAction(feature: string, entity: string, actionName: string, options: MakeActionOptions): boolean {
     const ctx = requireFeature(feature);
     const spec = customAction(entity, actionName, options, feature);
+    hintRouteIgnored(ctx.profile, options.route);
 
     hintMissingEntity(ctx, entity);
     let wroteAny = false;
     if (spec.schema !== null) wroteAny = writeInput(ctx, spec) || wroteAny;
     if (hasLayer(ctx.profile, 'serverRepository')) wroteAny = writeServerSide(ctx, spec, entity) || wroteAny;
-    if (hasLayer(ctx.profile, 'controller')) wroteAny = writeController(ctx, spec, entity) || wroteAny;
-    if (hasLayer(ctx.profile, 'hook')) wroteAny = writeHook(ctx, spec, entity) || wroteAny;
+    if (usesServerActions(ctx, options)) {
+        wroteAny = writeServerAction(ctx, spec, entity, wroteAny) || wroteAny;
+    } else {
+        if (hasLayer(ctx.profile, 'controller')) wroteAny = writeController(ctx, spec, entity) || wroteAny;
+        if (hasLayer(ctx.profile, 'hook')) wroteAny = writeHook(ctx, spec, entity) || wroteAny;
+    }
 
     if (wroteAny) console.log(`✅ Action "${spec.name}" scaffolded in "${feature}"`);
     return wroteAny;
+}
+
+/**
+ * On a Server Actions stack a write gets its action and a read gets nothing more: the page's
+ * Server Component calls the read's service. The read is pointed at once, when its service is new.
+ */
+function writeServerAction(ctx: RenderContext, spec: ActionSpec, entity: string, wroteServerSide: boolean): boolean {
+    if (!isWrite(spec)) {
+        if (wroteServerSide) hintServerRead(spec);
+        return false;
+    }
+    const written = writeServerActions(ctx, [spec], entity);
+    hintCallerCheck(written);
+    return written.length > 0;
 }
 
 function writeInput(ctx: RenderContext, spec: ActionSpec): boolean {

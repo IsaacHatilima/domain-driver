@@ -39,17 +39,23 @@ const SKIP_DETECTION = new Set(['update']);
 const ACTION_FILES_HELP = `
 Files per stack:
   react, next-frontend   hook only; the service and repository live behind the API, outside the project
-  next-fullstack         hook, service, repository, route handler at app/api/<feature>/<slug>/route.ts
+  next-fullstack         service, repository; a write also gets server/actions/<Name>.action.ts, and a read
+                         is called from a Server Component. With --route: hook and route handler at
+                         app/api/<feature>/<slug>/route.ts instead
   tanstack-start         hook, service, repository, server function (<Name>.fn.ts)
   node                   service, repository, controller; prints the line for <feature>.routes.ts
   nest                   service, repository, controller, and a DTO with --with-input; registered in <feature>.module.ts
 --with-input also writes <Name>.schema.ts on every stack.`;
+
+const ROUTE_HELP =
+    'next-fullstack: a route handler and fetch hook, for callers outside the app such as webhooks or a mobile client, instead of Server Actions';
 
 interface MakeActionOptions {
     readonly withInput: boolean;
     readonly returns: string;
     readonly method?: string;
     readonly onRecord: boolean;
+    readonly route: boolean;
 }
 
 export function defaultCliDeps(): CliDeps {
@@ -107,9 +113,10 @@ export function createProgram(deps: CliDeps): Command {
         .command('make:feature <target>')
         .description('Scaffold a feature folder for the detected stack (<feature> or <feature>/<Entity>)')
         .option('-a, --all', "Scaffold every layer's files, not just the folders")
-        .action(async (target: string, options: { all?: boolean }) => {
+        .option('--route', ROUTE_HELP, false)
+        .action(async (target: string, options: { all?: boolean; route: boolean }) => {
             const { feature, entity } = parseFeatureTarget(target);
-            await makeFeature(feature, options.all ?? false, entity ?? undefined);
+            await makeFeature(feature, options.all ?? false, entity ?? undefined, { route: options.route });
         });
 
     program
@@ -124,7 +131,7 @@ export function createProgram(deps: CliDeps): Command {
     program
         .command('make:container <target>')
         .description(
-            'Scaffold a container (<feature>/<Entity>Container): it lists records through useList<Entity> when that hook exists, and calls no hook otherwise'
+            'Scaffold a container (<feature>/<Entity>Container): it lists records through useList<Entity> when that hook exists; on next-fullstack it is otherwise an async Server Component over List<Entity>Service'
         )
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
@@ -134,7 +141,7 @@ export function createProgram(deps: CliDeps): Command {
     program
         .command('make:hook <target>')
         .description(
-            'Scaffold one hook file per action, List to Delete, that calls the API (<feature>/<Entity>); react, next-frontend, next-fullstack, tanstack-start'
+            'Scaffold one hook file per action, List to Delete, that calls the API (<feature>/<Entity>); react, next-frontend, next-fullstack, tanstack-start (on next-fullstack, for a feature served by route handlers)'
         )
         .action((target: string) => {
             const { feature, name } = parseTarget(target);
@@ -166,11 +173,12 @@ export function createProgram(deps: CliDeps): Command {
     program
         .command('make:controller <target>')
         .description(
-            'Scaffold one controller per action: Node and Nest controllers, Next route handlers, TanStack Start server functions (<feature>/<Entity>); not on react or next-frontend'
+            'Scaffold one controller per action: Node and Nest controllers, Next Server Actions for Create, Update and Delete (route handlers with --route), TanStack Start server functions (<feature>/<Entity>); not on react or next-frontend'
         )
-        .action((target: string) => {
+        .option('--route', ROUTE_HELP, false)
+        .action((target: string, options: { route: boolean }) => {
             const { feature, name } = parseTarget(target);
-            const wrote = makeController(feature, name);
+            const wrote = makeController(feature, name, { route: options.route });
             if (wrote) registerClasses(requireFeature(feature), 'controller', standardActionNames(name));
         });
 
@@ -181,6 +189,7 @@ export function createProgram(deps: CliDeps): Command {
         .option('--returns <kind>', 'list, one, or void', 'list')
         .option('--method <method>', 'get, post, put, patch, or delete (default: post with --with-input, otherwise get)')
         .option('--on-record', 'The action takes the record id: route /:id/<slug>, with id passed through every layer', false)
+        .option('--route', ROUTE_HELP, false)
         .addHelpText('after', ACTION_FILES_HELP)
         .action((target: string, action: string, options: MakeActionOptions) => {
             const { feature, name } = parseTarget(target);
@@ -191,6 +200,7 @@ export function createProgram(deps: CliDeps): Command {
                 returns,
                 method,
                 onRecord: options.onRecord,
+                route: options.route,
             });
             if (wrote) {
                 const { pascal } = actionCase(action);

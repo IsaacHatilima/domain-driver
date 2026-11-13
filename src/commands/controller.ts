@@ -2,18 +2,25 @@ import * as path from 'path';
 import { assertLayer } from '../stack/registry';
 import { standardActions } from '../templates/actions';
 import { RenderContext } from '../templates/context';
+import { isWrite } from '../templates/controllers/next-server-action';
 import { renderCollectionRoute, renderItemRoute } from '../templates/controllers/next-route';
 import { renderNodeRoutes } from '../templates/controllers/node';
 import { mkdirSafe } from '../utils/fs';
 import { apiRouteDir } from '../utils/paths';
 import { controllerRenderer, controllerSuffix } from './controller-renderer';
+import { hintRouteIgnored } from './hints';
 import { ensureLayerDir, requireFeature } from './resolve';
+import { DeliveryOptions, hintCallerCheck, usesServerActions, writeServerActions } from './server-actions';
 import { writeSpecFiles, writeIfAbsent } from './write';
 
-export function makeController(feature: string, name: string): boolean {
+export function makeController(feature: string, name: string, options: DeliveryOptions = {}): boolean {
     const ctx = requireFeature(feature);
     assertLayer(ctx.profile, 'controller', 'make:controller');
+    hintRouteIgnored(ctx.profile, options.route);
 
+    if (usesServerActions(ctx, options)) {
+        return writeStandardServerActions(ctx, name);
+    }
     if (ctx.profile.name === 'next-fullstack') {
         return writeNextRoutes(ctx, name);
     }
@@ -42,6 +49,15 @@ function writeNodeRoutes(ctx: RenderContext, name: string): boolean {
     const wrote = writeIfAbsent(filePath, () => content);
     if (wrote) console.log(`✅ Routes for "${name}" created at ${filePath}`);
     return wrote;
+}
+
+/** Create, Update and Delete become Server Actions. List and Show are read by a Server Component. */
+function writeStandardServerActions(ctx: RenderContext, name: string): boolean {
+    const written = writeServerActions(ctx, standardActions(name).filter(isWrite), name);
+    if (written.length === 0) return false;
+    console.log(`✅ Server Actions for "${name}" created at ${path.dirname(written[0])}`);
+    hintCallerCheck(written);
+    return true;
 }
 
 function writeNextRoutes(ctx: RenderContext, name: string): boolean {

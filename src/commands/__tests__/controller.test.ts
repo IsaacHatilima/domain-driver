@@ -86,11 +86,11 @@ describe('on tanstack-start', () => {
 });
 
 describe('on next-fullstack', () => {
-    it('writes the collection and item route handlers', () => {
+    it('writes the collection and item route handlers with --route', () => {
         writePackageJson({ next: '1' });
         mkdir('app/api');
         mkdir('app/cat');
-        makeController('cat', 'Cat');
+        makeController('cat', 'Cat', { route: true });
         expect(readProjectFile('app/api/cat/route.ts')).toContain('export async function POST');
         expect(readProjectFile('app/api/cat/[id]/route.ts')).toContain('export async function DELETE');
         expect(projectFileExists('app/cat/controllers')).toBe(false);
@@ -101,12 +101,25 @@ describe('on next-fullstack', () => {
         mkdir('app/api');
         mkdir('app/cat');
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-        makeController('cat', 'Cat');
+        makeController('cat', 'Cat', { route: true });
         vi.mocked(console.log).mockClear();
-        makeController('cat', 'Cat');
+        makeController('cat', 'Cat', { route: true });
         expect(warn).toHaveBeenCalledWith('⚠️  Skipping "route.ts" — already exists');
         const logged = vi.mocked(console.log).mock.calls.map(([message]) => String(message));
         expect(logged.some((line) => line.includes('✅'))).toBe(false);
+    });
+
+    it('skips existing Server Action files', () => {
+        writePackageJson({ next: '1' });
+        mkdir('app/api');
+        mkdir('app/cat');
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        makeController('cat', 'Cat');
+        vi.mocked(console.log).mockClear();
+        makeController('cat', 'Cat');
+        expect(warn).toHaveBeenCalledWith('⚠️  Skipping "CreateCat.action.ts" — already exists');
+        const logged = vi.mocked(console.log).mock.calls.map(([message]) => String(message));
+        expect(logged.some((line) => line.includes('✅') || line.includes('requireCaller'))).toBe(false);
     });
 });
 

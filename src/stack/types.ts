@@ -38,6 +38,7 @@ export const LAYERS = [
     'serverService',
     'serverRepository',
     'controller',
+    'serverAction',
     'module',
     'dto',
     'schema',
@@ -53,6 +54,11 @@ export interface StackProfile {
     readonly clientDirective: boolean;
     readonly serverComponents: boolean;
     readonly queryHooks: boolean;
+    /**
+     * The app's own pages read through Server Components and write through Server Actions, so no
+     * route handler or fetch hook is generated unless `--route` asks for one. next-fullstack only.
+     */
+    readonly serverActions: boolean;
 }
 
 export function isStackName(value: string): value is StackName {
