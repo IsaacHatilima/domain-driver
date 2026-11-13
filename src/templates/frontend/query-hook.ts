@@ -1,5 +1,5 @@
 import { lowerFirst } from '../../utils/naming';
-import { ActionSpec, isQueryAction } from '../actions';
+import { ActionSpec, inputArg, isQueryAction, takesQuery } from '../actions';
 import { RenderContext } from '../context';
 import { parseResponse, responseSchemaImports, serverFnCall } from './http';
 import { domainImports } from '../signatures';
@@ -48,7 +48,10 @@ function callAndParse(spec: ActionSpec, entity: string, signature: string): stri
 function queryKey(ctx: RenderContext, spec: ActionSpec): string {
     const keys = keysConstant(ctx.feature);
     const base = spec.usesId ? `${keys}.detail(id)` : `${keys}.all`;
-    return spec.custom ? `[...${base}, '${spec.name}']` : base;
+    if (!spec.custom) return base;
+    // A GET with input is one cache entry per input, so a changed input is a new query, fetched.
+    const input = takesQuery(spec) ? ', query' : '';
+    return `[...${base}, '${spec.name}'${input}]`;
 }
 
 function renderQuery(ctx: RenderContext, spec: ActionSpec, entity: string, fromFile: string): string {
@@ -62,16 +65,18 @@ export function use${spec.name}(${spec.params}) {
 `;
 }
 
+/** The input is named as `serverFnCall` passes it on: `query` for a GET, `data` otherwise. */
 function mutationInput(spec: ActionSpec): { readonly signature: string; readonly call: string; readonly idFrom: string | null } {
+    const input = inputArg(spec);
     if (spec.usesId && spec.schema !== null) {
         return {
-            signature: `({ id, data }: { id: string; data: ${spec.schema} })`,
-            call: 'id, data',
+            signature: `({ id, ${input} }: { id: string; ${input}: ${spec.schema} })`,
+            call: `id, ${input}`,
             idFrom: '{ id }',
         };
     }
     if (spec.usesId) return { signature: '(id: string)', call: 'id', idFrom: 'id' };
-    if (spec.schema !== null) return { signature: `(data: ${spec.schema})`, call: 'data', idFrom: null };
+    if (spec.schema !== null) return { signature: `(${input}: ${spec.schema})`, call: input, idFrom: null };
     return { signature: '()', call: '', idFrom: null };
 }
 

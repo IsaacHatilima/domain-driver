@@ -113,6 +113,32 @@ describe('renderQueryHook', () => {
         expect(content).toContain('void queryClient.invalidateQueries({ queryKey: catKeys.detail(id) });');
     });
 
+    it('passes the input of a GET to the server function and keys the query on it', () => {
+        const spec = customAction('Cat', 'searchCats', { withInput: true, returns: 'list', method: 'get' });
+        const content = renderQueryHook(ctx, spec, 'Cat', file('SearchCats'));
+
+        expect(content).toContain("import type { SearchCats } from '../-schemas/SearchCats.schema';");
+        expect(content).toContain('export function useSearchCats(query: SearchCats) {');
+        expect(content).toContain("queryKey: [...catKeys.all, 'SearchCats', query],");
+        expect(content).toContain('queryFn: async (): Promise<Cat[]> => z.array(CatSchema).parse(await searchCats({ data: query })),');
+    });
+
+    it('keys a GET with input on one record under the record and the query', () => {
+        const spec = customAction('Cat', 'catHistory', { withInput: true, returns: 'list', method: 'get', onRecord: true });
+        const content = renderQueryHook(ctx, spec, 'Cat', file('CatHistory'));
+
+        expect(content).toContain('export function useCatHistory(id: string, query: CatHistory) {');
+        expect(content).toContain("queryKey: [...catKeys.detail(id), 'CatHistory', query],");
+        expect(content).toContain('await catHistory({ data: { id, data: query } })');
+    });
+
+    it('calls a void GET with input as a mutation that passes the query', () => {
+        const spec = customAction('Cat', 'exportCats', { withInput: true, returns: 'void', method: 'get' });
+        const content = renderQueryHook(ctx, spec, 'Cat', file('ExportCats'));
+
+        expect(content).toContain('mutationFn: (query: ExportCats): Promise<void> => exportCats({ data: query }),');
+    });
+
     it('renders a void custom action as a mutation, not an auto-firing query', () => {
         const spec = customAction('Cat', 'purgeCats', { withInput: false, returns: 'void' });
         const content = renderQueryHook(ctx, spec, 'Cat', file('PurgeCats'));

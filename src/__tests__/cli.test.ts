@@ -103,6 +103,30 @@ describe('createProgram', () => {
         expect(hook).toContain("method: 'PATCH',");
     });
 
+    it('make:action takes --with-input on a get and reads the input from the query string', async () => {
+        writePackageJson({ react: '1' });
+        mkdir('src/features/projects');
+        await run(cliDeps({ isTTY: false }), [
+            'make:action',
+            'projects/Project',
+            'listProject',
+            '--with-input',
+            '--method',
+            'get',
+            '--returns',
+            'list',
+        ]);
+        const hook = fs.readFileSync(path.join(project.dir, 'src/features/projects/hooks/ListProject.hook.ts'), 'utf-8');
+        expect(hook).toContain('export function useListProject(query: ListProject) {');
+        expect(hook).toContain('new URLSearchParams()');
+    });
+
+    it('make:action help says a get takes its input from the query string', () => {
+        const help = fullHelp('make:action').replace(/\s+/g, ' ');
+        expect(help).toContain('the query string with --method get');
+        expect(help).not.toContain('A GET cannot');
+    });
+
     it('make:action rejects an unknown --method', async () => {
         writePackageJson({ react: '1' });
         mkdir('src/features/projects');

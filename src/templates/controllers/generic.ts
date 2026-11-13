@@ -1,4 +1,4 @@
-import { ActionSpec } from '../actions';
+import { ActionSpec, takesQuery } from '../actions';
 import { RenderContext } from '../context';
 import { schemaImport, serviceImport } from './shape';
 
@@ -16,10 +16,12 @@ export function renderGenericController(
         ...(spec.schema !== null ? [schemaImport(ctx, fromFile, spec.schema)] : []),
         serviceImport(ctx, fromFile, spec),
     ].join('\n');
-    const params = [spec.usesId ? 'id: string' : null, spec.schema !== null ? 'input: unknown' : null]
+    // The caller hands over the request's parsed query string for a GET, and its body otherwise.
+    const input = takesQuery(spec) ? 'query' : 'input';
+    const params = [spec.usesId ? 'id: string' : null, spec.schema !== null ? `${input}: unknown` : null]
         .filter((param): param is string => param !== null)
         .join(', ');
-    const args = [spec.usesId ? 'id' : null, spec.schema !== null ? `${spec.schema}Schema.parse(input)` : null]
+    const args = [spec.usesId ? 'id' : null, spec.schema !== null ? `${spec.schema}Schema.parse(${input})` : null]
         .filter((arg): arg is string => arg !== null)
         .join(', ');
 

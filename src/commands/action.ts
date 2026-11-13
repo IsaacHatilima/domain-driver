@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { hasLayer } from '../stack/registry';
-import { ActionSpec, customAction, CustomActionOptions, HTTP_METHODS, HttpMethod, RETURN_KINDS, ReturnKind } from '../templates/actions';
+import { ActionSpec, customAction, CustomActionOptions, HTTP_METHODS, HttpMethod, RETURN_KINDS, ReturnKind, takesQuery } from '../templates/actions';
 import { renderServerRepository } from '../templates/backend/server-repository';
 import { RenderContext } from '../templates/context';
 import { renderActionRoute } from '../templates/controllers/next-action-route';
@@ -8,7 +8,7 @@ import { isWrite } from '../templates/controllers/next-server-action';
 import { renderNodeRouteLine } from '../templates/controllers/node';
 import { renderDto } from '../templates/nest/dto';
 import { renderService } from '../templates/service';
-import { renderSchema } from '../templates/shared/schema';
+import { InputSource, renderSchema } from '../templates/shared/schema';
 import { mkdirSafe } from '../utils/fs';
 import { lowerFirst } from '../utils/naming';
 import { apiRouteDir } from '../utils/paths';
@@ -17,6 +17,7 @@ import { hintMissingEntity } from './entity';
 import { hintNestjsZod, hintReactQuery, hintRouteIgnored } from './hints';
 import { hintNestRoute } from './nest-routes';
 import { ensureQueryKeys, hookRenderer } from './hook-renderer';
+import { readsQuery, writeQueryContainer } from './query-container';
 import { ensureLayerDir, requireFeature } from './resolve';
 import { DeliveryOptions, hintCallerCheck, hintServerRead, usesServerActions, writeServerActions } from './server-actions';
 import { writeIfAbsent } from './write';
@@ -60,6 +61,7 @@ export function makeAction(feature: string, entity: string, actionName: string, 
  */
 function writeServerAction(ctx: RenderContext, spec: ActionSpec, entity: string, wroteServerSide: boolean): boolean {
     if (!isWrite(spec)) {
+        if (readsQuery(spec)) return writeQueryContainer(ctx, spec, entity);
         if (wroteServerSide) hintServerRead(spec);
         return false;
     }
@@ -68,9 +70,18 @@ function writeServerAction(ctx: RenderContext, spec: ActionSpec, entity: string,
     return written.length > 0;
 }
 
+/**
+ * A GET's input arrives as query-string text, except through a TanStack Start server function,
+ * which serializes the input it is called with and hands the validator the values as they were.
+ */
+function inputSource(ctx: RenderContext, spec: ActionSpec): InputSource {
+    return takesQuery(spec) && ctx.profile.name !== 'tanstack-start' ? 'query' : 'body';
+}
+
 function writeInput(ctx: RenderContext, spec: ActionSpec): boolean {
     const schemaFile = path.join(ensureLayerDir(ctx, 'schema'), `${spec.name}.schema.ts`);
-    const wroteSchema = writeIfAbsent(schemaFile, () => renderSchema(spec.name, lowerFirst(spec.name)));
+    const source = inputSource(ctx, spec);
+    const wroteSchema = writeIfAbsent(schemaFile, () => renderSchema(spec.name, lowerFirst(spec.name), source));
 
     if (!hasLayer(ctx.profile, 'dto')) return wroteSchema;
     const dtoFile = path.join(ensureLayerDir(ctx, 'dto'), `${spec.name}.dto.ts`);

@@ -1,5 +1,5 @@
 import { lowerFirst } from '../../utils/naming';
-import { Action, ActionSpec, standardAction } from '../actions';
+import { Action, ActionSpec, standardAction, takesQuery } from '../actions';
 import { RenderContext } from '../context';
 import { callArgs, controllerImports, schemaImport, serviceImport } from './shape';
 
@@ -12,7 +12,7 @@ export function renderHonoController(ctx: RenderContext, spec: ActionSpec, fromF
     const contextType = spec.usesId ? `Context<{}, '${spec.path}'>` : 'Context';
     const validate =
         spec.schema !== null
-            ? `  const parsed = ${spec.schema}Schema.safeParse(await c.req.json());
+            ? `  const parsed = ${spec.schema}Schema.safeParse(${takesQuery(spec) ? 'c.req.query()' : 'await c.req.json()'});
   if (!parsed.success) return c.json({ errors: parsed.error.flatten() }, 400);
 `
             : '';

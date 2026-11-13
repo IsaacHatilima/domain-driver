@@ -43,7 +43,7 @@ export interface ActionCase {
 export interface CustomActionOptions {
     readonly withInput: boolean;
     readonly returns: ReturnKind;
-    /** Defaults to `post` with input and `get` without. */
+    /** Defaults to `post` with input and `get` without. A `get` with input reads it from the query string. */
     readonly method?: HttpMethod;
     /** The action takes the record id from the path, as Show, Update and Delete do. */
     readonly onRecord?: boolean;
@@ -127,15 +127,13 @@ export function customAction(
     const { pascal, camel, slug } = actionCase(actionName);
     const onRecord = options.onRecord ?? false;
     const method = options.method ?? (options.withInput ? 'post' : 'get');
-    if (method === 'get' && options.withInput) {
-        throw new Error('A GET action cannot take a request body. Drop --with-input, or pick --method post, put, patch, or delete.');
-    }
+    const input = inputName(method);
 
     return freeze({
         name: pascal,
         handler: `${camel}Controller`,
-        params: joinPresent([onRecord ? 'id: string' : null, options.withInput ? `data: ${pascal}` : null]),
-        args: joinPresent([onRecord ? 'id' : null, options.withInput ? 'data' : null]),
+        params: joinPresent([onRecord ? 'id: string' : null, options.withInput ? `${input}: ${pascal}` : null]),
+        args: joinPresent([onRecord ? 'id' : null, options.withInput ? input : null]),
         returns: returnType(options.returns, entity),
         usesEntityType: options.returns !== 'void',
         schema: options.withInput ? pascal : null,
@@ -146,6 +144,24 @@ export function customAction(
         failure: `Failed to ${slug.replace(/-/g, ' ')}`,
         custom: true,
     });
+}
+
+/** A GET has no body, so its input is the query string; every other method's input is the body. */
+function inputName(method: HttpMethod): 'query' | 'data' {
+    return method === 'get' ? 'query' : 'data';
+}
+
+/**
+ * Whether the action's input comes from the query string rather than a request body: a GET that
+ * takes input. Its input is called `query` in every layer, from the controller to the repository.
+ */
+export function takesQuery(spec: ActionSpec): boolean {
+    return spec.schema !== null && spec.method === 'get';
+}
+
+/** What the action's input is called where it is passed on: `query` for a GET, `data` otherwise. */
+export function inputArg(spec: ActionSpec): 'query' | 'data' {
+    return inputName(spec.method);
 }
 
 /**

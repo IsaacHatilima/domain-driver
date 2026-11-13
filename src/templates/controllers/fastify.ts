@@ -1,5 +1,5 @@
 import { lowerFirst } from '../../utils/naming';
-import { Action, ActionSpec, standardAction } from '../actions';
+import { Action, ActionSpec, standardAction, takesQuery } from '../actions';
 import { RenderContext } from '../context';
 import { callArgs, controllerImports, schemaImport, serviceImport } from './shape';
 
@@ -13,7 +13,7 @@ export function renderFastifyController(ctx: RenderContext, spec: ActionSpec, fr
     const requestName = spec.schema !== null || spec.usesId ? 'request' : '_request';
     const validate =
         spec.schema !== null
-            ? `  const parsed = ${spec.schema}Schema.safeParse(request.body);
+            ? `  const parsed = ${spec.schema}Schema.safeParse(${takesQuery(spec) ? 'request.query' : 'request.body'});
   if (!parsed.success) {
     reply.status(400).send({ errors: parsed.error.flatten() });
     return;

@@ -1,4 +1,4 @@
-import { ActionSpec } from '../actions';
+import { ActionSpec, takesQuery } from '../actions';
 import { RenderContext } from '../context';
 import { callArgs, schemaImport, serviceImport } from './shape';
 
@@ -11,11 +11,16 @@ function parameters(spec: ActionSpec): string {
     return spec.schema !== null ? request : '';
 }
 
+/** A GET carries its input in the URL's search params; every other method in a JSON body. */
+function input(spec: ActionSpec): string {
+    return takesQuery(spec) ? 'Object.fromEntries(new URL(request.url).searchParams)' : 'await request.json()';
+}
+
 function body(spec: ActionSpec): string {
     const id = spec.usesId ? '  const { id } = await params;\n' : '';
     const validate =
         spec.schema !== null
-            ? `  const parsed = ${spec.schema}Schema.safeParse(await request.json());
+            ? `  const parsed = ${spec.schema}Schema.safeParse(${input(spec)});
   if (!parsed.success) {
     return NextResponse.json({ errors: parsed.error.flatten() }, { status: 400 });
   }

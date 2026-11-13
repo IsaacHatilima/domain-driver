@@ -112,6 +112,20 @@ describe('renderActionRoute', () => {
         expect(content).toContain('return new Response(null, { status: 204 });');
     });
 
+    it('a GET with input validates the search params and reads no body', () => {
+        const ctx = contextFor('next-fullstack', 'projects');
+        const spec = customAction('Project', 'listProject', { withInput: true, returns: 'list', method: 'get' });
+        const fromFile = path.join(apiRouteDir(ctx.stack, 'projects'), 'list-project', 'route.ts');
+        const content = renderActionRoute(ctx, spec, fromFile);
+        expect(content).toContain("import { ListProjectSchema } from '../../../projects/schemas/ListProject.schema';");
+        expect(content).toContain('export async function GET(request: Request): Promise<NextResponse> {');
+        expect(content).toContain(
+            'const parsed = ListProjectSchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));'
+        );
+        expect(content).toContain('return NextResponse.json(await service.handle(parsed.data));');
+        expect(content).not.toContain('request.json()');
+    });
+
     it('void returns an empty 204', () => {
         const ctx = contextFor('next-fullstack', 'users');
         const spec = customAction('User', 'purgeUsers', { withInput: false, returns: 'void' });

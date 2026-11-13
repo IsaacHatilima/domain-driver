@@ -277,3 +277,44 @@ describe('custom action specs through the controller templates', () => {
         expect(renderNodeRouteLine(contextFor('node', 'users'), findActive, 'User')).toBeNull();
     });
 });
+
+describe('a GET that takes input reads it from the query string', () => {
+    const search = customAction('User', 'searchUsers', { withInput: true, returns: 'list', method: 'get' });
+    const file = (ctx: RenderContext): string => path.join(ctx.featureDir, 'controllers', 'SearchUsers.controller.ts');
+
+    it('express validates req.query, not the body', () => {
+        const ctx = contextFor('node', 'users', { httpFramework: 'express' });
+        const content = renderExpressController(ctx, search, file(ctx));
+        expect(content).toContain("import { SearchUsersSchema } from '../schemas/SearchUsers.schema';");
+        expect(content).toContain('const parsed = SearchUsersSchema.safeParse(req.query);');
+        expect(content).toContain('res.status(200).json(await service.handle(parsed.data));');
+        expect(content).not.toContain('req.body');
+    });
+
+    it('fastify validates request.query', () => {
+        const ctx = contextFor('node', 'users', { httpFramework: 'fastify' });
+        const content = renderFastifyController(ctx, search, file(ctx));
+        expect(content).toContain('const parsed = SearchUsersSchema.safeParse(request.query);');
+        expect(content).not.toContain('request.body');
+    });
+
+    it('hono validates the parsed query instead of reading a JSON body', () => {
+        const ctx = contextFor('node', 'users', { httpFramework: 'hono' });
+        const content = renderHonoController(ctx, search, file(ctx));
+        expect(content).toContain('const parsed = SearchUsersSchema.safeParse(c.req.query());');
+        expect(content).not.toContain('c.req.json()');
+    });
+
+    it('the generic controller takes the parsed query and validates it', () => {
+        const ctx = contextFor('node', 'users');
+        const content = renderGenericController(ctx, search, 'User', file(ctx));
+        expect(content).toContain('async handle(query: unknown): Promise<User[]> {');
+        expect(content).toContain('return service.handle(SearchUsersSchema.parse(query));');
+    });
+
+    it('the route line is a GET', () => {
+        expect(renderNodeRouteLine(contextFor('node', 'users', { httpFramework: 'express' }), search, 'User')).toBe(
+            "router.get('/search-users', searchUsersController);"
+        );
+    });
+});

@@ -215,3 +215,23 @@ describe('serverFnCall', () => {
         expect(serverFnCall(standardAction('Update', 'Cat'))).toBe('({ data: { id, data } })');
     });
 });
+
+describe('a GET that takes input', () => {
+    const spec = customAction('Project', 'listProject', { withInput: true, returns: 'list', method: 'get' });
+
+    it('hands the parsed query to the service and the repository', () => {
+        const ctx = contextFor('next-fullstack', 'projects');
+        const repo = renderServerRepository(ctx, spec, 'Project', path.join(ctx.featureDir, 'server/repositories', 'ListProject.repository.ts'));
+        expect(repo).toContain("import type { ListProject } from '../../schemas/ListProject.schema';");
+        expect(repo).toContain('async handle(query: ListProject): Promise<Project[]> {');
+        const service = renderService(ctx, spec, 'Project', path.join(ctx.featureDir, 'server/services', 'ListProject.service.ts'));
+        expect(service).toContain('async handle(query: ListProject): Promise<Project[]> {');
+        expect(service).toContain('return repository.handle(query);');
+    });
+
+    it('passes the query to a server function as its data', () => {
+        expect(serverFnCall(spec)).toBe('({ data: query })');
+        const onRecord = customAction('Project', 'projectHistory', { withInput: true, returns: 'list', method: 'get', onRecord: true });
+        expect(serverFnCall(onRecord)).toBe('({ data: { id, data: query } })');
+    });
+});

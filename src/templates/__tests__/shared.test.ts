@@ -61,3 +61,24 @@ describe('renderSchema', () => {
         expect(content).not.toContain('id: z.string()');
     });
 });
+
+describe('renderSchema for input read from the query string', () => {
+    it('says every value arrives as a string and how to coerce one, with no fields invented', () => {
+        expect(renderSchema('ListProject', 'listProject', 'query')).toBe(`import { z } from 'zod';
+
+export const ListProjectSchema = z.object({
+  // add listProject fields here
+  // They are read from the query string, so every value arrives as a string:
+  // use z.coerce.number() for a number, and z.stringbool() for a boolean
+  // (z.coerce.boolean() turns any non-empty string, "false" included, into true).
+});
+
+export type ListProject = z.infer<typeof ListProjectSchema>;
+`);
+    });
+
+    it('keeps the body schema as it was', () => {
+        expect(renderSchema('CreateCat', 'create', 'body')).toBe(renderSchema('CreateCat', 'create'));
+        expect(renderSchema('CreateCat', 'create')).not.toContain('query string');
+    });
+});

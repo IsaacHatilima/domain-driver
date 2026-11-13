@@ -223,6 +223,36 @@ export class CreateProjectController {
 `);
     });
 
+    it('reads the input of a GET list from the query string, as the list-projects issue needed', () => {
+        const flow = inArea('projects', 'list-projects');
+        const spec = customAction('Project', 'listProject', { withInput: true, returns: 'list', method: 'get' }, 'list-projects');
+        expect(renderNestController(flow, spec, 'Project', fileIn(flow, 'ListProject'))).toBe(`import { Controller, Get, Query } from '@nestjs/common';
+import type { Project } from '../types/Project.types';
+import { ListProjectDto } from '../dto/ListProject.dto';
+import { ListProjectService } from '../services/ListProject.service';
+
+@Controller('projects')
+export class ListProjectController {
+  constructor(private readonly service: ListProjectService) {}
+
+  @Get()
+  handle(@Query() query: ListProjectDto): Promise<Project[]> {
+    return this.service.handle(query);
+  }
+}
+`);
+    });
+
+    it('takes the id from the path and the input from the query on a GET on one record', () => {
+        const flow = inArea('projects', 'project-history');
+        const spec = customAction('Project', 'projectHistory', { withInput: true, returns: 'list', method: 'get', onRecord: true }, 'project-history');
+        const content = renderNestController(flow, spec, 'Project', fileIn(flow, 'ProjectHistory'));
+        expect(content).toContain("import { Controller, Get, Param, Query } from '@nestjs/common';");
+        expect(content).toContain("  @Get(':id/history')\n  handle(@Param('id') id: string, @Query() query: ProjectHistoryDto): Promise<Project[]> {");
+        expect(content).toContain('return this.service.handle(id, query);');
+        expect(content).not.toContain('Body');
+    });
+
     it('routes a custom action on one record at :id/<name minus the entity>', () => {
         const flow = inArea('projects', 'archive-project');
         const spec = customAction('Project', 'archiveProject', { withInput: false, returns: 'one', method: 'post', onRecord: true }, 'archive-project');
